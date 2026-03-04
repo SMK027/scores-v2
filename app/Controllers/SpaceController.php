@@ -318,7 +318,8 @@ class SpaceController extends Controller
         $token = $this->inviteModel->createInvite((int) $id, $this->getCurrentUserId());
         $link = url('spaces/join/' . $token);
 
-        $this->setFlash('success', 'Lien d\'invitation créé (valable 72h) : <input type="text" id="inviteLink" class="form-control" value="' . $link . '" readonly style="display:inline;width:auto;max-width:400px;margin-left:0.5rem;">');
+        \App\Core\Session::set('invite_link', $link);
+        $this->setFlash('success', 'Lien d\'invitation créé (valable 72h)');
         $this->redirect('/spaces/' . $id . '/members');
     }
 

@@ -32,6 +32,16 @@
     </div>
     <div class="card-body">
         <p class="text-muted text-small mb-1">Générez un lien pour inviter des personnes à rejoindre l'espace (valable 72h).</p>
+        <?php
+        $inviteLink = \App\Core\Session::get('invite_link');
+        if ($inviteLink):
+            \App\Core\Session::delete('invite_link');
+        ?>
+            <div class="d-flex gap-1 align-center mb-2">
+                <input type="text" id="inviteLink" class="form-control" value="<?= e($inviteLink) ?>" readonly style="flex:1;">
+                <button type="button" id="copyInviteLink" class="btn btn-outline">Copier</button>
+            </div>
+        <?php endif; ?>
         <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/invite">
             <?= csrf_field() ?>
             <button type="submit" class="btn btn-outline">Générer un lien d'invitation</button>
