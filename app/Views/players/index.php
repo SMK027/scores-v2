@@ -1,0 +1,71 @@
+<div class="page-header">
+    <h1>Joueurs</h1>
+    <?php if (in_array($spaceRole, ['admin', 'manager', 'member'])): ?>
+        <a href="/spaces/<?= $currentSpace['id'] ?>/players/create" class="btn btn-primary">+ Ajouter un joueur</a>
+    <?php endif; ?>
+</div>
+
+<?php if (empty($players)): ?>
+    <div class="empty-state">
+        <div class="empty-icon">👥</div>
+        <p>Aucun joueur enregistré.<br>Ajoutez des joueurs pour commencer vos parties !</p>
+        <?php if (in_array($spaceRole, ['admin', 'manager', 'member'])): ?>
+            <a href="/spaces/<?= $currentSpace['id'] ?>/players/create" class="btn btn-primary">Ajouter un joueur</a>
+        <?php endif; ?>
+    </div>
+<?php else: ?>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Compte lié</th>
+                            <th>Parties</th>
+                            <th>Victoires</th>
+                            <th>Taux</th>
+                            <?php if (in_array($spaceRole, ['admin', 'manager'])): ?>
+                                <th class="text-right">Actions</th>
+                            <?php endif; ?>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($players as $player): ?>
+                            <tr>
+                                <td class="font-bold"><?= e($player['name']) ?></td>
+                                <td class="text-muted">
+                                    <?= $player['linked_username'] ? e($player['linked_username']) : '<span class="text-muted">—</span>' ?>
+                                </td>
+                                <td><?= $player['game_count'] ?></td>
+                                <td><?= $player['win_count'] ?></td>
+                                <td>
+                                    <?php if ($player['game_count'] > 0): ?>
+                                        <span class="badge badge-success">
+                                            <?= round(($player['win_count'] / $player['game_count']) * 100) ?>%
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <?php if (in_array($spaceRole, ['admin', 'manager'])): ?>
+                                    <td class="text-right">
+                                        <div class="btn-group">
+                                            <a href="/spaces/<?= $currentSpace['id'] ?>/players/<?= $player['id'] ?>/edit"
+                                               class="btn btn-sm btn-outline">Modifier</a>
+                                            <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/players/<?= $player['id'] ?>/delete" style="display:inline;">
+                                                <?= csrf_field() ?>
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                        data-confirm="Supprimer ce joueur ?">Supprimer</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                <?php endif; ?>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
