@@ -63,6 +63,7 @@ $router->post('/spaces/{id}/members/add', SpaceController::class, 'addMember');
 $router->post('/spaces/{id}/members/{mid}/role', SpaceController::class, 'updateMemberRole');
 $router->post('/spaces/{id}/members/{mid}/remove', SpaceController::class, 'removeMember');
 $router->post('/spaces/{id}/invite', SpaceController::class, 'invite');
+$router->post('/spaces/{id}/invite/{iid}/revoke', SpaceController::class, 'revokeInvite');
 
 // ============================================================
 // Types de jeux

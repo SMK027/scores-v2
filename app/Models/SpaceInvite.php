@@ -46,4 +46,20 @@ class SpaceInvite extends Model
         $result = $stmt->fetch();
         return $result ?: null;
     }
+
+    /**
+     * Récupère les invitations actives d'un espace.
+     */
+    public function findActiveBySpace(int $spaceId): array
+    {
+        $stmt = $this->query(
+            "SELECT si.*, u.username as creator_name
+             FROM {$this->table} si
+             INNER JOIN users u ON si.created_by = u.id
+             WHERE si.space_id = :space_id AND si.expires_at > NOW()
+             ORDER BY si.created_at DESC",
+            ['space_id' => $spaceId]
+        );
+        return $stmt->fetchAll();
+    }
 }

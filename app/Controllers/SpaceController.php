@@ -212,13 +212,15 @@ class SpaceController extends Controller
         }
 
         $members = $this->memberModel->findBySpace((int) $id);
+        $activeInvites = $this->inviteModel->findActiveBySpace((int) $id);
 
         $this->render('spaces/members', [
-            'title'        => 'Membres',
-            'currentSpace' => $space,
-            'spaceRole'    => $member['role'],
-            'activeMenu'   => 'members',
-            'members'      => $members,
+            'title'         => 'Membres',
+            'currentSpace'  => $space,
+            'spaceRole'     => $member['role'],
+            'activeMenu'    => 'members',
+            'members'       => $members,
+            'activeInvites' => $activeInvites,
         ]);
     }
 
@@ -347,5 +349,24 @@ class SpaceController extends Controller
         $this->memberModel->addMember($spaceId, $userId, 'member');
         $this->setFlash('success', 'Vous avez rejoint l\'espace "' . $invite['space_name'] . '" !');
         $this->redirect('/spaces/' . $spaceId);
+    }
+
+    /**
+     * Désactive une invitation.
+     */
+    public function revokeInvite(string $id, string $iid): void
+    {
+        $this->requireAuth();
+        $this->validateCSRF();
+
+        $member = Middleware::checkSpaceAccess((int) $id, $this->getCurrentUserId(), ['admin', 'manager']);
+        if (!$member) {
+            $this->setFlash('danger', 'Permissions insuffisantes.');
+            $this->redirect('/spaces/' . $id . '/members');
+        }
+
+        $this->inviteModel->delete((int) $iid);
+        $this->setFlash('success', 'Invitation désactivée.');
+        $this->redirect('/spaces/' . $id . '/members');
     }
 }

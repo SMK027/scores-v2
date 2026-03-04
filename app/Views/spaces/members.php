@@ -28,10 +28,10 @@
 <!-- Générer un lien d'invitation -->
 <div class="card mb-3">
     <div class="card-header">
-        <h3>Lien d'invitation</h3>
+        <h3>Liens d'invitation</h3>
     </div>
     <div class="card-body">
-        <p class="text-muted text-small mb-1">Générez un lien pour inviter des personnes à rejoindre l'espace (valable 72h).</p>
+        <p class="text-muted text-small mb-2">Générez un lien pour inviter des personnes à rejoindre l'espace (valable 72h).</p>
         <?php
         $inviteLink = \App\Core\Session::get('invite_link');
         if ($inviteLink):
@@ -42,10 +42,43 @@
                 <button type="button" id="copyInviteLink" class="btn btn-outline">Copier</button>
             </div>
         <?php endif; ?>
-        <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/invite">
+        <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/invite" class="mb-3">
             <?= csrf_field() ?>
-            <button type="submit" class="btn btn-outline">Générer un lien d'invitation</button>
+            <button type="submit" class="btn btn-outline">Générer un nouveau lien</button>
         </form>
+
+        <?php if (!empty($activeInvites)): ?>
+            <h4 class="text-small mb-1">Invitations actives (<?= count($activeInvites) ?>)</h4>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Créé par</th>
+                            <th>Créé le</th>
+                            <th>Expire le</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($activeInvites as $invite): ?>
+                            <tr>
+                                <td><?= e($invite['creator_name']) ?></td>
+                                <td class="text-muted text-small"><?= format_date($invite['created_at'], 'd/m/Y H:i') ?></td>
+                                <td class="text-muted text-small"><?= format_date($invite['expires_at'], 'd/m/Y H:i') ?></td>
+                                <td class="text-right">
+                                    <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/invite/<?= $invite['id'] ?>/revoke" style="display:inline;">
+                                        <?= csrf_field() ?>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Désactiver cette invitation ?">Désactiver</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php else: ?>
+            <p class="text-muted text-small">Aucune invitation active.</p>
+        <?php endif; ?>
     </div>
 </div>
 
