@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: scores_app
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+      - uploads_data:/var/www/html/public/uploads
+    environment:
+      - DB_HOST=db
+      - DB_NAME=scores_db
+      - DB_USER=scores_user
+      - DB_PASS=scores_password
+      - APP_URL=http://localhost:8080
+      - APP_DEBUG=true
+      - APP_KEY=changez_cette_cle_en_production_avec_une_chaine_aleatoire
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - scores_network
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    container_name: scores_db
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: scores_db
+      MYSQL_USER: scores_user
+      MYSQL_PASSWORD: scores_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - scores_network
+    restart: unless-stopped
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: scores_phpmyadmin
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: scores_user
+      PMA_PASSWORD: scores_password
+    depends_on:
+      - db
+    networks:
+      - scores_network
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  uploads_data:
+
+networks:
+  scores_network:
+    driver: bridge

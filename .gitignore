@@ -1,0 +1,35 @@
+# Dependencies
+/vendor/
+node_modules/
+
+# Environment
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (keep directory structure)
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Docker volumes
+db_data/
+
+# Logs
+*.log
+
+# Composer
+composer.lock
+
+# PHPUnit
+.phpunit.result.cache
+.phpunit.cache/
+coverage/
