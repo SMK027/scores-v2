@@ -85,6 +85,9 @@ class RoundController extends Controller
 
         $game = $this->game->find((int) $gid);
         if (!$game || $game['space_id'] != $id) {
+            if ($this->isAjax()) {
+                $this->jsonResponse(['success' => false, 'message' => 'Partie introuvable.']);
+            }
             $this->setFlash('danger', 'Partie introuvable.');
             $this->redirect("/spaces/{$id}/games");
             return;
@@ -92,12 +95,18 @@ class RoundController extends Controller
 
         $round = $this->round->find((int) $rid);
         if (!$round || $round['game_id'] != $gid) {
+            if ($this->isAjax()) {
+                $this->jsonResponse(['success' => false, 'message' => 'Manche introuvable.']);
+            }
             $this->setFlash('danger', 'Manche introuvable.');
             $this->redirect("/spaces/{$id}/games/{$gid}");
             return;
         }
 
         if ($round['status'] === 'completed') {
+            if ($this->isAjax()) {
+                $this->jsonResponse(['success' => false, 'message' => 'Cette manche est déjà terminée.']);
+            }
             $this->setFlash('warning', 'Cette manche est déjà terminée.');
             $this->redirect("/spaces/{$id}/games/{$gid}");
             return;
@@ -109,6 +118,10 @@ class RoundController extends Controller
         if (!empty($scores)) {
             $this->roundScore->saveScores((int) $rid, $scores);
             $this->game->recalculateTotals((int) $gid);
+        }
+
+        if ($this->isAjax()) {
+            $this->jsonResponse(['success' => true, 'message' => 'Scores enregistrés.']);
         }
 
         $this->setFlash('success', 'Scores enregistrés.');

@@ -64,6 +64,23 @@ abstract class Controller
     }
 
     /**
+     * Alias pour json().
+     */
+    protected function jsonResponse(array $data, int $statusCode = 200): void
+    {
+        $this->json($data, $statusCode);
+    }
+
+    /**
+     * Vérifie si la requête est AJAX.
+     */
+    protected function isAjax(): bool
+    {
+        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+               strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+    }
+
+    /**
      * Vérifie que l'utilisateur est connecté, sinon redirige vers login.
      */
     protected function requireAuth(): void
