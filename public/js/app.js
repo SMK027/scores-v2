@@ -161,7 +161,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(function (response) { return response.json(); })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Erreur HTTP: ' + response.status);
+                }
+                return response.json();
+            })
             .then(function (data) {
                 if (data.success) {
                     showToast(data.message || 'Scores mis à jour', 'success');
@@ -174,11 +179,16 @@ document.addEventListener('DOMContentLoaded', function () {
                             }
                         });
                     }
+                    // Recharger la page après 1 seconde pour afficher les changements
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1000);
                 } else {
                     showToast(data.message || 'Erreur lors de la mise à jour', 'danger');
                 }
             })
-            .catch(function () {
+            .catch(function (error) {
+                console.error('Erreur:', error);
                 showToast('Erreur de connexion', 'danger');
             });
         });
