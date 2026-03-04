@@ -11,6 +11,8 @@ use App\Core\Mailer;
 use App\Models\User;
 use App\Models\PasswordPolicy;
 use App\Models\PasswordReset;
+use App\Models\UserBan;
+use App\Models\IpBan;
 
 /**
  * Contrôleur d'authentification.
@@ -55,6 +57,35 @@ class AuthController extends Controller
         $user = $this->userModel->authenticate($data['email'], $data['password']);
         if (!$user) {
             $this->setFlash('danger', 'Email ou mot de passe incorrect.');
+            $this->redirect('/login');
+        }
+
+        // Vérifier bannissement du compte
+        $userBanModel = new UserBan();
+        $ban = $userBanModel->findActiveBan((int) $user['id']);
+        if ($ban) {
+            $msg = 'Votre compte est banni. Raison : ' . $ban['reason'];
+            if ($ban['expires_at']) {
+                $msg .= ' — Débannissement le ' . date('d/m/Y à H:i', strtotime($ban['expires_at'])) . '.';
+            } else {
+                $msg .= ' — Bannissement permanent.';
+            }
+            $this->setFlash('danger', $msg);
+            $this->redirect('/login');
+        }
+
+        // Vérifier bannissement IP
+        $clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        $ipBanModel = new IpBan();
+        $ipBan = $ipBanModel->findActiveBan($clientIp);
+        if ($ipBan) {
+            $msg = 'Votre adresse IP est bannie. Raison : ' . $ipBan['reason'];
+            if ($ipBan['expires_at']) {
+                $msg .= ' — Débannissement le ' . date('d/m/Y à H:i', strtotime($ipBan['expires_at'])) . '.';
+            } else {
+                $msg .= ' — Bannissement permanent.';
+            }
+            $this->setFlash('danger', $msg);
             $this->redirect('/login');
         }
 

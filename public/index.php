@@ -26,9 +26,34 @@ use App\Controllers\RoundController;
 use App\Controllers\StatController;
 use App\Controllers\SearchController;
 use App\Controllers\AdminController;
+use App\Models\IpBan;
 
 // Démarrer la session
 Session::start();
+
+// ============================================================
+// Vérification globale de bannissement IP
+// ============================================================
+$clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+$ipBanModel = new IpBan();
+$ipBan = $ipBanModel->findActiveBan($clientIp);
+if ($ipBan) {
+    http_response_code(403);
+    $reason = htmlspecialchars($ipBan['reason'], ENT_QUOTES, 'UTF-8');
+    $expires = $ipBan['expires_at']
+        ? 'jusqu\'au ' . date('d/m/Y à H:i', strtotime($ipBan['expires_at']))
+        : 'permanent';
+    echo '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Accès interdit</title>';
+    echo '<style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#1a1a2e;color:#e0e0e0;margin:0;}';
+    echo '.box{background:#16213e;padding:2rem;border-radius:12px;max-width:500px;text-align:center;border:1px solid #e94560;}';
+    echo 'h1{color:#e94560;margin-top:0;}p{line-height:1.6;}</style></head><body>';
+    echo '<div class="box"><h1>🚫 Accès interdit</h1>';
+    echo '<p>Votre adresse IP a été bannie.</p>';
+    echo '<p><strong>Raison :</strong> ' . $reason . '</p>';
+    echo '<p><strong>Durée :</strong> ' . $expires . '</p>';
+    echo '</div></body></html>';
+    exit;
+}
 
 // Initialiser le routeur
 $router = new Router();
@@ -135,6 +160,18 @@ $router->post('/admin/users/{uid}/delete', AdminController::class, 'deleteUser')
 $router->get('/admin/spaces', AdminController::class, 'spaces');
 $router->get('/admin/password-policy', AdminController::class, 'passwordPolicy');
 $router->post('/admin/password-policy', AdminController::class, 'updatePasswordPolicy');
+
+// Bannissements comptes
+$router->get('/admin/bans/users', AdminController::class, 'userBans');
+$router->get('/admin/bans/users/create', AdminController::class, 'userBanForm');
+$router->post('/admin/bans/users/create', AdminController::class, 'createUserBan');
+$router->post('/admin/bans/users/{bid}/revoke', AdminController::class, 'revokeUserBan');
+
+// Bannissements IP
+$router->get('/admin/bans/ips', AdminController::class, 'ipBans');
+$router->get('/admin/bans/ips/create', AdminController::class, 'ipBanForm');
+$router->post('/admin/bans/ips/create', AdminController::class, 'createIpBan');
+$router->post('/admin/bans/ips/{bid}/revoke', AdminController::class, 'revokeIpBan');
 
 // Dispatcher la requête
 $method = $_SERVER['REQUEST_METHOD'];

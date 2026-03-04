@@ -8,6 +8,8 @@ use App\Core\Controller;
 use App\Core\Middleware;
 use App\Models\User;
 use App\Models\Space;
+use App\Models\UserBan;
+use App\Models\IpBan;
 use App\Models\PasswordPolicy;
 use App\Config\Database;
 
@@ -237,5 +239,256 @@ class AdminController extends Controller
     {
         $stmt = $this->pdo->query("SELECT COUNT(*) FROM {$table}");
         return (int) $stmt->fetchColumn();
+    }
+
+    // =========================================================
+    // Gestion des bannissements de comptes
+    // =========================================================
+
+    /**
+     * Liste des bannissements de comptes.
+     */
+    public function userBans(): void
+    {
+        $this->checkAdmin();
+
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $filter = $_GET['filter'] ?? 'all';
+
+        $banModel = new UserBan();
+        $bans = $banModel->listAll($page, 20, $filter);
+
+        $this->render('admin/user_bans', [
+            'title'      => 'Bannissements de comptes',
+            'activeMenu' => 'admin',
+            'bans'       => $bans['data'],
+            'pagination' => $bans,
+            'filter'     => $filter,
+        ]);
+    }
+
+    /**
+     * Formulaire de bannissement d'un compte.
+     */
+    public function userBanForm(): void
+    {
+        $this->checkAdmin();
+
+        $userId = (int) ($_GET['user_id'] ?? 0);
+        $user = $userId ? $this->userModel->find($userId) : null;
+
+        $this->render('admin/user_ban_form', [
+            'title'      => 'Bannir un compte',
+            'activeMenu' => 'admin',
+            'targetUser' => $user,
+        ]);
+    }
+
+    /**
+     * Traite le bannissement d'un compte.
+     */
+    public function createUserBan(): void
+    {
+        $this->checkAdmin();
+        $this->validateCSRF();
+
+        $data = $this->getPostData(['user_id', 'reason', 'duration_type', 'duration_value', 'duration_unit']);
+        $globalRole = \App\Core\Session::get('global_role');
+
+        if (empty($data['user_id']) || empty($data['reason'])) {
+            $this->setFlash('danger', 'L\'utilisateur et la raison sont requis.');
+            $this->redirect('/admin/bans/users/create');
+            return;
+        }
+
+        $user = $this->userModel->find((int) $data['user_id']);
+        if (!$user) {
+            $this->setFlash('danger', 'Utilisateur introuvable.');
+            $this->redirect('/admin/bans/users/create');
+            return;
+        }
+
+        // Interdire de bannir un superadmin
+        if ($user['global_role'] === 'superadmin') {
+            $this->setFlash('danger', 'Impossible de bannir un super administrateur.');
+            $this->redirect('/admin/bans/users');
+            return;
+        }
+
+        // Calcul de la date d'expiration
+        $expiresAt = null;
+        if ($data['duration_type'] === 'permanent') {
+            // Seuls admin et superadmin peuvent bannir de façon permanente
+            if (!in_array($globalRole, ['admin', 'superadmin'], true)) {
+                $this->setFlash('danger', 'Seuls les administrateurs peuvent appliquer un bannissement permanent.');
+                $this->redirect('/admin/bans/users/create');
+                return;
+            }
+        } else {
+            $value = max(1, (int) ($data['duration_value'] ?? 1));
+            $unit = $data['duration_unit'] ?? 'hours';
+            $validUnits = ['minutes', 'hours', 'days', 'weeks', 'months'];
+            if (!in_array($unit, $validUnits, true)) {
+                $unit = 'hours';
+            }
+            $interval = new \DateInterval($this->durationToInterval($value, $unit));
+            $expires = new \DateTime();
+            $expires->add($interval);
+            $expiresAt = $expires->format('Y-m-d H:i:s');
+        }
+
+        $banModel = new UserBan();
+        $banModel->ban((int) $data['user_id'], $this->getCurrentUserId(), $data['reason'], $expiresAt);
+
+        $this->setFlash('success', 'L\'utilisateur « ' . e($user['username']) . ' » a été banni.');
+        $this->redirect('/admin/bans/users');
+    }
+
+    /**
+     * Annule un bannissement de compte (admin/superadmin uniquement).
+     */
+    public function revokeUserBan(string $bid): void
+    {
+        $this->checkAdminOrSuperAdmin();
+        $this->validateCSRF();
+
+        $banModel = new UserBan();
+        $ban = $banModel->find((int) $bid);
+
+        if (!$ban) {
+            $this->setFlash('danger', 'Bannissement introuvable.');
+            $this->redirect('/admin/bans/users');
+            return;
+        }
+
+        $banModel->revoke((int) $bid, $this->getCurrentUserId());
+        $this->setFlash('success', 'Bannissement annulé.');
+        $this->redirect('/admin/bans/users');
+    }
+
+    // =========================================================
+    // Gestion des bannissements d'IP
+    // =========================================================
+
+    /**
+     * Liste des bannissements d'IP.
+     */
+    public function ipBans(): void
+    {
+        $this->checkAdmin();
+
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $filter = $_GET['filter'] ?? 'all';
+
+        $banModel = new IpBan();
+        $bans = $banModel->listAll($page, 20, $filter);
+
+        $this->render('admin/ip_bans', [
+            'title'      => 'Bannissements d\'IP',
+            'activeMenu' => 'admin',
+            'bans'       => $bans['data'],
+            'pagination' => $bans,
+            'filter'     => $filter,
+        ]);
+    }
+
+    /**
+     * Formulaire de bannissement d'IP.
+     */
+    public function ipBanForm(): void
+    {
+        $this->checkAdmin();
+
+        $this->render('admin/ip_ban_form', [
+            'title'      => 'Bannir une adresse IP',
+            'activeMenu' => 'admin',
+        ]);
+    }
+
+    /**
+     * Traite le bannissement d'une IP.
+     */
+    public function createIpBan(): void
+    {
+        $this->checkAdmin();
+        $this->validateCSRF();
+
+        $data = $this->getPostData(['ip_address', 'reason', 'duration_type', 'duration_value', 'duration_unit']);
+        $globalRole = \App\Core\Session::get('global_role');
+
+        if (empty($data['ip_address']) || empty($data['reason'])) {
+            $this->setFlash('danger', 'L\'adresse IP et la raison sont requises.');
+            $this->redirect('/admin/bans/ips/create');
+            return;
+        }
+
+        if (!filter_var($data['ip_address'], FILTER_VALIDATE_IP)) {
+            $this->setFlash('danger', 'Adresse IP invalide.');
+            $this->redirect('/admin/bans/ips/create');
+            return;
+        }
+
+        $expiresAt = null;
+        if ($data['duration_type'] === 'permanent') {
+            if (!in_array($globalRole, ['admin', 'superadmin'], true)) {
+                $this->setFlash('danger', 'Seuls les administrateurs peuvent appliquer un bannissement permanent.');
+                $this->redirect('/admin/bans/ips/create');
+                return;
+            }
+        } else {
+            $value = max(1, (int) ($data['duration_value'] ?? 1));
+            $unit = $data['duration_unit'] ?? 'hours';
+            $validUnits = ['minutes', 'hours', 'days', 'weeks', 'months'];
+            if (!in_array($unit, $validUnits, true)) {
+                $unit = 'hours';
+            }
+            $interval = new \DateInterval($this->durationToInterval($value, $unit));
+            $expires = new \DateTime();
+            $expires->add($interval);
+            $expiresAt = $expires->format('Y-m-d H:i:s');
+        }
+
+        $banModel = new IpBan();
+        $banModel->ban($data['ip_address'], $this->getCurrentUserId(), $data['reason'], $expiresAt);
+
+        $this->setFlash('success', 'L\'adresse IP « ' . e($data['ip_address']) . ' » a été bannie.');
+        $this->redirect('/admin/bans/ips');
+    }
+
+    /**
+     * Annule un bannissement d'IP (admin/superadmin uniquement).
+     */
+    public function revokeIpBan(string $bid): void
+    {
+        $this->checkAdminOrSuperAdmin();
+        $this->validateCSRF();
+
+        $banModel = new IpBan();
+        $ban = $banModel->find((int) $bid);
+
+        if (!$ban) {
+            $this->setFlash('danger', 'Bannissement introuvable.');
+            $this->redirect('/admin/bans/ips');
+            return;
+        }
+
+        $banModel->revoke((int) $bid, $this->getCurrentUserId());
+        $this->setFlash('success', 'Bannissement d\'IP annulé.');
+        $this->redirect('/admin/bans/ips');
+    }
+
+    /**
+     * Convertit une durée en spécification d'intervalle ISO 8601.
+     */
+    private function durationToInterval(int $value, string $unit): string
+    {
+        return match ($unit) {
+            'minutes' => "PT{$value}M",
+            'hours'   => "PT{$value}H",
+            'days'    => "P{$value}D",
+            'weeks'   => 'P' . ($value * 7) . 'D',
+            'months'  => "P{$value}M",
+            default   => "PT{$value}H",
+        };
     }
 }
