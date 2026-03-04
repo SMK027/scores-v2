@@ -40,25 +40,47 @@ class RoundScore extends Model
     /**
      * Enregistre ou met à jour les scores d'une manche
      */
-    public function saveScores(int $roundId, array $scores): void
+    public function saveScores(int $roundId, array $scores, string $winCondition = 'highest_score', int $gameId = 0): void
     {
         // Supprimer les scores existants pour cette manche
         $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE round_id = :round_id");
         $stmt->execute(['round_id' => $roundId]);
 
-        // Insérer les nouveaux scores
-        $stmt = $this->db->prepare("
-            INSERT INTO {$this->table} (round_id, player_id, score)
-            VALUES (:round_id, :player_id, :score)
-        ");
-
-        foreach ($scores as $playerId => $score) {
-            if ($score !== '' && $score !== null) {
+        // Pour win_loss, récupérer tous les joueurs de la partie
+        if ($winCondition === 'win_loss' && $gameId > 0) {
+            $stmt = $this->db->prepare("SELECT player_id FROM game_players WHERE game_id = :game_id");
+            $stmt->execute(['game_id' => $gameId]);
+            $allPlayers = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            
+            // Insérer tous les joueurs : 1 pour victoire, 0 pour défaite
+            $stmt = $this->db->prepare("
+                INSERT INTO {$this->table} (round_id, player_id, score)
+                VALUES (:round_id, :player_id, :score)
+            ");
+            
+            foreach ($allPlayers as $playerId) {
+                $score = isset($scores[$playerId]) && $scores[$playerId] == 1 ? 1 : 0;
                 $stmt->execute([
                     'round_id'  => $roundId,
                     'player_id' => (int) $playerId,
-                    'score'     => (float) $score,
+                    'score'     => $score,
                 ]);
+            }
+        } else {
+            // Pour les autres conditions, insérer uniquement les scores saisis
+            $stmt = $this->db->prepare("
+                INSERT INTO {$this->table} (round_id, player_id, score)
+                VALUES (:round_id, :player_id, :score)
+            ");
+
+            foreach ($scores as $playerId => $score) {
+                if ($score !== '' && $score !== null) {
+                    $stmt->execute([
+                        'round_id'  => $roundId,
+                        'player_id' => (int) $playerId,
+                        'score'     => (float) $score,
+                    ]);
+                }
             }
         }
     }

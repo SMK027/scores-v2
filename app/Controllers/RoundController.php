@@ -89,7 +89,7 @@ class RoundController extends Controller
     {
         $this->checkAccess($id);
 
-        $game = $this->game->find((int) $gid);
+        $game = $this->game->findWithDetails((int) $gid);
         if (!$game || $game['space_id'] != $id) {
             if ($this->isAjax()) {
                 $this->jsonResponse(['success' => false, 'message' => 'Partie introuvable.']);
@@ -121,9 +121,9 @@ class RoundController extends Controller
         $this->validateCSRF();
 
         $scores = $_POST['scores'] ?? [];
-        if (!empty($scores)) {
+        if (!empty($scores) || $game['win_condition'] === 'win_loss') {
             try {
-                $this->roundScore->saveScores((int) $rid, $scores);
+                $this->roundScore->saveScores((int) $rid, $scores, $game['win_condition'], (int) $gid);
                 $this->game->recalculateTotals((int) $gid);
             } catch (\Exception $e) {
                 if ($this->isAjax()) {

@@ -106,25 +106,58 @@ class Game extends Model
         $game = $this->findWithDetails($gameId);
         if (!$game) return;
 
-        // Recalculer les totaux des joueurs
-        $this->query(
-            "UPDATE game_players gp
-             SET total_score = (
-                 SELECT COALESCE(SUM(rs.score), 0)
-                 FROM round_scores rs
-                 INNER JOIN rounds r ON rs.round_id = r.id
-                 WHERE r.game_id = :game_id AND rs.player_id = gp.player_id
-             )
-             WHERE gp.game_id = :game_id2",
-            ['game_id' => $gameId, 'game_id2' => $gameId]
-        );
+        $winCondition = $game['win_condition'];
+
+        if ($winCondition === 'win_loss') {
+            // Pour win_loss : compter le nombre de victoires (score = 1)
+            $this->query(
+                "UPDATE game_players gp
+                 SET total_score = (
+                     SELECT COALESCE(SUM(rs.score), 0)
+                     FROM round_scores rs
+                     INNER JOIN rounds r ON rs.round_id = r.id
+                     WHERE r.game_id = :game_id AND rs.player_id = gp.player_id
+                 )
+                 WHERE gp.game_id = :game_id2",
+                ['game_id' => $gameId, 'game_id2' => $gameId]
+            );
+        } elseif ($winCondition === 'ranking') {
+            // Pour ranking : sommer les positions (plus bas = meilleur)
+            $this->query(
+                "UPDATE game_players gp
+                 SET total_score = (
+                     SELECT COALESCE(SUM(rs.score), 0)
+                     FROM round_scores rs
+                     INNER JOIN rounds r ON rs.round_id = r.id
+                     WHERE r.game_id = :game_id AND rs.player_id = gp.player_id
+                 )
+                 WHERE gp.game_id = :game_id2",
+                ['game_id' => $gameId, 'game_id2' => $gameId]
+            );
+        } else {
+            // Pour highest_score et lowest_score : sommer les scores
+            $this->query(
+                "UPDATE game_players gp
+                 SET total_score = (
+                     SELECT COALESCE(SUM(rs.score), 0)
+                     FROM round_scores rs
+                     INNER JOIN rounds r ON rs.round_id = r.id
+                     WHERE r.game_id = :game_id AND rs.player_id = gp.player_id
+                 )
+                 WHERE gp.game_id = :game_id2",
+                ['game_id' => $gameId, 'game_id2' => $gameId]
+            );
+        }
 
         // Réinitialiser les gagnants
         $this->query("UPDATE game_players SET is_winner = 0, `rank` = NULL WHERE game_id = :game_id", ['game_id' => $gameId]);
 
         // Déterminer le classement selon la condition de victoire
-        $winCondition = $game['win_condition'];
-        $order = ($winCondition === 'lowest_score') ? 'ASC' : 'DESC';
+        if ($winCondition === 'ranking' || $winCondition === 'lowest_score') {
+            $order = 'ASC';
+        } else {
+            $order = 'DESC';
+        }
 
         $playersStmt = $this->query(
             "SELECT id, player_id, total_score FROM game_players WHERE game_id = :game_id ORDER BY total_score {$order}",
