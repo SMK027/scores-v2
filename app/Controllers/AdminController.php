@@ -268,19 +268,38 @@ class AdminController extends Controller
     }
 
     /**
+     * API JSON : recherche d'utilisateurs pour l'autocomplétion du formulaire de ban.
+     */
+    public function searchUsersApi(): void
+    {
+        $this->checkAdmin();
+
+        $term = trim($_GET['q'] ?? '');
+        if (mb_strlen($term) < 2) {
+            $this->json(['results' => []]);
+            return;
+        }
+
+        $globalRole = \App\Core\Session::get('global_role');
+        $includeStaff = ($globalRole === 'superadmin');
+
+        $users = $this->userModel->searchForBan($term, $includeStaff);
+        $this->json(['results' => $users]);
+    }
+
+    /**
      * Formulaire de bannissement d'un compte.
      */
     public function userBanForm(): void
     {
         $this->checkAdmin();
 
-        $userId = (int) ($_GET['user_id'] ?? 0);
-        $user = $userId ? $this->userModel->find($userId) : null;
+        $globalRole = \App\Core\Session::get('global_role');
 
         $this->render('admin/user_ban_form', [
-            'title'      => 'Bannir un compte',
-            'activeMenu' => 'admin',
-            'targetUser' => $user,
+            'title'        => 'Bannir un compte',
+            'activeMenu'   => 'admin',
+            'isSuperAdmin' => ($globalRole === 'superadmin'),
         ]);
     }
 
@@ -311,6 +330,13 @@ class AdminController extends Controller
         // Interdire de bannir un superadmin
         if ($user['global_role'] === 'superadmin') {
             $this->setFlash('danger', 'Impossible de bannir un super administrateur.');
+            $this->redirect('/admin/bans/users');
+            return;
+        }
+
+        // Interdire de bannir un admin ou modérateur (sauf par un superadmin)
+        if (in_array($user['global_role'], ['admin', 'moderator'], true) && $globalRole !== 'superadmin') {
+            $this->setFlash('danger', 'Seuls les super administrateurs peuvent bannir un administrateur ou un modérateur.');
             $this->redirect('/admin/bans/users');
             return;
         }

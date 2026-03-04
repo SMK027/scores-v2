@@ -163,6 +163,7 @@ $router->post('/admin/password-policy', AdminController::class, 'updatePasswordP
 
 // Bannissements comptes
 $router->get('/admin/bans/users', AdminController::class, 'userBans');
+$router->get('/admin/bans/users/search', AdminController::class, 'searchUsersApi');
 $router->get('/admin/bans/users/create', AdminController::class, 'userBanForm');
 $router->post('/admin/bans/users/create', AdminController::class, 'createUserBan');
 $router->post('/admin/bans/users/{bid}/revoke', AdminController::class, 'revokeUserBan');

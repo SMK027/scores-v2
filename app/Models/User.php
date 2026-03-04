@@ -97,6 +97,36 @@ class User extends Model
     }
 
     /**
+     * Recherche d'utilisateurs par nom ou email (pour autocomplétion).
+     * Exclut les rôles protégés sauf si $includStaff vaut true.
+     */
+    public function searchForBan(string $term, bool $includeStaff = false, int $limit = 15): array
+    {
+        $term = '%' . $term . '%';
+        $params = ['t1' => $term, 't2' => $term];
+
+        $roleFilter = '';
+        if (!$includeStaff) {
+            $roleFilter = "AND global_role = 'user'";
+        } else {
+            // Même un superadmin ne peut pas se bannir lui-même via la recherche,
+            // mais on laisse admin/moderator apparaître
+            $roleFilter = "AND global_role != 'superadmin'";
+        }
+
+        $sql = "SELECT id, username, email, global_role
+                FROM {$this->table}
+                WHERE (username LIKE :t1 OR email LIKE :t2)
+                {$roleFilter}
+                ORDER BY username ASC
+                LIMIT {$limit}";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    /**
      * Liste tous les utilisateurs avec pagination.
      */
     public function paginate(int $page = 1, int $perPage = 20, string $search = ''): array
