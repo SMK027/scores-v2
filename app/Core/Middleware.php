@@ -13,6 +13,7 @@ class Middleware
 {
     /**
      * Vérifie que l'utilisateur est membre d'un espace et possède un rôle suffisant.
+     * Les membres du staff global peuvent contourner les restrictions.
      *
      * @param int    $spaceId       ID de l'espace
      * @param int    $userId        ID de l'utilisateur
@@ -21,6 +22,51 @@ class Middleware
      */
     public static function checkSpaceAccess(int $spaceId, int $userId, array $allowedRoles = ['admin', 'manager', 'member', 'guest']): ?array
     {
+        $globalRole = Session::get('global_role');
+        
+        // Super admin : accès complet (simule un admin d'espace)
+        if ($globalRole === 'superadmin') {
+            return [
+                'id' => 0,
+                'space_id' => $spaceId,
+                'user_id' => $userId,
+                'role' => 'admin',
+                'created_at' => date('Y-m-d H:i:s'),
+                'is_global_staff' => true,
+            ];
+        }
+        
+        // Admin global : accès gestionnaire (sauf paramètres espace)
+        if ($globalRole === 'admin') {
+            // Si les rôles demandés incluent manager ou moins, autoriser
+            if (array_intersect(['manager', 'member', 'guest'], $allowedRoles)) {
+                return [
+                    'id' => 0,
+                    'space_id' => $spaceId,
+                    'user_id' => $userId,
+                    'role' => 'manager',
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'is_global_staff' => true,
+                ];
+            }
+        }
+        
+        // Modérateur global : accès lecture seule (guest)
+        if ($globalRole === 'moderator') {
+            // Si les rôles demandés incluent guest, autoriser
+            if (in_array('guest', $allowedRoles)) {
+                return [
+                    'id' => 0,
+                    'space_id' => $spaceId,
+                    'user_id' => $userId,
+                    'role' => 'guest',
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'is_global_staff' => true,
+                ];
+            }
+        }
+        
+        // Vérification normale pour les utilisateurs standards
         $memberModel = new SpaceMember();
         $member = $memberModel->findMember($spaceId, $userId);
 

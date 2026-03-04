@@ -134,6 +134,12 @@ class SpaceController extends Controller
             $this->setFlash('danger', 'Permissions insuffisantes.');
             $this->redirect('/spaces/' . $id);
         }
+        
+        // Les admins globaux (non superadmin) ne peuvent pas modifier les paramètres
+        if (!empty($member['is_global_staff']) && !Middleware::isSuperAdmin()) {
+            $this->setFlash('danger', 'Seul le super administrateur peut modifier les paramètres de l\'espace.');
+            $this->redirect('/spaces/' . $id);
+        }
 
         $this->render('spaces/edit', [
             'title'        => 'Modifier l\'espace',
@@ -154,6 +160,12 @@ class SpaceController extends Controller
         $member = Middleware::checkSpaceAccess((int) $id, $this->getCurrentUserId(), ['admin']);
         if (!$member) {
             $this->setFlash('danger', 'Permissions insuffisantes.');
+            $this->redirect('/spaces/' . $id);
+        }
+        
+        // Les admins globaux (non superadmin) ne peuvent pas modifier les paramètres
+        if (!empty($member['is_global_staff']) && !Middleware::isSuperAdmin()) {
+            $this->setFlash('danger', 'Seul le super administrateur peut modifier les paramètres de l\'espace.');
             $this->redirect('/spaces/' . $id);
         }
 
@@ -184,6 +196,12 @@ class SpaceController extends Controller
         $member = Middleware::checkSpaceAccess((int) $id, $this->getCurrentUserId(), ['admin']);
         if (!$member) {
             $this->setFlash('danger', 'Permissions insuffisantes.');
+            $this->redirect('/spaces/' . $id);
+        }
+        
+        // Les admins globaux (non superadmin) ne peuvent pas supprimer les espaces
+        if (!empty($member['is_global_staff']) && !Middleware::isSuperAdmin()) {
+            $this->setFlash('danger', 'Seul le super administrateur peut supprimer un espace.');
             $this->redirect('/spaces/' . $id);
         }
 
