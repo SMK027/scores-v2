@@ -118,7 +118,7 @@ class GameController extends Controller
         $this->validateCSRF();
 
         $data = $this->getPostData(['game_type_id', 'notes']);
-        $playerIds = $_POST['players'] ?? [];
+        $playerIds = $_POST['player_ids'] ?? [];
 
         if (empty($data['game_type_id'])) {
             $this->setFlash('danger', 'Le type de jeu est requis.');
