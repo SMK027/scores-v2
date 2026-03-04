@@ -95,13 +95,13 @@ class ProfileController extends Controller
         if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
             $file = $_FILES['avatar'];
             $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-            $maxSize = 2 * 1024 * 1024; // 2 Mo (limite PHP)
+            $maxSize = 5 * 1024 * 1024; // 5 Mo
 
             if (!in_array($file['type'], $allowedTypes, true)) {
                 $errors[] = 'Le format d\'image n\'est pas supporté (JPG, PNG, GIF, WebP).';
             }
             if ($file['size'] > $maxSize) {
-                $errors[] = 'L\'image ne doit pas dépasser 2 Mo.';
+                $errors[] = 'L\'image ne doit pas dépasser 5 Mo.';
             }
 
             if (empty($errors)) {

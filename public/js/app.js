@@ -311,8 +311,8 @@ document.addEventListener('DOMContentLoaded', function () {
         avatarInput.addEventListener('change', function () {
             const file = this.files[0];
             if (file) {
-                if (file.size > 2 * 1024 * 1024) {
-                    showToast('L\'image ne doit pas dépasser 2 Mo', 'danger');
+                if (file.size > 5 * 1024 * 1024) {
+                    showToast('L\'image ne doit pas dépasser 5 Mo', 'danger');
                     this.value = '';
                     return;
                 }
