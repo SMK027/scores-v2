@@ -34,12 +34,18 @@ class RoundController extends Controller
         $this->requireAuth();
         $space = $this->spaceModel->find((int) $id);
         if (!$space) {
+            if ($this->isAjax()) {
+                $this->jsonResponse(['success' => false, 'message' => 'Espace introuvable.']);
+            }
             $this->setFlash('danger', 'Espace introuvable.');
             $this->redirect('/spaces');
             exit;
         }
         $member = Middleware::checkSpaceAccess((int) $id, $this->getCurrentUserId(), $roles);
         if (!$member) {
+            if ($this->isAjax()) {
+                $this->jsonResponse(['success' => false, 'message' => 'Accès non autorisé.']);
+            }
             $this->setFlash('danger', 'Accès non autorisé.');
             $this->redirect('/spaces');
             exit;

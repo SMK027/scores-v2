@@ -86,6 +86,9 @@ abstract class Controller
     protected function requireAuth(): void
     {
         if (!Session::get('user_id')) {
+            if ($this->isAjax()) {
+                $this->jsonResponse(['success' => false, 'message' => 'Vous devez être connecté.'], 401);
+            }
             $this->setFlash('warning', 'Vous devez être connecté pour accéder à cette page.');
             $this->redirect('/login');
         }
@@ -122,6 +125,9 @@ abstract class Controller
     protected function validateCSRF(): void
     {
         if (!CSRF::validate($_POST['csrf_token'] ?? '')) {
+            if ($this->isAjax()) {
+                $this->jsonResponse(['success' => false, 'message' => 'Token de sécurité invalide.'], 403);
+            }
             $this->setFlash('danger', 'Token de sécurité invalide. Veuillez réessayer.');
             $this->redirect($_SERVER['HTTP_REFERER'] ?? '/');
         }
