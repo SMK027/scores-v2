@@ -10,21 +10,21 @@ services:
       - .:/var/www/html
       - ./data/uploads:/var/www/html/public/uploads
     environment:
-      - DB_HOST=db
-      - DB_PORT=3306
-      - DB_NAME=scores_db
-      - DB_USER=scores_user
-      - DB_PASS=scores_password
-      - APP_URL=http://localhost:8080
-      - APP_DEBUG=true
-      - APP_KEY=changez_cette_cle_en_production_avec_une_chaine_aleatoire
-      - SMTP_HOST=smtp.example.com
-      - SMTP_PORT=587
-      - SMTP_USER=votre@email.com
-      - SMTP_PASS=votre_mot_de_passe
-      - SMTP_ENCRYPTION=tls
-      - MAIL_FROM_ADDRESS=noreply@scores.local
-      - MAIL_FROM_NAME=Scores App
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - APP_URL=${APP_URL}
+      - APP_DEBUG=${APP_DEBUG}
+      - APP_KEY=${APP_KEY}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_ENCRYPTION=${SMTP_ENCRYPTION}
+      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS}
+      - MAIL_FROM_NAME=${MAIL_FROM_NAME}
     depends_on:
       db:
         condition: service_healthy
