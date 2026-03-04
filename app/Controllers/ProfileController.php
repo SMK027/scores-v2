@@ -118,11 +118,17 @@ class ProfileController extends Controller
                 }
 
                 $targetPath = $uploadDir . $filename;
-                if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+                
+                // Vérifier que le fichier temporaire existe
+                if (!is_uploaded_file($file['tmp_name'])) {
+                    $errors[] = 'Le fichier temporaire n\'existe pas.';
+                } elseif (!is_writable($uploadDir)) {
+                    $errors[] = 'Le dossier uploads n\'est pas accessible en écriture.';
+                } elseif (move_uploaded_file($file['tmp_name'], $targetPath)) {
                     chmod($targetPath, 0644);
                     $avatarPath = '/uploads/' . $filename;
                 } else {
-                    $errors[] = 'Erreur lors du téléchargement de l\'avatar. Chemin: ' . $uploadDir;
+                    $errors[] = 'Erreur lors du déplacement du fichier. Tmp: ' . $file['tmp_name'] . ' -> ' . $targetPath;
                 }
             }
         } elseif (isset($_FILES['avatar']) && $_FILES['avatar']['error'] !== UPLOAD_ERR_NO_FILE) {
