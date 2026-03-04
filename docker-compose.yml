@@ -8,7 +8,7 @@ services:
       - "8080:80"
     volumes:
       - .:/var/www/html
-      - uploads_data:/var/www/html/public/uploads
+      - ./data/uploads:/var/www/html/public/uploads
     environment:
       - DB_HOST=db
       - DB_PORT=3306
@@ -36,7 +36,7 @@ services:
     ports:
       - "3307:3306"
     volumes:
-      - db_data:/var/lib/mysql
+      - ./data/mysql:/var/lib/mysql
       - ./database/migrations:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
@@ -61,10 +61,6 @@ services:
     networks:
       - scores_network
     restart: unless-stopped
-
-volumes:
-  db_data:
-  uploads_data:
 
 networks:
   scores_network:

@@ -22,6 +22,9 @@ public/uploads/*
 
 # Docker volumes
 db_data/
+data/mysql/
+data/uploads/*
+!data/uploads/.gitkeep
 
 # Logs
 *.log
