@@ -13,6 +13,9 @@
                     <label for="password" class="form-label">Mot de passe</label>
                     <input type="password" id="password" name="password" class="form-control"
                            placeholder="Votre mot de passe" required>
+                    <div style="text-align: right; margin-top: 0.25rem;">
+                        <a href="/forgot-password" class="text-small" style="color: var(--primary, #4361ee);">Mot de passe oublié ?</a>
+                    </div>
                 </div>
                 <div class="form-group">
                     <button type="submit" class="btn btn-primary btn-block">Se connecter</button>

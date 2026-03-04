@@ -18,6 +18,13 @@ services:
       - APP_URL=http://localhost:8080
       - APP_DEBUG=true
       - APP_KEY=changez_cette_cle_en_production_avec_une_chaine_aleatoire
+      - SMTP_HOST=smtp.example.com
+      - SMTP_PORT=587
+      - SMTP_USER=votre@email.com
+      - SMTP_PASS=votre_mot_de_passe
+      - SMTP_ENCRYPTION=tls
+      - MAIL_FROM_ADDRESS=noreply@scores.local
+      - MAIL_FROM_NAME=Scores App
     depends_on:
       db:
         condition: service_healthy
