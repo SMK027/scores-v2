@@ -25,6 +25,7 @@
 <div class="d-flex gap-1 mb-3">
     <a href="/admin/users" class="btn btn-outline">👥 Gérer les utilisateurs</a>
     <a href="/admin/spaces" class="btn btn-outline">📦 Gérer les espaces</a>
+    <a href="/admin/password-policy" class="btn btn-outline">🔐 Politique de mot de passe</a>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">

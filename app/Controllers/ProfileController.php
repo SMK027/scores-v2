@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\Session;
 use App\Models\User;
+use App\Models\PasswordPolicy;
 
 /**
  * Contrôleur de profil utilisateur.
@@ -47,9 +48,13 @@ class ProfileController extends Controller
         $this->requireAuth();
 
         $user = $this->userModel->find($this->getCurrentUserId());
+        $policyModel = new PasswordPolicy();
+
         $this->render('profile/edit', [
-            'title' => 'Modifier mon profil',
-            'user'  => $user,
+            'title'         => 'Modifier mon profil',
+            'user'          => $user,
+            'policySummary' => $policyModel->getSummary(),
+            'policyJson'    => $policyModel->toJson(),
         ]);
     }
 
@@ -160,9 +165,11 @@ class ProfileController extends Controller
                 }
             }
 
-            if (strlen($data['new_password']) < 8) {
-                $errors[] = 'Le nouveau mot de passe doit contenir au moins 8 caractères.';
-            }
+            // Valider contre la politique de mot de passe
+            $policyModel = new PasswordPolicy();
+            $policyErrors = $policyModel->validate($data['new_password']);
+            $errors = array_merge($errors, $policyErrors);
+
             if ($data['new_password'] !== $data['new_password_confirm']) {
                 $errors[] = 'Les nouveaux mots de passe ne correspondent pas.';
             }

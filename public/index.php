@@ -125,6 +125,8 @@ $router->get('/admin/users', AdminController::class, 'users');
 $router->post('/admin/users/{uid}/role', AdminController::class, 'updateUserRole');
 $router->post('/admin/users/{uid}/delete', AdminController::class, 'deleteUser');
 $router->get('/admin/spaces', AdminController::class, 'spaces');
+$router->get('/admin/password-policy', AdminController::class, 'passwordPolicy');
+$router->post('/admin/password-policy', AdminController::class, 'updatePasswordPolicy');
 
 // Dispatcher la requête
 $method = $_SERVER['REQUEST_METHOD'];

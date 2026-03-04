@@ -8,6 +8,7 @@ use App\Core\Controller;
 use App\Core\Session;
 use App\Core\CSRF;
 use App\Models\User;
+use App\Models\PasswordPolicy;
 
 /**
  * Contrôleur d'authentification.
@@ -76,7 +77,13 @@ class AuthController extends Controller
         if (is_authenticated()) {
             $this->redirect('/spaces');
         }
-        $this->render('auth/register', ['title' => 'Inscription']);
+
+        $policyModel = new PasswordPolicy();
+        $this->render('auth/register', [
+            'title'         => 'Inscription',
+            'policySummary' => $policyModel->getSummary(),
+            'policyJson'    => $policyModel->toJson(),
+        ]);
     }
 
     /**
@@ -107,8 +114,10 @@ class AuthController extends Controller
 
         if (empty($data['password'])) {
             $errors[] = 'Le mot de passe est requis.';
-        } elseif (strlen($data['password']) < 8) {
-            $errors[] = 'Le mot de passe doit contenir au moins 8 caractères.';
+        } else {
+            $policyModel = new PasswordPolicy();
+            $policyErrors = $policyModel->validate($data['password']);
+            $errors = array_merge($errors, $policyErrors);
         }
 
         if ($data['password'] !== $data['password_confirm']) {

@@ -8,6 +8,7 @@ use App\Core\Controller;
 use App\Core\Middleware;
 use App\Models\User;
 use App\Models\Space;
+use App\Models\PasswordPolicy;
 use App\Config\Database;
 
 /**
@@ -168,6 +169,65 @@ class AdminController extends Controller
             'activeMenu' => 'admin',
             'spaces'     => $spaces,
         ]);
+    }
+
+    /**
+     * Vérifie que l'utilisateur est admin ou superadmin global.
+     */
+    private function checkAdminOrSuperAdmin(): void
+    {
+        $this->requireAuth();
+        $role = \App\Core\Session::get('global_role');
+        if (!in_array($role, ['superadmin', 'admin'], true)) {
+            $this->setFlash('danger', 'Accès réservé aux administrateurs.');
+            $this->redirect('/');
+            exit;
+        }
+    }
+
+    /**
+     * Affiche le formulaire de politique de mot de passe.
+     */
+    public function passwordPolicy(): void
+    {
+        $this->checkAdminOrSuperAdmin();
+
+        $policyModel = new PasswordPolicy();
+        $settings = $policyModel->getPolicyWithLabels();
+
+        $this->render('admin/password_policy', [
+            'title'      => 'Politique de mot de passe',
+            'activeMenu' => 'admin',
+            'settings'   => $settings,
+        ]);
+    }
+
+    /**
+     * Met à jour la politique de mot de passe.
+     */
+    public function updatePasswordPolicy(): void
+    {
+        $this->checkAdminOrSuperAdmin();
+        $this->validateCSRF();
+
+        $policyModel = new PasswordPolicy();
+
+        $updates = [];
+
+        // min_length
+        $minLength = max(1, (int) ($_POST['min_length'] ?? 8));
+        $updates['min_length'] = (string) $minLength;
+
+        // Champs booléens
+        $booleanFields = ['require_lowercase', 'require_uppercase', 'require_digit', 'require_special'];
+        foreach ($booleanFields as $field) {
+            $updates[$field] = isset($_POST[$field]) ? '1' : '0';
+        }
+
+        $policyModel->updateAll($updates);
+
+        $this->setFlash('success', 'Politique de mot de passe mise à jour avec succès.');
+        $this->redirect('/admin/password-policy');
     }
 
     /**
