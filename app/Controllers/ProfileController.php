@@ -118,11 +118,22 @@ class ProfileController extends Controller
 
                 $targetPath = $uploadDir . $filename;
                 
+                // Debug complet
+                $debugInfo = [
+                    'tmp_name' => $file['tmp_name'],
+                    'tmp_exists' => file_exists($file['tmp_name']),
+                    'is_uploaded' => is_uploaded_file($file['tmp_name']),
+                    'upload_dir' => $uploadDir,
+                    'dir_exists' => is_dir($uploadDir),
+                    'dir_writable' => is_writable($uploadDir),
+                    'target_path' => $targetPath,
+                ];
+                
                 if (move_uploaded_file($file['tmp_name'], $targetPath)) {
                     chmod($targetPath, 0644);
                     $avatarPath = '/uploads/' . $filename;
                 } else {
-                    $errors[] = 'Erreur lors du téléchargement de l\'avatar.';
+                    $errors[] = 'Erreur upload: ' . json_encode($debugInfo);
                 }
             }
         } elseif (isset($_FILES['avatar']) && $_FILES['avatar']['error'] !== UPLOAD_ERR_NO_FILE) {
