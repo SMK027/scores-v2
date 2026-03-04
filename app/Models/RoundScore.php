@@ -48,8 +48,8 @@ class RoundScore extends Model
 
         // Insérer les nouveaux scores
         $stmt = $this->db->prepare("
-            INSERT INTO {$this->table} (round_id, player_id, score, created_at)
-            VALUES (:round_id, :player_id, :score, NOW())
+            INSERT INTO {$this->table} (round_id, player_id, score)
+            VALUES (:round_id, :player_id, :score)
         ");
 
         foreach ($scores as $playerId => $score) {

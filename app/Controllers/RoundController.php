@@ -122,8 +122,17 @@ class RoundController extends Controller
 
         $scores = $_POST['scores'] ?? [];
         if (!empty($scores)) {
-            $this->roundScore->saveScores((int) $rid, $scores);
-            $this->game->recalculateTotals((int) $gid);
+            try {
+                $this->roundScore->saveScores((int) $rid, $scores);
+                $this->game->recalculateTotals((int) $gid);
+            } catch (\Exception $e) {
+                if ($this->isAjax()) {
+                    $this->jsonResponse(['success' => false, 'message' => 'Erreur lors de l\'enregistrement: ' . $e->getMessage()]);
+                }
+                $this->setFlash('danger', 'Erreur lors de l\'enregistrement des scores.');
+                $this->redirect("/spaces/{$id}/games/{$gid}");
+                return;
+            }
         }
 
         if ($this->isAjax()) {
