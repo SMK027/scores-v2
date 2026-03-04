@@ -92,17 +92,7 @@ class SearchController extends Controller
         // Recherche dans les parties (notes + type de jeu)
         $stmt = $this->pdo->prepare("
             SELECT g.id, gt.name AS name, 'game' AS type,
-                   CONCAT(game_status_label(g.status), ' - ', DATE_FORMAT(g.created_at, '%d/%m/%Y')) AS extra
-            FROM games g
-            JOIN game_types gt ON gt.id = g.game_type_id
-            WHERE g.space_id = :sid AND (gt.name LIKE :q OR g.notes LIKE :q2)
-            ORDER BY g.created_at DESC
-            LIMIT 20
-        ");
-        // game_status_label is a PHP function, not SQL. Adjust:
-        $stmt = $this->pdo->prepare("
-            SELECT g.id, gt.name AS name, 'game' AS type,
-                   CONCAT(g.status, ' - ', DATE_FORMAT(g.created_at, '%d/%m/%Y')) AS extra
+                   g.status, DATE_FORMAT(g.created_at, '%d/%m/%Y') AS game_date
             FROM games g
             JOIN game_types gt ON gt.id = g.game_type_id
             WHERE g.space_id = :sid AND (gt.name LIKE :q OR g.notes LIKE :q2)
@@ -110,7 +100,11 @@ class SearchController extends Controller
             LIMIT 20
         ");
         $stmt->execute(['sid' => $spaceId, 'q' => $like, 'q2' => $like]);
-        $results = array_merge($results, $stmt->fetchAll());
+        $games = $stmt->fetchAll();
+        foreach ($games as &$game) {
+            $game['extra'] = game_status_label($game['status']) . ' - ' . $game['game_date'];
+        }
+        $results = array_merge($results, $games);
 
         // Recherche dans les commentaires
         $stmt = $this->pdo->prepare("
