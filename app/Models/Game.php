@@ -173,4 +173,30 @@ class Game extends Model
             );
         }
     }
+
+    /**
+     * Calcule la durée totale de jeu d'une partie en secondes.
+     * Durée = somme des durées brutes de chaque manche - somme des temps de pause.
+     */
+    public function calculateTotalPlayDuration(int $gameId): int
+    {
+        $roundModel = new Round();
+        $roundPauseModel = new RoundPause();
+
+        $rounds = $roundModel->findByGame($gameId);
+        if (empty($rounds)) {
+            return 0;
+        }
+
+        $roundIds = array_column($rounds, 'id');
+        $pausesByRound = $roundPauseModel->getTotalPauseSecondsByRounds($roundIds);
+
+        $totalPlay = 0;
+        foreach ($rounds as $round) {
+            $pauseSeconds = $pausesByRound[(int) $round['id']] ?? 0;
+            $totalPlay += $roundModel->getPlayDurationSeconds($round, $pauseSeconds);
+        }
+
+        return $totalPlay;
+    }
 }

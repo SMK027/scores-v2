@@ -37,8 +37,8 @@ class Round extends Model
         $nextNumber = (int) $stmt->fetchColumn();
 
         $stmt = $this->db->prepare("
-            INSERT INTO {$this->table} (game_id, round_number, status, created_at)
-            VALUES (:game_id, :round_number, 'in_progress', NOW())
+            INSERT INTO {$this->table} (game_id, round_number, status, started_at, created_at)
+            VALUES (:game_id, :round_number, 'in_progress', NOW(), NOW())
         ");
         $stmt->execute([
             'game_id'      => $gameId,
@@ -53,12 +53,20 @@ class Round extends Model
      */
     public function updateStatus(int $id, string $status): bool
     {
+        $sets = ['status = :status'];
+        $params = ['id' => $id, 'status' => $status];
+
+        if ($status === 'completed') {
+            $sets[] = 'ended_at = NOW()';
+        }
+
+        $setStr = implode(', ', $sets);
         $stmt = $this->db->prepare("
             UPDATE {$this->table}
-            SET status = :status
+            SET {$setStr}
             WHERE id = :id
         ");
-        return $stmt->execute(['id' => $id, 'status' => $status]);
+        return $stmt->execute($params);
     }
 
     /**
@@ -81,5 +89,32 @@ class Round extends Model
         ");
         $stmt->execute(['game_id' => $gameId]);
         return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Calcule la durée brute d'une manche en secondes (ended_at - started_at).
+     * Si la manche n'est pas terminée, calcule jusqu'à maintenant.
+     */
+    public function getRawDurationSeconds(array $round): int
+    {
+        if (empty($round['started_at'])) {
+            return 0;
+        }
+
+        $start = new \DateTime($round['started_at']);
+        $end = !empty($round['ended_at'])
+            ? new \DateTime($round['ended_at'])
+            : new \DateTime();
+
+        return max(0, $end->getTimestamp() - $start->getTimestamp());
+    }
+
+    /**
+     * Calcule la durée effective de jeu d'une manche (brute - pauses).
+     */
+    public function getPlayDurationSeconds(array $round, int $pauseSeconds): int
+    {
+        $raw = $this->getRawDurationSeconds($round);
+        return max(0, $raw - $pauseSeconds);
     }
 }

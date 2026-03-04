@@ -13,6 +13,7 @@ use App\Models\Player;
 use App\Models\Space;
 use App\Models\Round;
 use App\Models\RoundScore;
+use App\Models\RoundPause;
 use App\Models\Comment;
 
 /**
@@ -177,20 +178,42 @@ class GameController extends Controller
             $roundScores[$round['id']] = $roundScoreModel->findByRoundIndexed($round['id']);
         }
 
+        // Durées des manches (temps de jeu effectif)
+        $roundPauseModel = new RoundPause();
+        $roundIds = array_column($rounds, 'id');
+        $pausesByRound = !empty($roundIds)
+            ? $roundPauseModel->getTotalPauseSecondsByRounds($roundIds)
+            : [];
+
+        $roundDurations = [];
+        $totalPlaySeconds = 0;
+        foreach ($rounds as $round) {
+            $pauseSec = $pausesByRound[(int) $round['id']] ?? 0;
+            $playDuration = $roundModel->getPlayDurationSeconds($round, $pauseSec);
+            $roundDurations[$round['id']] = [
+                'raw'   => $roundModel->getRawDurationSeconds($round),
+                'pause' => $pauseSec,
+                'play'  => $playDuration,
+            ];
+            $totalPlaySeconds += $playDuration;
+        }
+
         // Commentaires
         $commentModel = new Comment();
         $comments = $commentModel->findByGame((int) $gid);
 
         $this->render('games/show', [
-            'title'        => $game['game_type_name'],
-            'currentSpace' => $ctx['space'],
-            'spaceRole'    => $ctx['member']['role'],
-            'activeMenu'   => 'games',
-            'game'         => $game,
-            'gamePlayers'  => $gamePlayers,
-            'rounds'       => $rounds,
-            'roundScores'  => $roundScores,
-            'comments'     => $comments,
+            'title'            => $game['game_type_name'],
+            'currentSpace'     => $ctx['space'],
+            'spaceRole'        => $ctx['member']['role'],
+            'activeMenu'       => 'games',
+            'game'             => $game,
+            'gamePlayers'      => $gamePlayers,
+            'rounds'           => $rounds,
+            'roundScores'      => $roundScores,
+            'roundDurations'   => $roundDurations,
+            'totalPlaySeconds' => $totalPlaySeconds,
+            'comments'         => $comments,
         ]);
     }
 

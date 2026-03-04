@@ -8,6 +8,7 @@ use App\Core\Controller;
 use App\Core\Middleware;
 use App\Models\Round;
 use App\Models\RoundScore;
+use App\Models\RoundPause;
 use App\Models\Game;
 use App\Models\Space;
 
@@ -15,6 +16,7 @@ class RoundController extends Controller
 {
     private Round $round;
     private RoundScore $roundScore;
+    private RoundPause $roundPause;
     private Game $game;
     private Space $spaceModel;
 
@@ -22,6 +24,7 @@ class RoundController extends Controller
     {
         $this->round      = new Round();
         $this->roundScore = new RoundScore();
+        $this->roundPause = new RoundPause();
         $this->game       = new Game();
         $this->spaceModel = new Space();
     }
@@ -168,12 +171,24 @@ class RoundController extends Controller
 
         $data = $this->getPostData(['status']);
         $status = $data['status'];
-        $allowed = ['in_progress', 'completed'];
+        $allowed = ['in_progress', 'paused', 'completed'];
 
         if (!in_array($status, $allowed)) {
             $this->setFlash('danger', 'Statut invalide.');
             $this->redirect("/spaces/{$id}/games/{$gid}");
             return;
+        }
+
+        // Gestion des pauses
+        if ($status === 'paused' && $round['status'] === 'in_progress') {
+            // Mettre en pause : créer un enregistrement de pause
+            $this->roundPause->startPause((int) $rid);
+        } elseif ($status === 'in_progress' && $round['status'] === 'paused') {
+            // Reprendre : fermer la pause en cours
+            $this->roundPause->endPause((int) $rid);
+        } elseif ($status === 'completed') {
+            // Terminer : fermer toutes les pauses ouvertes
+            $this->roundPause->endAllOpenPauses((int) $rid);
         }
 
         $this->round->updateStatus((int) $rid, $status);
@@ -182,7 +197,12 @@ class RoundController extends Controller
             $this->game->recalculateTotals((int) $gid);
         }
 
-        $label = $status === 'completed' ? 'terminée' : 'reprise';
+        $labels = [
+            'in_progress' => 'reprise',
+            'paused'      => 'mise en pause',
+            'completed'   => 'terminée',
+        ];
+        $label = $labels[$status] ?? $status;
         $this->setFlash('success', "Manche {$label}.");
         $this->redirect("/spaces/{$id}/games/{$gid}");
     }
