@@ -111,29 +111,19 @@ class ProfileController extends Controller
                 // Utiliser le chemin absolu depuis la racine du projet
                 $uploadDir = $_SERVER['DOCUMENT_ROOT'] . '/uploads/';
                 
-                // Créer le dossier si nécessaire
+                // Créer le dossier si nécessaire et forcer les permissions
                 if (!is_dir($uploadDir)) {
                     mkdir($uploadDir, 0777, true);
                 }
+                chmod($uploadDir, 0777);
 
                 $targetPath = $uploadDir . $filename;
-                
-                // Debug complet
-                $debugInfo = [
-                    'tmp_name' => $file['tmp_name'],
-                    'tmp_exists' => file_exists($file['tmp_name']),
-                    'is_uploaded' => is_uploaded_file($file['tmp_name']),
-                    'upload_dir' => $uploadDir,
-                    'dir_exists' => is_dir($uploadDir),
-                    'dir_writable' => is_writable($uploadDir),
-                    'target_path' => $targetPath,
-                ];
                 
                 if (move_uploaded_file($file['tmp_name'], $targetPath)) {
                     chmod($targetPath, 0644);
                     $avatarPath = '/uploads/' . $filename;
                 } else {
-                    $errors[] = 'Erreur upload: ' . json_encode($debugInfo);
+                    $errors[] = 'Erreur lors du téléchargement de l\'avatar.';
                 }
             }
         } elseif (isset($_FILES['avatar']) && $_FILES['avatar']['error'] !== UPLOAD_ERR_NO_FILE) {
