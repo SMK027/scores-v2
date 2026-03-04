@@ -35,7 +35,7 @@
         <?php
         $inviteLink = \App\Core\Session::get('invite_link');
         if ($inviteLink):
-            \App\Core\Session::delete('invite_link');
+            \App\Core\Session::remove('invite_link');
         ?>
             <div class="d-flex gap-1 align-center mb-2">
                 <input type="text" id="inviteLink" class="form-control" value="<?= e($inviteLink) ?>" readonly style="flex:1;">
