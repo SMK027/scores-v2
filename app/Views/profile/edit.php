@@ -20,7 +20,7 @@
                 </div>
                 <input type="file" id="avatarInput" name="avatar" class="form-control"
                        accept="image/jpeg,image/png,image/gif,image/webp">
-                <span class="form-hint">JPG, PNG, GIF ou WebP. Max 5 Mo.</span>
+                <span class="form-hint">JPG, PNG, GIF ou WebP. Max 2 Mo.</span>
             </div>
 
             <div class="form-row">

@@ -95,30 +95,55 @@ class ProfileController extends Controller
         if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
             $file = $_FILES['avatar'];
             $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-            $maxSize = 5 * 1024 * 1024; // 5 Mo
+            $maxSize = 2 * 1024 * 1024; // 2 Mo (limite PHP)
 
             if (!in_array($file['type'], $allowedTypes, true)) {
                 $errors[] = 'Le format d\'image n\'est pas supporté (JPG, PNG, GIF, WebP).';
             }
             if ($file['size'] > $maxSize) {
-                $errors[] = 'L\'image ne doit pas dépasser 5 Mo.';
+                $errors[] = 'L\'image ne doit pas dépasser 2 Mo.';
             }
 
             if (empty($errors)) {
                 $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
                 $filename = 'avatar_' . $userId . '_' . time() . '.' . $ext;
                 $uploadDir = __DIR__ . '/../../public/uploads/';
+                
+                // Normaliser le chemin
+                $realPublicPath = realpath(__DIR__ . '/../../public');
+                if ($realPublicPath) {
+                    $uploadDir = $realPublicPath . '/uploads/';
+                }
 
                 if (!is_dir($uploadDir)) {
-                    mkdir($uploadDir, 0755, true);
+                    if (!mkdir($uploadDir, 0777, true)) {
+                        $errors[] = 'Impossible de créer le dossier d\'upload.';
+                    } else {
+                        chmod($uploadDir, 0777);
+                    }
                 }
 
-                if (move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
-                    $avatarPath = '/uploads/' . $filename;
-                } else {
-                    $errors[] = 'Erreur lors du téléchargement de l\'avatar.';
+                if (empty($errors)) {
+                    $targetPath = $uploadDir . $filename;
+                    if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+                        chmod($targetPath, 0644);
+                        $avatarPath = '/uploads/' . $filename;
+                    } else {
+                        $errors[] = 'Erreur lors du téléchargement de l\'avatar. Vérifiez les permissions du dossier uploads.';
+                    }
                 }
             }
+        } elseif (isset($_FILES['avatar']) && $_FILES['avatar']['error'] !== UPLOAD_ERR_NO_FILE) {
+            // Erreur d'upload
+            $uploadErrors = [
+                UPLOAD_ERR_INI_SIZE   => 'Le fichier dépasse la taille maximale autorisée par le serveur.',
+                UPLOAD_ERR_FORM_SIZE  => 'Le fichier dépasse la taille maximale du formulaire.',
+                UPLOAD_ERR_PARTIAL    => 'Le fichier n\'a été que partiellement téléchargé.',
+                UPLOAD_ERR_NO_TMP_DIR => 'Dossier temporaire manquant.',
+                UPLOAD_ERR_CANT_WRITE => 'Impossible d\'enregistrer le fichier sur le disque.',
+                UPLOAD_ERR_EXTENSION  => 'Une extension PHP a bloqué l\'upload.',
+            ];
+            $errors[] = $uploadErrors[$_FILES['avatar']['error']] ?? 'Erreur inconnue lors de l\'upload.';
         }
 
         // Changement de mot de passe
