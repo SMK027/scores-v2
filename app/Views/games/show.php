@@ -142,11 +142,13 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($roundScores[$round['id']] as $rs): ?>
-                                        <tr>
-                                            <td><?= e($rs['player_name']) ?></td>
-                                            <td class="text-right"><?= $rs['score'] ?? '-' ?></td>
-                                        </tr>
+                                    <?php foreach ($gamePlayers as $gp): ?>
+                                        <?php if (isset($roundScores[$round['id']][$gp['player_id']])): ?>
+                                            <tr>
+                                                <td><?= e($gp['player_name']) ?></td>
+                                                <td class="text-right"><?= $roundScores[$round['id']][$gp['player_id']]['score'] ?? '-' ?></td>
+                                            </tr>
+                                        <?php endif; ?>
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>

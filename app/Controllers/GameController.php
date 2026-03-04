@@ -174,7 +174,7 @@ class GameController extends Controller
         $roundScoreModel = new RoundScore();
         $roundScores = [];
         foreach ($rounds as $round) {
-            $roundScores[$round['id']] = $roundScoreModel->findByRound($round['id']);
+            $roundScores[$round['id']] = $roundScoreModel->findByRoundIndexed($round['id']);
         }
 
         // Commentaires
