@@ -101,8 +101,10 @@
     <div class="card-header d-flex justify-between align-center">
         <h3>Manches</h3>
         <?php if (in_array($game['status'], ['in_progress', 'paused']) && in_array($spaceRole, ['admin', 'manager', 'member'])): ?>
-            <a href="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/create"
-               class="btn btn-sm btn-primary">+ Ajouter une manche</a>
+            <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/create" style="display:inline;">
+                <?= csrf_field() ?>
+                <button type="submit" class="btn btn-sm btn-primary">+ Ajouter une manche</button>
+            </form>
         <?php endif; ?>
     </div>
     <div class="card-body">
