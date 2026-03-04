@@ -379,6 +379,42 @@ class SpaceController extends Controller
     }
 
     /**
+     * Permet à un membre de quitter l'espace (sauf le créateur).
+     */
+    public function leave(string $id): void
+    {
+        $this->requireAuth();
+        $this->validateCSRF();
+
+        $space = $this->spaceModel->find((int) $id);
+        if (!$space) {
+            $this->setFlash('danger', 'Espace introuvable.');
+            $this->redirect('/spaces');
+            return;
+        }
+
+        $userId = $this->getCurrentUserId();
+
+        // Le créateur ne peut pas quitter son propre espace
+        if ($space['created_by'] == $userId) {
+            $this->setFlash('danger', 'Le créateur ne peut pas quitter son propre espace.');
+            $this->redirect('/spaces/' . $id);
+            return;
+        }
+
+        $member = $this->memberModel->findMember((int) $id, $userId);
+        if (!$member) {
+            $this->setFlash('warning', 'Vous n\'êtes pas membre de cet espace.');
+            $this->redirect('/spaces');
+            return;
+        }
+
+        $this->memberModel->delete($member['id']);
+        $this->setFlash('success', 'Vous avez quitté l\'espace « ' . e($space['name']) . ' ».');
+        $this->redirect('/spaces');
+    }
+
+    /**
      * Désactive une invitation.
      */
     public function revokeInvite(string $id, string $iid): void

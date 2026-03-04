@@ -65,6 +65,7 @@ $router->get('/spaces/{id}', SpaceController::class, 'show');
 $router->get('/spaces/{id}/edit', SpaceController::class, 'editForm');
 $router->post('/spaces/{id}/edit', SpaceController::class, 'update');
 $router->post('/spaces/{id}/delete', SpaceController::class, 'delete');
+$router->post('/spaces/{id}/leave', SpaceController::class, 'leave');
 $router->get('/spaces/{id}/members', SpaceController::class, 'members');
 $router->post('/spaces/{id}/members/add', SpaceController::class, 'addMember');
 $router->post('/spaces/{id}/members/{mid}/role', SpaceController::class, 'updateMemberRole');

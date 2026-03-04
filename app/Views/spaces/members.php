@@ -82,6 +82,22 @@
     </div>
 </div>
 
+<!-- Quitter l'espace -->
+<?php if ($currentSpace['created_by'] != current_user_id()): ?>
+<div class="card mb-3" style="border-color:var(--warning,#f0ad4e);">
+    <div class="card-body d-flex justify-between align-center">
+        <div>
+            <strong>Quitter cet espace</strong>
+            <p class="text-muted text-small" style="margin:0.25rem 0 0;">Vous ne pourrez plus accéder à cet espace ni à ses données.</p>
+        </div>
+        <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/leave">
+            <?= csrf_field() ?>
+            <button type="submit" class="btn btn-warning" data-confirm="Voulez-vous vraiment quitter cet espace ?">Quitter l'espace</button>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- Liste des membres -->
 <div class="card">
     <div class="card-header">
