@@ -107,30 +107,22 @@ class ProfileController extends Controller
             if (empty($errors)) {
                 $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
                 $filename = 'avatar_' . $userId . '_' . time() . '.' . $ext;
-                $uploadDir = __DIR__ . '/../../public/uploads/';
                 
-                // Normaliser le chemin
-                $realPublicPath = realpath(__DIR__ . '/../../public');
-                if ($realPublicPath) {
-                    $uploadDir = $realPublicPath . '/uploads/';
-                }
-
+                // Utiliser le chemin absolu depuis la racine du projet
+                $uploadDir = $_SERVER['DOCUMENT_ROOT'] . '/uploads/';
+                
+                // Créer le dossier si nécessaire
                 if (!is_dir($uploadDir)) {
-                    if (!mkdir($uploadDir, 0777, true)) {
-                        $errors[] = 'Impossible de créer le dossier d\'upload.';
-                    } else {
-                        chmod($uploadDir, 0777);
-                    }
+                    mkdir($uploadDir, 0777, true);
+                    chmod($uploadDir, 0777);
                 }
 
-                if (empty($errors)) {
-                    $targetPath = $uploadDir . $filename;
-                    if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-                        chmod($targetPath, 0644);
-                        $avatarPath = '/uploads/' . $filename;
-                    } else {
-                        $errors[] = 'Erreur lors du téléchargement de l\'avatar. Vérifiez les permissions du dossier uploads.';
-                    }
+                $targetPath = $uploadDir . $filename;
+                if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+                    chmod($targetPath, 0644);
+                    $avatarPath = '/uploads/' . $filename;
+                } else {
+                    $errors[] = 'Erreur lors du téléchargement de l\'avatar. Chemin: ' . $uploadDir;
                 }
             }
         } elseif (isset($_FILES['avatar']) && $_FILES['avatar']['error'] !== UPLOAD_ERR_NO_FILE) {
