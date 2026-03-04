@@ -39,10 +39,11 @@ COPY . .
 RUN composer install --no-dev --optimize-autoloader 2>/dev/null || true
 
 # Create uploads directory
-RUN mkdir -p public/uploads && chown -R www-data:www-data public/uploads
+RUN mkdir -p public/uploads && chown -R www-data:www-data public/uploads && chmod -R 777 public/uploads
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html
+    && chmod -R 755 /var/www/html \
+    && chmod -R 777 /var/www/html/public/uploads
 
 EXPOSE 80
