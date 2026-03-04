@@ -113,17 +113,27 @@ class ProfileController extends Controller
                 
                 // Créer le dossier si nécessaire et forcer les permissions
                 if (!is_dir($uploadDir)) {
-                    mkdir($uploadDir, 0777, true);
+                    @mkdir($uploadDir, 0777, true);
                 }
-                chmod($uploadDir, 0777);
+                @chmod($uploadDir, 0777);
 
                 $targetPath = $uploadDir . $filename;
                 
-                if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-                    chmod($targetPath, 0644);
+                // Tenter le move avec suppression d'erreur pour voir si ça passe
+                $moved = @move_uploaded_file($file['tmp_name'], $targetPath);
+                
+                if ($moved) {
+                    @chmod($targetPath, 0644);
                     $avatarPath = '/uploads/' . $filename;
                 } else {
-                    $errors[] = 'Erreur lors du téléchargement de l\'avatar.';
+                    // Si ça échoue toujours, essayer avec copy + unlink
+                    if (@copy($file['tmp_name'], $targetPath)) {
+                        @unlink($file['tmp_name']);
+                        @chmod($targetPath, 0644);
+                        $avatarPath = '/uploads/' . $filename;
+                    } else {
+                        $errors[] = 'Erreur lors du téléchargement de l\'avatar.';
+                    }
                 }
             }
         } elseif (isset($_FILES['avatar']) && $_FILES['avatar']['error'] !== UPLOAD_ERR_NO_FILE) {
