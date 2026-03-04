@@ -10,6 +10,9 @@ declare(strict_types=1);
 // Charger l'autoloader Composer
 require_once __DIR__ . '/../vendor/autoload.php';
 
+// Fuseau horaire par défaut : Paris, France
+date_default_timezone_set('Europe/Paris');
+
 use App\Core\Router;
 use App\Core\Session;
 use App\Controllers\HomeController;

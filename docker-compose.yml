@@ -35,6 +35,7 @@ services:
   db:
     image: mysql:8.0
     container_name: scores_db
+    command: --default-time-zone='+02:00'
     environment:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: scores_db
