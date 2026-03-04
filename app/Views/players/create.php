@@ -13,10 +13,21 @@
                        placeholder="Ex: Jean, Marie..." required maxlength="100" autofocus>
             </div>
             <div class="form-group">
-                <label for="user_id" class="form-label">Lier à un compte utilisateur (optionnel)</label>
-                <input type="number" id="user_id" name="user_id" class="form-control"
-                       placeholder="ID utilisateur (laisser vide si non applicable)">
-                <span class="form-hint">Si le joueur a un compte, entrez son ID pour lier les données.</span>
+                <label for="user_id" class="form-label">Raccorder à un membre de l'espace (optionnel)</label>
+                <select id="user_id" name="user_id" class="form-control">
+                    <option value="">— Aucun compte lié —</option>
+                    <?php foreach ($members as $member): ?>
+                        <?php
+                            $alreadyLinked = in_array($member['user_id'], $linkedUserIds);
+                        ?>
+                        <option value="<?= $member['user_id'] ?>"
+                            <?= $alreadyLinked ? 'disabled style="color:var(--gray);"' : '' ?>>
+                            <?= e($member['username']) ?> (<?= space_role_label($member['role']) ?>)
+                            <?= $alreadyLinked ? '— déjà raccordé' : '' ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <span class="form-hint">Associez ce joueur au compte d'un membre de l'espace. Chaque compte ne peut être lié qu'à un seul joueur.</span>
             </div>
             <div class="form-group">
                 <button type="submit" class="btn btn-primary">Ajouter le joueur</button>

@@ -8,6 +8,7 @@ use App\Core\Controller;
 use App\Core\Middleware;
 use App\Models\Player;
 use App\Models\Space;
+use App\Models\SpaceMember;
 use App\Models\User;
 
 /**
@@ -17,11 +18,13 @@ class PlayerController extends Controller
 {
     private Player $playerModel;
     private Space $spaceModel;
+    private SpaceMember $spaceMemberModel;
 
     public function __construct()
     {
         $this->playerModel = new Player();
         $this->spaceModel = new Space();
+        $this->spaceMemberModel = new SpaceMember();
     }
 
     private function checkAccess(string $spaceId, array $roles = ['admin', 'manager', 'member', 'guest']): array
@@ -65,11 +68,16 @@ class PlayerController extends Controller
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
 
+        $members = $this->spaceMemberModel->findBySpace((int) $id);
+        $linkedUserIds = $this->playerModel->getLinkedUserIds((int) $id);
+
         $this->render('players/create', [
-            'title'        => 'Ajouter un joueur',
-            'currentSpace' => $ctx['space'],
-            'spaceRole'    => $ctx['member']['role'],
-            'activeMenu'   => 'players',
+            'title'         => 'Ajouter un joueur',
+            'currentSpace'  => $ctx['space'],
+            'spaceRole'     => $ctx['member']['role'],
+            'activeMenu'    => 'players',
+            'members'       => $members,
+            'linkedUserIds' => $linkedUserIds,
         ]);
     }
 
@@ -94,7 +102,13 @@ class PlayerController extends Controller
         ];
 
         if (!empty($data['user_id'])) {
-            $createData['user_id'] = (int) $data['user_id'];
+            $userId = (int) $data['user_id'];
+            if ($this->playerModel->isUserLinkedInSpace((int) $id, $userId)) {
+                $this->setFlash('danger', 'Ce compte est déjà raccordé à un autre joueur dans cet espace.');
+                $this->redirect("/spaces/{$id}/players/create");
+                return;
+            }
+            $createData['user_id'] = $userId;
         }
 
         $this->playerModel->create($createData);
@@ -115,12 +129,17 @@ class PlayerController extends Controller
             $this->redirect("/spaces/{$id}/players");
         }
 
+        $members = $this->spaceMemberModel->findBySpace((int) $id);
+        $linkedUserIds = $this->playerModel->getLinkedUserIds((int) $id, (int) $pid);
+
         $this->render('players/edit', [
-            'title'        => 'Modifier le joueur',
-            'currentSpace' => $ctx['space'],
-            'spaceRole'    => $ctx['member']['role'],
-            'activeMenu'   => 'players',
-            'player'       => $player,
+            'title'         => 'Modifier le joueur',
+            'currentSpace'  => $ctx['space'],
+            'spaceRole'     => $ctx['member']['role'],
+            'activeMenu'    => 'players',
+            'player'        => $player,
+            'members'       => $members,
+            'linkedUserIds' => $linkedUserIds,
         ]);
     }
 
@@ -141,7 +160,13 @@ class PlayerController extends Controller
 
         $updateData = ['name' => $data['name']];
         if (!empty($data['user_id'])) {
-            $updateData['user_id'] = (int) $data['user_id'];
+            $userId = (int) $data['user_id'];
+            if ($this->playerModel->isUserLinkedInSpace((int) $id, $userId, (int) $pid)) {
+                $this->setFlash('danger', 'Ce compte est déjà raccordé à un autre joueur dans cet espace.');
+                $this->redirect("/spaces/{$id}/players/{$pid}/edit");
+                return;
+            }
+            $updateData['user_id'] = $userId;
         } else {
             $updateData['user_id'] = null;
         }
