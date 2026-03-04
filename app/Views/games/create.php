@@ -5,7 +5,7 @@
 
 <div class="card" style="max-width:700px;">
     <div class="card-body">
-        <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games">
+        <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/create">
             <?= csrf_field() ?>
 
             <div class="form-group">
