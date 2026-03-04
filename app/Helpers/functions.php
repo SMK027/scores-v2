@@ -201,3 +201,56 @@ function truncate(string $text, int $length = 100, string $suffix = '...'): stri
     }
     return mb_substr($text, 0, $length) . $suffix;
 }
+
+/**
+ * Formate une durée en secondes en format lisible (ex: 1h 23min 45s).
+ */
+function format_duration(int $seconds): string
+{
+    if ($seconds <= 0) {
+        return '0s';
+    }
+
+    $hours = intdiv($seconds, 3600);
+    $minutes = intdiv($seconds % 3600, 60);
+    $secs = $seconds % 60;
+
+    $parts = [];
+    if ($hours > 0) {
+        $parts[] = "{$hours}h";
+    }
+    if ($minutes > 0) {
+        $parts[] = "{$minutes}min";
+    }
+    if ($secs > 0 || empty($parts)) {
+        $parts[] = "{$secs}s";
+    }
+
+    return implode(' ', $parts);
+}
+
+/**
+ * Traduit un statut de manche.
+ */
+function round_status_label(string $status): string
+{
+    return match ($status) {
+        'in_progress' => 'En cours',
+        'paused'      => 'En pause',
+        'completed'   => 'Terminée',
+        default       => $status,
+    };
+}
+
+/**
+ * Retourne la classe CSS pour un statut de manche.
+ */
+function round_status_class(string $status): string
+{
+    return match ($status) {
+        'in_progress' => 'badge-info',
+        'paused'      => 'badge-warning',
+        'completed'   => 'badge-success',
+        default       => 'badge-secondary',
+    };
+}

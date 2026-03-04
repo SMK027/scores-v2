@@ -57,6 +57,21 @@
 </div>
 <?php endif; ?>
 
+<!-- Durée de la partie -->
+<?php if (!empty($rounds)): ?>
+<div class="card mb-3">
+    <div class="card-header"><h3>⏱ Durée de la partie</h3></div>
+    <div class="card-body">
+        <div class="d-flex gap-2 flex-wrap" style="font-size:1.1em;">
+            <div>
+                <strong>Temps de jeu effectif :</strong>
+                <span style="color:var(--primary);font-weight:bold;"><?= format_duration($totalPlaySeconds) ?></span>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- Classement / Joueurs -->
 <div class="card mb-3">
     <div class="card-header">
@@ -130,18 +145,47 @@
                     <div class="d-flex justify-between align-center mb-1">
                         <strong>Manche <?= $idx + 1 ?></strong>
                         <div class="d-flex gap-1 align-center">
-                            <span class="badge <?= $round['status'] === 'completed' ? 'badge-success' : 'badge-info' ?>" style="font-size:0.75em;">
-                                <?= $round['status'] === 'completed' ? 'Terminée' : 'En cours' ?>
+                            <span class="badge <?= round_status_class($round['status']) ?>" style="font-size:0.75em;">
+                                <?= round_status_label($round['status']) ?>
                             </span>
                             <?php if ($round['status'] !== 'completed' && in_array($spaceRole, ['admin', 'manager', 'member'])): ?>
+                                <?php if ($round['status'] === 'in_progress'): ?>
+                                    <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/<?= $round['id'] ?>/status" style="display:inline;">
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="status" value="paused">
+                                        <button type="submit" class="btn btn-sm btn-warning" data-confirm="Mettre cette manche en pause ?">⏸ Pause</button>
+                                    </form>
+                                <?php elseif ($round['status'] === 'paused'): ?>
+                                    <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/<?= $round['id'] ?>/status" style="display:inline;">
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="status" value="in_progress">
+                                        <button type="submit" class="btn btn-sm btn-success" data-confirm="Reprendre cette manche ?">▶ Reprendre</button>
+                                    </form>
+                                <?php endif; ?>
                                 <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/<?= $round['id'] ?>/status" style="display:inline;">
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="status" value="completed">
-                                    <button type="submit" class="btn btn-sm btn-success" data-confirm="Terminer cette manche ?">Terminer</button>
+                                    <button type="submit" class="btn btn-sm btn-success" data-confirm="Terminer cette manche ?">✓ Terminer</button>
                                 </form>
                             <?php endif; ?>
                         </div>
                     </div>
+
+                    <?php if (isset($roundDurations[$round['id']])): ?>
+                        <?php $dur = $roundDurations[$round['id']]; ?>
+                        <div class="text-muted text-small mb-1" style="display:flex;gap:1rem;flex-wrap:wrap;">
+                            <span>⏱ Jeu : <strong><?= format_duration($dur['play']) ?></strong></span>
+                            <?php if ($dur['pause'] > 0): ?>
+                                <span>⏸ Pause : <?= format_duration($dur['pause']) ?></span>
+                            <?php endif; ?>
+                            <?php if (!empty($round['started_at'])): ?>
+                                <span>Début : <?= format_date($round['started_at'], 'd/m/Y H:i') ?></span>
+                            <?php endif; ?>
+                            <?php if (!empty($round['ended_at'])): ?>
+                                <span>Fin : <?= format_date($round['ended_at'], 'd/m/Y H:i') ?></span>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
                     <?php if (!empty($round['notes'])): ?>
                         <p class="text-muted text-small mb-1"><?= e($round['notes']) ?></p>
                     <?php endif; ?>
