@@ -69,8 +69,8 @@ class RoundController extends Controller
 
         $this->validateCSRF();
 
-        $notes = $this->getPostData('notes');
-        $this->round->createForGame((int) $gid, $notes ?: null);
+        $data = $this->getPostData(['notes']);
+        $this->round->createForGame((int) $gid, $data['notes'] ?: null);
 
         $this->setFlash('success', 'Manche ajoutée avec succès.');
         $this->redirect("/spaces/{$id}/games/{$gid}");
@@ -138,7 +138,8 @@ class RoundController extends Controller
 
         $this->validateCSRF();
 
-        $status = $this->getPostData('status');
+        $data = $this->getPostData(['status']);
+        $status = $data['status'];
         $allowed = ['in_progress', 'completed'];
 
         if (!in_array($status, $allowed)) {

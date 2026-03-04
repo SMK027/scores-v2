@@ -129,7 +129,8 @@ class AdminController extends Controller
             return;
         }
 
-        $role = $this->getPostData('global_role');
+        $data = $this->getPostData(['global_role']);
+        $role = $data['global_role'];
         $allowed = ['user', 'moderator', 'admin', 'superadmin'];
 
         if (!in_array($role, $allowed)) {

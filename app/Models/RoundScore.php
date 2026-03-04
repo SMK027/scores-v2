@@ -13,7 +13,7 @@ class RoundScore extends Model
      */
     public function findByRound(int $roundId): array
     {
-        $stmt = $this->pdo->prepare("
+        $stmt = $this->db->prepare("
             SELECT rs.*, p.name AS player_name
             FROM {$this->table} rs
             JOIN players p ON p.id = rs.player_id
@@ -43,11 +43,11 @@ class RoundScore extends Model
     public function saveScores(int $roundId, array $scores): void
     {
         // Supprimer les scores existants pour cette manche
-        $stmt = $this->pdo->prepare("DELETE FROM {$this->table} WHERE round_id = :round_id");
+        $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE round_id = :round_id");
         $stmt->execute(['round_id' => $roundId]);
 
         // Insérer les nouveaux scores
-        $stmt = $this->pdo->prepare("
+        $stmt = $this->db->prepare("
             INSERT INTO {$this->table} (round_id, player_id, score, created_at)
             VALUES (:round_id, :player_id, :score, NOW())
         ");
@@ -68,7 +68,7 @@ class RoundScore extends Model
      */
     public function findByGame(int $gameId): array
     {
-        $stmt = $this->pdo->prepare("
+        $stmt = $this->db->prepare("
             SELECT rs.*, p.name AS player_name
             FROM {$this->table} rs
             JOIN rounds r ON r.id = rs.round_id

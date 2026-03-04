@@ -13,7 +13,7 @@ class Round extends Model
      */
     public function findByGame(int $gameId): array
     {
-        $stmt = $this->pdo->prepare("
+        $stmt = $this->db->prepare("
             SELECT * FROM {$this->table}
             WHERE game_id = :game_id
             ORDER BY round_number ASC
@@ -28,7 +28,7 @@ class Round extends Model
     public function createForGame(int $gameId, ?string $notes = null): int
     {
         // Récupérer le prochain numéro de manche
-        $stmt = $this->pdo->prepare("
+        $stmt = $this->db->prepare("
             SELECT COALESCE(MAX(round_number), 0) + 1 AS next_number
             FROM {$this->table}
             WHERE game_id = :game_id
@@ -36,7 +36,7 @@ class Round extends Model
         $stmt->execute(['game_id' => $gameId]);
         $nextNumber = (int) $stmt->fetchColumn();
 
-        $stmt = $this->pdo->prepare("
+        $stmt = $this->db->prepare("
             INSERT INTO {$this->table} (game_id, round_number, status, notes, created_at)
             VALUES (:game_id, :round_number, 'in_progress', :notes, NOW())
         ");
@@ -46,7 +46,7 @@ class Round extends Model
             'notes'        => $notes,
         ]);
 
-        return (int) $this->pdo->lastInsertId();
+        return (int) $this->db->lastInsertId();
     }
 
     /**
@@ -54,7 +54,7 @@ class Round extends Model
      */
     public function updateStatus(int $id, string $status): bool
     {
-        $stmt = $this->pdo->prepare("
+        $stmt = $this->db->prepare("
             UPDATE {$this->table}
             SET status = :status
             WHERE id = :id
@@ -76,7 +76,7 @@ class Round extends Model
      */
     public function countByGame(int $gameId): int
     {
-        $stmt = $this->pdo->prepare("
+        $stmt = $this->db->prepare("
             SELECT COUNT(*) FROM {$this->table}
             WHERE game_id = :game_id
         ");
