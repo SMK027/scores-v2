@@ -37,13 +37,12 @@ class Round extends Model
         $nextNumber = (int) $stmt->fetchColumn();
 
         $stmt = $this->db->prepare("
-            INSERT INTO {$this->table} (game_id, round_number, status, notes, created_at)
-            VALUES (:game_id, :round_number, 'in_progress', :notes, NOW())
+            INSERT INTO {$this->table} (game_id, round_number, status, created_at)
+            VALUES (:game_id, :round_number, 'in_progress', NOW())
         ");
         $stmt->execute([
             'game_id'      => $gameId,
             'round_number' => $nextNumber,
-            'notes'        => $notes,
         ]);
 
         return (int) $this->db->lastInsertId();
