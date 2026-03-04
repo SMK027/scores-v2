@@ -208,6 +208,8 @@ class GameController extends Controller
         }
 
         $gameTypes = $this->gameTypeModel->findBySpace((int) $id);
+        $players = $this->playerModel->findBySpace((int) $id);
+        $gamePlayers = $this->gamePlayerModel->findByGame((int) $gid);
 
         $this->render('games/edit', [
             'title'        => 'Modifier la partie',
@@ -216,6 +218,8 @@ class GameController extends Controller
             'activeMenu'   => 'games',
             'game'         => $game,
             'gameTypes'    => $gameTypes,
+            'players'      => $players,
+            'gamePlayers'  => $gamePlayers,
         ]);
     }
 
