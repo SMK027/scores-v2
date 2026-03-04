@@ -114,7 +114,7 @@
                             <td><span class="badge badge-primary"><?= space_role_label($m['role']) ?></span></td>
                             <td class="text-muted text-small"><?= format_date($m['created_at'], 'd/m/Y') ?></td>
                             <td class="text-right">
-                                <?php if ($m['user_id'] != current_user_id() && $spaceRole === 'admin'): ?>
+                                <?php if ($m['user_id'] != current_user_id() && $m['user_id'] != $currentSpace['created_by'] && $spaceRole === 'admin'): ?>
                                     <div class="d-flex gap-1 justify-between">
                                         <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/members/<?= $m['id'] ?>/role"
                                               class="d-flex gap-1 align-center">
@@ -133,6 +133,8 @@
                                                     data-confirm="Retirer ce membre de l'espace ?">Retirer</button>
                                         </form>
                                     </div>
+                                <?php elseif ($m['user_id'] == $currentSpace['created_by']): ?>
+                                    <span class="badge badge-success" style="font-size:0.7em;">Créateur</span>
                                 <?php else: ?>
                                     <span class="text-muted text-small">—</span>
                                 <?php endif; ?>

@@ -298,6 +298,15 @@ class SpaceController extends Controller
             $this->redirect('/spaces/' . $id . '/members');
         }
 
+        // Vérifier si le membre à retirer est le créateur de l'espace
+        $space = $this->spaceModel->find((int) $id);
+        $memberToRemove = $this->memberModel->find((int) $mid);
+        
+        if ($memberToRemove && $memberToRemove['user_id'] == $space['created_by']) {
+            $this->setFlash('danger', 'Impossible de retirer le créateur de l\'espace.');
+            $this->redirect('/spaces/' . $id . '/members');
+        }
+
         $this->memberModel->delete((int) $mid);
         $this->setFlash('success', 'Membre retiré de l\'espace.');
         $this->redirect('/spaces/' . $id . '/members');
