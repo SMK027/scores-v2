@@ -120,8 +120,10 @@
                         <tr>
                             <td>
                                 <div class="d-flex align-center gap-1">
-                                    <?php if ($m['avatar']): ?>
-                                        <img src="<?= e($m['avatar']) ?>" alt="" style="width:28px;height:28px;border-radius:50%;">
+                                    <?php if (!empty($m['avatar'])): ?>
+                                        <img src="<?= e($m['avatar']) ?>" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">
+                                    <?php else: ?>
+                                        <span style="width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--primary-light);color:var(--white);font-size:0.75rem;font-weight:600;flex-shrink:0;"><?= strtoupper(substr($m['username'], 0, 1)) ?></span>
                                     <?php endif; ?>
                                     <?= e($m['username']) ?>
                                 </div>

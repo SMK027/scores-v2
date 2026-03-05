@@ -22,7 +22,12 @@
                         <a href="/admin" class="navbar-link">Administration</a>
                     <?php endif; ?>
                     <div class="navbar-user">
-                        <a href="/profile" class="navbar-link">
+                        <a href="/profile" class="navbar-link navbar-profile-link">
+                            <?php if (current_avatar()): ?>
+                                <img src="<?= e(current_avatar()) ?>" alt="" class="navbar-avatar">
+                            <?php else: ?>
+                                <span class="navbar-avatar navbar-avatar-placeholder"><?= strtoupper(substr(current_username(), 0, 1)) ?></span>
+                            <?php endif; ?>
                             <?= e(current_username()) ?>
                         </a>
                         <a href="/logout" class="btn btn-sm btn-outline">Déconnexion</a>

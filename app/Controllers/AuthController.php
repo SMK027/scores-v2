@@ -135,6 +135,7 @@ class AuthController extends Controller
         Session::set('user_id', $user['id']);
         Session::set('username', $user['username']);
         Session::set('global_role', $user['global_role']);
+        Session::set('avatar', $user['avatar'] ?? '');
 
         // Régénérer le token CSRF
         CSRF::regenerate();
@@ -293,6 +294,7 @@ class AuthController extends Controller
         Session::set('user_id', $user['id']);
         Session::set('username', $user['username']);
         Session::set('global_role', $user['global_role']);
+        Session::set('avatar', $user['avatar'] ?? '');
         CSRF::regenerate();
 
         $this->setFlash('success', 'Inscription réussie ! Bienvenue, ' . $user['username'] . ' !');

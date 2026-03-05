@@ -200,6 +200,9 @@ class ProfileController extends Controller
 
         // Mettre à jour la session
         Session::set('username', $data['username']);
+        if ($avatarPath) {
+            Session::set('avatar', $avatarPath);
+        }
 
         $this->setFlash('success', 'Profil mis à jour avec succès.');
         $this->redirect('/profile');

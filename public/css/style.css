@@ -186,6 +186,30 @@ p { margin-bottom: 1rem; }
     border-left: 1px solid var(--gray-light);
 }
 
+.navbar-profile-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.navbar-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.navbar-avatar-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-light);
+    color: var(--white);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
 /* -----------------------------------------------------------
    Sidebar
    ----------------------------------------------------------- */

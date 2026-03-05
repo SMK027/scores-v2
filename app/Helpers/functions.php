@@ -101,6 +101,14 @@ function current_username(): string
 }
 
 /**
+ * Retourne l'URL de l'avatar de l'utilisateur connecté.
+ */
+function current_avatar(): string
+{
+    return Session::get('avatar') ?? '';
+}
+
+/**
  * Retourne le rôle global de l'utilisateur.
  */
 function current_global_role(): string

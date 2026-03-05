@@ -287,8 +287,8 @@
             <?php foreach ($comments as $comment): ?>
                 <div class="comment mb-2" style="display:flex;gap:0.75rem;padding:0.75rem 0;border-bottom:1px solid var(--gray-light);">
                     <div class="avatar" style="width:36px;height:36px;border-radius:50%;overflow:hidden;background:var(--gray-light);flex-shrink:0;">
-                        <?php if (!empty($comment['avatar_url'])): ?>
-                            <img src="<?= e($comment['avatar_url']) ?>" alt="" style="width:100%;height:100%;object-fit:cover;">
+                        <?php if (!empty($comment['avatar'])): ?>
+                            <img src="<?= e($comment['avatar']) ?>" alt="" style="width:100%;height:100%;object-fit:cover;">
                         <?php else: ?>
                             <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;color:var(--gray);">
                                 <?= strtoupper(substr($comment['username'], 0, 1)) ?>
