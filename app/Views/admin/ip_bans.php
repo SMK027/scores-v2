@@ -68,11 +68,11 @@
         </table>
     </div>
 
-    <?php if ($totalPages > 1): ?>
+    <?php if ($pagination['lastPage'] > 1): ?>
         <div class="pagination">
-            <?php for ($p = 1; $p <= $totalPages; $p++): ?>
+            <?php for ($p = 1; $p <= $pagination['lastPage']; $p++): ?>
                 <a href="/admin/bans/ips?page=<?= $p ?>&filter=<?= e($filter) ?>"
-                   class="btn btn-sm <?= $p == $page ? 'btn-primary' : 'btn-outline' ?>">
+                   class="btn btn-sm <?= $p == $pagination['page'] ? 'btn-primary' : 'btn-outline' ?>">
                     <?= $p ?>
                 </a>
             <?php endfor; ?>

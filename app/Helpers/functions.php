@@ -40,7 +40,14 @@ function get_client_ip(): string
         return $_SERVER['HTTP_X_REAL_IP'];
     }
 
-    return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
+    // En développement Docker : la gateway (172.x.x.1) représente le host local
+    if (preg_match('/^172\.(1[6-9]|2[0-9]|3[01])\.\d+\.1$/', $ip)) {
+        return '127.0.0.1';
+    }
+
+    return $ip;
 }
 
 /**
