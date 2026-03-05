@@ -15,7 +15,7 @@
                         <input type="password" id="password" name="password" class="form-control"
                                placeholder="Votre mot de passe" required>
                         <button type="button" class="btn-toggle-password" data-target="password" title="Afficher le mot de passe">
-                            <span class="eye-icon">&#128065;</span>
+                            
                         </button>
                     </div>
                     <div style="text-align: right; margin-top: 0.25rem;">

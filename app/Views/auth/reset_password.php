@@ -13,7 +13,7 @@
                         <input type="password" id="password" name="password" class="form-control"
                                placeholder="Saisissez votre nouveau mot de passe" required autofocus>
                         <button type="button" class="btn-toggle-password" data-target="password" title="Afficher le mot de passe">
-                            <span class="eye-icon">&#128065;</span>
+                            
                         </button>
                     </div>
                     <span class="form-hint"><?= e($policySummary ?? '') ?></span>
@@ -25,7 +25,7 @@
                         <input type="password" id="password_confirm" name="password_confirm" class="form-control"
                                placeholder="Répétez votre nouveau mot de passe" required>
                         <button type="button" class="btn-toggle-password" data-target="password_confirm" title="Afficher le mot de passe">
-                            <span class="eye-icon">&#128065;</span>
+                            
                         </button>
                     </div>
                     <div id="passwordMatchHint" style="font-size:0.85rem;margin-top:0.25rem;"></div>
