@@ -14,6 +14,7 @@ use App\Models\PasswordReset;
 use App\Models\UserBan;
 use App\Models\IpBan;
 use App\Models\LoginAttempt;
+use App\Models\LoginLock;
 use App\Models\Fail2banConfig;
 
 /**
@@ -56,16 +57,44 @@ class AuthController extends Controller
             $this->redirect('/login');
         }
 
+        // ── Vérifier verrou fail2ban sur l'IP (bloque uniquement la connexion) ──
+        $lockModel = new LoginLock();
+        $ipLock = $lockModel->findActiveByIp($clientIp);
+        if ($ipLock) {
+            $unlockAt = date('d/m/Y à H:i', strtotime($ipLock['locked_until']));
+            $this->setFlash('danger', "Connexion temporairement verrouillée pour cette adresse IP jusqu'au {$unlockAt}.");
+            $this->redirect('/login');
+        }
+
         // Authentification
         $user = $this->userModel->authenticate($data['email'], $data['password']);
         if (!$user) {
             // Enregistrer la tentative échouée et vérifier fail2ban
-            $this->recordFailedAttempt($clientIp, $data['email']);
-            $this->setFlash('danger', 'Email ou mot de passe incorrect.');
+            $remainingInfo = $this->recordFailedAttempt($clientIp, $data['email']);
+
+            // Construire le message avec tentatives restantes
+            $msg = 'Email ou mot de passe incorrect.';
+            if ($remainingInfo !== null) {
+                if ($remainingInfo['remaining'] <= 0) {
+                    $unlockAt = date('d/m/Y à H:i', strtotime($remainingInfo['locked_until']));
+                    $msg = "Trop de tentatives échouées. Connexion verrouillée jusqu'au {$unlockAt}.";
+                } else {
+                    $msg .= " Il vous reste {$remainingInfo['remaining']} tentative(s) avant le verrouillage.";
+                }
+            }
+            $this->setFlash('danger', $msg);
             $this->redirect('/login');
         }
 
-        // Vérifier bannissement du compte
+        // ── Vérifier verrou fail2ban sur le compte (bloque uniquement la connexion) ──
+        $userLock = $lockModel->findActiveByUser((int) $user['id']);
+        if ($userLock) {
+            $unlockAt = date('d/m/Y à H:i', strtotime($userLock['locked_until']));
+            $this->setFlash('danger', "Connexion temporairement verrouillée pour ce compte jusqu'au {$unlockAt}.");
+            $this->redirect('/login');
+        }
+
+        // Vérifier bannissement administratif du compte
         $userBanModel = new UserBan();
         $ban = $userBanModel->findActiveBan((int) $user['id']);
         if ($ban) {
@@ -79,7 +108,7 @@ class AuthController extends Controller
             $this->redirect('/login');
         }
 
-        // Vérifier bannissement IP
+        // Vérifier bannissement administratif IP
         $ipBanModel = new IpBan();
         $ipBan = $ipBanModel->findActiveBan($clientIp);
         if ($ipBan) {
@@ -93,12 +122,13 @@ class AuthController extends Controller
             $this->redirect('/login');
         }
 
-        // Connexion réussie : effacer les tentatives échouées pour cette IP
+        // Connexion réussie : effacer les tentatives et verrous pour cette IP/compte
         $attemptModel = new LoginAttempt();
         $attemptModel->clearByIp($clientIp);
         if ($user['id']) {
             $attemptModel->clearByUser((int) $user['id']);
         }
+        $lockModel->cleanExpired();
 
         // Créer la session
         Session::regenerate();
@@ -115,17 +145,19 @@ class AuthController extends Controller
 
     /**
      * Enregistre une tentative de connexion échouée et déclenche le fail2ban si nécessaire.
+     *
+     * @return array|null  null si fail2ban désactivé, sinon ['remaining' => int, 'locked_until' => string|null]
      */
-    private function recordFailedAttempt(string $clientIp, ?string $email): void
+    private function recordFailedAttempt(string $clientIp, ?string $email): ?array
     {
         $f2bConfig = new Fail2banConfig();
         if (!$f2bConfig->isEnabled()) {
-            return;
+            return null;
         }
 
         $attemptModel = new LoginAttempt();
 
-        // Chercher l'utilisateur par email (pour le ban de compte)
+        // Chercher l'utilisateur par email (pour le verrou de compte)
         $targetUser = null;
         if ($email) {
             $targetUser = $this->userModel->findByEmail($email);
@@ -142,39 +174,44 @@ class AuthController extends Controller
         $exemptStaff   = $f2bConfig->getBool('exempt_staff');
 
         $ipAttempts = $attemptModel->countRecentByIp($clientIp, $windowMinutes);
+        $remaining  = $maxAttempts - $ipAttempts;
 
-        // Seuil atteint → appliquer les bans automatiques
-        if ($ipAttempts >= $maxAttempts) {
-            $expiresAt = (new \DateTime())->modify("+{$banDuration} minutes")->format('Y-m-d H:i:s');
+        // Seuil atteint → appliquer les verrous de connexion (pas de ban global)
+        if ($remaining <= 0) {
+            $lockedUntil = (new \DateTime())->modify("+{$banDuration} minutes")->format('Y-m-d H:i:s');
             $reason = "Fail2ban : {$maxAttempts} tentatives de connexion échouées en {$windowMinutes} min.";
 
-            // Ban de l'IP
+            $lockModel = new LoginLock();
+
+            // Verrou sur l'IP
             if ($banIp) {
-                $ipBanModel = new IpBan();
-                $existingIpBan = $ipBanModel->findActiveBan($clientIp);
-                if (!$existingIpBan) {
-                    $ipBanModel->ban($clientIp, null, $reason, $expiresAt);
+                $existingLock = $lockModel->findActiveByIp($clientIp);
+                if (!$existingLock) {
+                    $lockModel->lockIp($clientIp, $lockedUntil, $reason);
                 }
             }
 
-            // Ban du compte (si identifié et non-staff ou staff non-exempté)
+            // Verrou sur le compte (si identifié et non-staff ou staff non-exempté)
             if ($banAccount && $targetUser) {
                 $isStaff = in_array($targetUser['global_role'], ['moderator', 'admin', 'superadmin'], true);
                 if (!$isStaff || !$exemptStaff) {
-                    $userBanModel = new UserBan();
-                    $existingBan = $userBanModel->findActiveBan((int) $targetUser['id']);
-                    if (!$existingBan) {
-                        $userBanModel->ban((int) $targetUser['id'], null, $reason, $expiresAt);
+                    $existingUserLock = $lockModel->findActiveByUser((int) $targetUser['id']);
+                    if (!$existingUserLock) {
+                        $lockModel->lockUser((int) $targetUser['id'], $lockedUntil, $reason);
                     }
                 }
             }
 
-            // Nettoyer les tentatives après ban
+            // Nettoyer les tentatives après verrouillage
             $attemptModel->clearByIp($clientIp);
             if ($targetUser) {
                 $attemptModel->clearByUser((int) $targetUser['id']);
             }
+
+            return ['remaining' => 0, 'locked_until' => $lockedUntil];
         }
+
+        return ['remaining' => $remaining, 'locked_until' => null];
     }
 
     /**
