@@ -67,15 +67,16 @@
 </div>
 
 <style>
-    .ac-item{padding:.6rem .8rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border,#2a3a5c);transition:background .15s;}
-    .ac-item:hover,.ac-item.active{background:var(--bg-hover,rgba(78,204,163,.12));}
+    #autocompleteResults{box-shadow:0 4px 20px rgba(0,0,0,.4);}
+    .ac-item{padding:.7rem .9rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,.08);transition:background .15s;color:#e0e0e0;}
+    .ac-item:hover,.ac-item.active{background:rgba(78,204,163,.18);color:#fff;}
     .ac-item:last-child{border-bottom:none;}
-    .ac-name{font-weight:600;}
-    .ac-email{font-size:.85em;opacity:.7;}
-    .ac-role{font-size:.75em;padding:2px 8px;border-radius:4px;background:var(--bg-body,#0f3460);color:var(--text-muted,#aaa);}
+    .ac-name{font-weight:600;color:#fff;}
+    .ac-email{font-size:.85em;color:#9ab;margin-left:.4rem;}
+    .ac-role{font-size:.75em;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,.1);color:#ccc;white-space:nowrap;}
     .ac-role.admin{background:#e94560;color:#fff;}
     .ac-role.moderator{background:#e98b45;color:#fff;}
-    .ac-empty{padding:.8rem;text-align:center;opacity:.6;}
+    .ac-empty{padding:.8rem;text-align:center;color:#9ab;}
 </style>
 
 <script>
