@@ -329,11 +329,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // --- Password toggle visibility ---
 (function () {
-    // Set initial icon on page load
-    document.querySelectorAll('.btn-toggle-password').forEach(function (btn) {
-        btn.innerHTML = '<i class="bi bi-eye"></i>';
-    });
-
     document.addEventListener('click', function (e) {
         var btn = e.target.closest('.btn-toggle-password');
         if (!btn) return;

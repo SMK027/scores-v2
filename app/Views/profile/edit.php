@@ -53,7 +53,7 @@
                     <input type="password" id="current_password" name="current_password" class="form-control"
                            placeholder="Votre mot de passe actuel">
                     <button type="button" class="btn-toggle-password" data-target="current_password" title="Afficher le mot de passe">
-                        
+                        <i class="bi bi-eye"></i>
                     </button>
                 </div>
             </div>
@@ -65,7 +65,7 @@
                         <input type="password" id="new_password" name="new_password" class="form-control"
                                placeholder="Saisissez un nouveau mot de passe">
                         <button type="button" class="btn-toggle-password" data-target="new_password" title="Afficher le mot de passe">
-                            
+                            <i class="bi bi-eye"></i>
                         </button>
                     </div>
                     <span class="form-hint"><?= e($policySummary ?? '') ?></span>
@@ -77,7 +77,7 @@
                         <input type="password" id="new_password_confirm" name="new_password_confirm" class="form-control"
                                placeholder="Répétez le mot de passe">
                         <button type="button" class="btn-toggle-password" data-target="new_password_confirm" title="Afficher le mot de passe">
-                            
+                            <i class="bi bi-eye"></i>
                         </button>
                     </div>
                     <div id="passwordMatchHint" style="font-size:0.85rem;margin-top:0.25rem;"></div>
