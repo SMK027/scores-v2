@@ -326,3 +326,23 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+
+// --- Password toggle visibility ---
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.btn-toggle-password');
+    if (!btn) return;
+
+    var targetId = btn.getAttribute('data-target');
+    var input = document.getElementById(targetId);
+    if (!input) return;
+
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.classList.add('active');
+        btn.title = 'Masquer le mot de passe';
+    } else {
+        input.type = 'password';
+        btn.classList.remove('active');
+        btn.title = 'Afficher le mot de passe';
+    }
+});

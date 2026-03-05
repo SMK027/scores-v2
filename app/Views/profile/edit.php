@@ -49,22 +49,37 @@
 
             <div class="form-group">
                 <label for="current_password" class="form-label">Mot de passe actuel</label>
-                <input type="password" id="current_password" name="current_password" class="form-control"
-                       placeholder="Votre mot de passe actuel">
+                <div class="password-wrapper">
+                    <input type="password" id="current_password" name="current_password" class="form-control"
+                           placeholder="Votre mot de passe actuel">
+                    <button type="button" class="btn-toggle-password" data-target="current_password" title="Afficher le mot de passe">
+                        <span class="eye-icon">&#128065;</span>
+                    </button>
+                </div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label for="new_password" class="form-label">Nouveau mot de passe</label>
-                    <input type="password" id="new_password" name="new_password" class="form-control"
-                           placeholder="Saisissez un nouveau mot de passe">
+                    <div class="password-wrapper">
+                        <input type="password" id="new_password" name="new_password" class="form-control"
+                               placeholder="Saisissez un nouveau mot de passe">
+                        <button type="button" class="btn-toggle-password" data-target="new_password" title="Afficher le mot de passe">
+                            <span class="eye-icon">&#128065;</span>
+                        </button>
+                    </div>
                     <span class="form-hint"><?= e($policySummary ?? '') ?></span>
                     <div id="passwordChecklist" class="password-checklist" style="margin-top:0.5rem;font-size:0.85rem;"></div>
                 </div>
                 <div class="form-group">
                     <label for="new_password_confirm" class="form-label">Confirmer</label>
-                    <input type="password" id="new_password_confirm" name="new_password_confirm" class="form-control"
-                           placeholder="Répétez le mot de passe">
+                    <div class="password-wrapper">
+                        <input type="password" id="new_password_confirm" name="new_password_confirm" class="form-control"
+                               placeholder="Répétez le mot de passe">
+                        <button type="button" class="btn-toggle-password" data-target="new_password_confirm" title="Afficher le mot de passe">
+                            <span class="eye-icon">&#128065;</span>
+                        </button>
+                    </div>
                     <div id="passwordMatchHint" style="font-size:0.85rem;margin-top:0.25rem;"></div>
                 </div>
             </div>

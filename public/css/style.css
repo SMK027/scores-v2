@@ -498,6 +498,42 @@ select.form-control {
     padding-right: 2.5rem;
 }
 
+/* --- Password toggle visibility --- */
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-wrapper .form-control {
+    padding-right: 2.75rem;
+}
+
+.btn-toggle-password {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    line-height: 1;
+    font-size: 1.15rem;
+    color: var(--gray);
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.btn-toggle-password:hover {
+    opacity: 1;
+}
+
+.btn-toggle-password.active {
+    opacity: 1;
+    color: var(--primary);
+}
+
 .form-hint {
     font-size: 0.8rem;
     color: var(--gray);
