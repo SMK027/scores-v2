@@ -540,9 +540,8 @@ select.form-control {
     background-color: rgba(67, 97, 238, 0.06);
 }
 
-.btn-toggle-password svg {
-    width: 18px;
-    height: 18px;
+.btn-toggle-password i {
+    font-size: 1.1rem;
     pointer-events: none;
 }
 
