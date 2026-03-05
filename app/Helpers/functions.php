@@ -21,6 +21,29 @@ function e(?string $value): string
 }
 
 /**
+ * Retourne l'adresse IP réelle du client.
+ * Gère les cas derrière un proxy / reverse proxy / Docker.
+ */
+function get_client_ip(): string
+{
+    // X-Forwarded-For peut contenir plusieurs IPs séparées par des virgules
+    // La première est l'IP du client original
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $ips = array_map('trim', explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
+        $clientIp = $ips[0];
+        if (filter_var($clientIp, FILTER_VALIDATE_IP)) {
+            return $clientIp;
+        }
+    }
+
+    if (!empty($_SERVER['HTTP_X_REAL_IP']) && filter_var($_SERVER['HTTP_X_REAL_IP'], FILTER_VALIDATE_IP)) {
+        return $_SERVER['HTTP_X_REAL_IP'];
+    }
+
+    return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+}
+
+/**
  * Génère un champ CSRF pour les formulaires.
  */
 function csrf_field(): string

@@ -75,11 +75,11 @@ class AuthController extends Controller
         }
 
         // Vérifier bannissement IP
-        $clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        $clientIp = get_client_ip();
         $ipBanModel = new IpBan();
         $ipBan = $ipBanModel->findActiveBan($clientIp);
         if ($ipBan) {
-            $msg = 'Votre adresse IP est bannie. Raison : ' . $ipBan['reason'];
+            $msg = 'Votre adresse IP est bannie du site. Raison : ' . $ipBan['reason'];
             if ($ipBan['expires_at']) {
                 $msg .= ' — Débannissement le ' . date('d/m/Y à H:i', strtotime($ipBan['expires_at'])) . '.';
             } else {

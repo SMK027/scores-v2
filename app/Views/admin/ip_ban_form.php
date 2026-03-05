@@ -30,13 +30,11 @@
                                onchange="document.getElementById('durationFields').style.display='flex'">
                         Temporaire
                     </label>
-                    <?php if (in_array(current_global_role(), ['admin', 'superadmin'])): ?>
-                        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
-                            <input type="radio" name="duration_type" value="permanent"
-                                   onchange="document.getElementById('durationFields').style.display='none'">
-                            Permanent
-                        </label>
-                    <?php endif; ?>
+                    <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                        <input type="radio" name="duration_type" value="permanent"
+                               onchange="document.getElementById('durationFields').style.display='none'">
+                        Permanent
+                    </label>
                 </div>
             </div>
 

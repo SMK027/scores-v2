@@ -12,8 +12,18 @@ RUN apt-get update && apt-get install -y \
     curl \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install gd pdo pdo_mysql zip \
-    && a2enmod rewrite \
+    && a2enmod rewrite remoteip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Configure mod_remoteip to trust Docker network and read real client IP
+RUN echo '<IfModule remoteip_module>\n\
+    RemoteIPHeader X-Forwarded-For\n\
+    RemoteIPInternalProxy 172.16.0.0/12\n\
+    RemoteIPInternalProxy 10.0.0.0/8\n\
+    RemoteIPInternalProxy 192.168.0.0/16\n\
+    RemoteIPInternalProxy 127.0.0.1\n\
+</IfModule>' > /etc/apache2/conf-available/remoteip.conf \
+    && a2enconf remoteip
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

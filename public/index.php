@@ -27,6 +27,7 @@ use App\Controllers\StatController;
 use App\Controllers\SearchController;
 use App\Controllers\AdminController;
 use App\Models\IpBan;
+use App\Models\UserBan;
 
 // Démarrer la session
 Session::start();
@@ -34,10 +35,15 @@ Session::start();
 // ============================================================
 // Vérification globale de bannissement IP
 // ============================================================
-$clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+$clientIp = get_client_ip();
 $ipBanModel = new IpBan();
 $ipBan = $ipBanModel->findActiveBan($clientIp);
 if ($ipBan) {
+    // Si l'utilisateur est connecté, le déconnecter
+    if (Session::get('user_id')) {
+        Session::destroy();
+        Session::start();
+    }
     http_response_code(403);
     $reason = htmlspecialchars($ipBan['reason'], ENT_QUOTES, 'UTF-8');
     $expires = $ipBan['expires_at']
@@ -48,11 +54,34 @@ if ($ipBan) {
     echo '.box{background:#16213e;padding:2rem;border-radius:12px;max-width:500px;text-align:center;border:1px solid #e94560;}';
     echo 'h1{color:#e94560;margin-top:0;}p{line-height:1.6;}</style></head><body>';
     echo '<div class="box"><h1>🚫 Accès interdit</h1>';
-    echo '<p>Votre adresse IP a été bannie.</p>';
+    echo '<p>Votre adresse IP est bannie du site.</p>';
     echo '<p><strong>Raison :</strong> ' . $reason . '</p>';
     echo '<p><strong>Durée :</strong> ' . $expires . '</p>';
     echo '</div></body></html>';
     exit;
+}
+
+// ============================================================
+// Vérification bannissement du compte (utilisateur connecté)
+// ============================================================
+$loggedUserId = Session::get('user_id');
+if ($loggedUserId) {
+    $userBanModel = new UserBan();
+    $userBan = $userBanModel->findActiveBan((int) $loggedUserId);
+    if ($userBan) {
+        // Déconnecter immédiatement
+        Session::destroy();
+        Session::start();
+        $banMsg = 'Votre compte est banni. Raison : ' . htmlspecialchars($userBan['reason'], ENT_QUOTES, 'UTF-8');
+        if ($userBan['expires_at']) {
+            $banMsg .= ' — Débannissement le ' . date('d/m/Y à H:i', strtotime($userBan['expires_at'])) . '.';
+        } else {
+            $banMsg .= ' — Bannissement permanent.';
+        }
+        Session::set('flash', ['type' => 'danger', 'message' => $banMsg]);
+        header('Location: /login');
+        exit;
+    }
 }
 
 // Initialiser le routeur

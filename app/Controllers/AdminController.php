@@ -341,12 +341,11 @@ class AdminController extends Controller
             return;
         }
 
-        // Calcul de la date d'expiration
         $expiresAt = null;
         if ($data['duration_type'] === 'permanent') {
-            // Seuls admin et superadmin peuvent bannir de façon permanente
+            // Seuls admin et superadmin peuvent bannir des comptes de façon permanente
             if (!in_array($globalRole, ['admin', 'superadmin'], true)) {
-                $this->setFlash('danger', 'Seuls les administrateurs peuvent appliquer un bannissement permanent.');
+                $this->setFlash('danger', 'Seuls les administrateurs peuvent appliquer un bannissement de compte permanent.');
                 $this->redirect('/admin/bans/users/create');
                 return;
             }
@@ -365,6 +364,9 @@ class AdminController extends Controller
 
         $banModel = new UserBan();
         $banModel->ban((int) $data['user_id'], $this->getCurrentUserId(), $data['reason'], $expiresAt);
+
+        // Invalider les sessions de l'utilisateur banni en marquant le ban
+        // (la vérification dans index.php le déconnectera à sa prochaine requête)
 
         $this->setFlash('success', 'L\'utilisateur « ' . e($user['username']) . ' » a été banni.');
         $this->redirect('/admin/bans/users');
@@ -456,11 +458,7 @@ class AdminController extends Controller
 
         $expiresAt = null;
         if ($data['duration_type'] === 'permanent') {
-            if (!in_array($globalRole, ['admin', 'superadmin'], true)) {
-                $this->setFlash('danger', 'Seuls les administrateurs peuvent appliquer un bannissement permanent.');
-                $this->redirect('/admin/bans/ips/create');
-                return;
-            }
+            // Tous les modérateurs, admins et superadmins peuvent bannir une IP permanemment
         } else {
             $value = max(1, (int) ($data['duration_value'] ?? 1));
             $unit = $data['duration_unit'] ?? 'hours';
