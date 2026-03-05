@@ -70,8 +70,8 @@ php -S localhost:8080 -t public/
 
 | Champ | Valeur |
 |-------|--------|
-| Utilisateur | `admin` |
-| Mot de passe | `Admin123!` |
+| Email | `admin@scores.local` |
+| Mot de passe | `password` |
 
 > ⚠️ Changez ce mot de passe immédiatement après la première connexion.
 
