@@ -34,6 +34,12 @@ class Database
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ]);
+
+            // Synchroniser le fuseau horaire MySQL avec celui de PHP
+            // Cela garantit que NOW(), CURRENT_TIMESTAMP, etc. correspondent
+            // à l'heure PHP (Europe/Paris), y compris lors des changements d'heure.
+            $phpOffset = (new \DateTime())->format('P'); // ex: "+01:00" ou "+02:00"
+            $this->connection->exec("SET time_zone = '{$phpOffset}'");
         } catch (PDOException $e) {
             if (getenv('APP_DEBUG') === 'true') {
                 throw new PDOException("Connexion échouée : " . $e->getMessage());
