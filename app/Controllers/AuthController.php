@@ -13,6 +13,8 @@ use App\Models\PasswordPolicy;
 use App\Models\PasswordReset;
 use App\Models\UserBan;
 use App\Models\IpBan;
+use App\Models\LoginAttempt;
+use App\Models\Fail2banConfig;
 
 /**
  * Contrôleur d'authentification.
@@ -46,6 +48,7 @@ class AuthController extends Controller
         $this->validateCSRF();
 
         $data = $this->getPostData(['email', 'password']);
+        $clientIp = get_client_ip();
 
         // Validation
         if (empty($data['email']) || empty($data['password'])) {
@@ -56,6 +59,8 @@ class AuthController extends Controller
         // Authentification
         $user = $this->userModel->authenticate($data['email'], $data['password']);
         if (!$user) {
+            // Enregistrer la tentative échouée et vérifier fail2ban
+            $this->recordFailedAttempt($clientIp, $data['email']);
             $this->setFlash('danger', 'Email ou mot de passe incorrect.');
             $this->redirect('/login');
         }
@@ -75,7 +80,6 @@ class AuthController extends Controller
         }
 
         // Vérifier bannissement IP
-        $clientIp = get_client_ip();
         $ipBanModel = new IpBan();
         $ipBan = $ipBanModel->findActiveBan($clientIp);
         if ($ipBan) {
@@ -89,6 +93,13 @@ class AuthController extends Controller
             $this->redirect('/login');
         }
 
+        // Connexion réussie : effacer les tentatives échouées pour cette IP
+        $attemptModel = new LoginAttempt();
+        $attemptModel->clearByIp($clientIp);
+        if ($user['id']) {
+            $attemptModel->clearByUser((int) $user['id']);
+        }
+
         // Créer la session
         Session::regenerate();
         Session::set('user_id', $user['id']);
@@ -100,6 +111,70 @@ class AuthController extends Controller
 
         $this->setFlash('success', 'Bienvenue, ' . $user['username'] . ' !');
         $this->redirect('/spaces');
+    }
+
+    /**
+     * Enregistre une tentative de connexion échouée et déclenche le fail2ban si nécessaire.
+     */
+    private function recordFailedAttempt(string $clientIp, ?string $email): void
+    {
+        $f2bConfig = new Fail2banConfig();
+        if (!$f2bConfig->isEnabled()) {
+            return;
+        }
+
+        $attemptModel = new LoginAttempt();
+
+        // Chercher l'utilisateur par email (pour le ban de compte)
+        $targetUser = null;
+        if ($email) {
+            $targetUser = $this->userModel->findByEmail($email);
+        }
+
+        // Enregistrer la tentative
+        $attemptModel->record($clientIp, $email, $targetUser ? (int) $targetUser['id'] : null);
+
+        $maxAttempts   = $f2bConfig->getInt('max_attempts');
+        $windowMinutes = $f2bConfig->getInt('window_minutes');
+        $banDuration   = $f2bConfig->getInt('ban_duration');
+        $banIp         = $f2bConfig->getBool('ban_ip');
+        $banAccount    = $f2bConfig->getBool('ban_account');
+        $exemptStaff   = $f2bConfig->getBool('exempt_staff');
+
+        $ipAttempts = $attemptModel->countRecentByIp($clientIp, $windowMinutes);
+
+        // Seuil atteint → appliquer les bans automatiques
+        if ($ipAttempts >= $maxAttempts) {
+            $expiresAt = (new \DateTime())->modify("+{$banDuration} minutes")->format('Y-m-d H:i:s');
+            $reason = "Fail2ban : {$maxAttempts} tentatives de connexion échouées en {$windowMinutes} min.";
+
+            // Ban de l'IP
+            if ($banIp) {
+                $ipBanModel = new IpBan();
+                $existingIpBan = $ipBanModel->findActiveBan($clientIp);
+                if (!$existingIpBan) {
+                    $ipBanModel->ban($clientIp, null, $reason, $expiresAt);
+                }
+            }
+
+            // Ban du compte (si identifié et non-staff ou staff non-exempté)
+            if ($banAccount && $targetUser) {
+                $isStaff = in_array($targetUser['global_role'], ['moderator', 'admin', 'superadmin'], true);
+                if (!$isStaff || !$exemptStaff) {
+                    $userBanModel = new UserBan();
+                    $existingBan = $userBanModel->findActiveBan((int) $targetUser['id']);
+                    if (!$existingBan) {
+                        $userBanModel->ban((int) $targetUser['id'], null, $reason, $expiresAt);
+                    }
+                }
+            }
+
+            // Nettoyer les tentatives après ban
+            $attemptModel->clearByIp($clientIp);
+            if ($targetUser) {
+                $attemptModel->clearByUser((int) $targetUser['id']);
+            }
+        }
     }
 
     /**

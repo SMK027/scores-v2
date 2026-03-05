@@ -189,6 +189,8 @@ $router->post('/admin/users/{uid}/delete', AdminController::class, 'deleteUser')
 $router->get('/admin/spaces', AdminController::class, 'spaces');
 $router->get('/admin/password-policy', AdminController::class, 'passwordPolicy');
 $router->post('/admin/password-policy', AdminController::class, 'updatePasswordPolicy');
+$router->get('/admin/fail2ban', AdminController::class, 'fail2ban');
+$router->post('/admin/fail2ban', AdminController::class, 'updateFail2ban');
 
 // Bannissements comptes
 $router->get('/admin/bans/users', AdminController::class, 'userBans');

@@ -11,6 +11,7 @@ use App\Models\Space;
 use App\Models\UserBan;
 use App\Models\IpBan;
 use App\Models\PasswordPolicy;
+use App\Models\Fail2banConfig;
 use App\Config\Database;
 
 /**
@@ -185,6 +186,53 @@ class AdminController extends Controller
             $this->redirect('/');
             exit;
         }
+    }
+
+    // =========================================================
+    // Configuration Fail2ban
+    // =========================================================
+
+    /**
+     * Affiche la page de configuration fail2ban.
+     */
+    public function fail2ban(): void
+    {
+        $this->checkAdminOrSuperAdmin();
+
+        $f2bModel = new Fail2banConfig();
+        $config = $f2bModel->getConfig();
+
+        $this->render('admin/fail2ban', [
+            'title'      => 'Configuration Fail2ban',
+            'activeMenu' => 'admin',
+            'config'     => $config,
+        ]);
+    }
+
+    /**
+     * Met à jour la configuration fail2ban.
+     */
+    public function updateFail2ban(): void
+    {
+        $this->checkAdminOrSuperAdmin();
+        $this->validateCSRF();
+
+        $f2bModel = new Fail2banConfig();
+
+        $updates = [
+            'enabled'        => isset($_POST['enabled']) ? '1' : '0',
+            'max_attempts'   => (string) max(1, (int) ($_POST['max_attempts'] ?? 3)),
+            'window_minutes' => (string) max(1, (int) ($_POST['window_minutes'] ?? 15)),
+            'ban_duration'   => (string) max(1, (int) ($_POST['ban_duration'] ?? 30)),
+            'ban_ip'         => isset($_POST['ban_ip']) ? '1' : '0',
+            'ban_account'    => isset($_POST['ban_account']) ? '1' : '0',
+            'exempt_staff'   => isset($_POST['exempt_staff']) ? '1' : '0',
+        ];
+
+        $f2bModel->updateAll($updates);
+
+        $this->setFlash('success', 'Configuration Fail2ban mise à jour avec succès.');
+        $this->redirect('/admin/fail2ban');
     }
 
     /**
