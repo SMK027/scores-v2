@@ -5,7 +5,7 @@ services:
     build: .
     container_name: scores_app
     ports:
-      - "8080:80"
+      - "8089:80"
     volumes:
       - .:/var/www/html
       - ./data/uploads:/var/www/html/public/uploads
@@ -25,17 +25,24 @@ services:
       - SMTP_ENCRYPTION=${SMTP_ENCRYPTION}
       - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS}
       - MAIL_FROM_NAME=${MAIL_FROM_NAME}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.scores.rule=Host(`scores.leofranz.fr`)"
+      - "traefik.http.routers.scores.entrypoints=websecure"
+      - "traefik.http.routers.scores.tls.certresolver=le"
+      - "traefik.http.services.scores.loadbalancer.server.port=80"
     depends_on:
       db:
         condition: service_healthy
     networks:
+      - proxy
       - scores_network
     restart: unless-stopped
 
   db:
     image: mysql:8.0
     container_name: scores_db
-    command: --default-time-zone='+01:00'
+    command: --default-time-zone='+02:00'
     environment:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: scores_db
@@ -59,7 +66,7 @@ services:
     image: phpmyadmin/phpmyadmin
     container_name: scores_phpmyadmin
     ports:
-      - "8081:80"
+      - "127.0.0.1:8090:80"
     environment:
       PMA_HOST: db
       PMA_USER: scores_user
@@ -73,3 +80,5 @@ services:
 networks:
   scores_network:
     driver: bridge
+  proxy:
+    external: true
