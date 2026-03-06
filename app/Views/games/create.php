@@ -51,7 +51,7 @@
 const gameTypes = <?= json_encode(array_map(fn($gt) => [
     'id' => $gt['id'],
     'name' => $gt['name'],
-    'win_condition' => $gt['win_condition'],
+    'win_condition' => win_condition_label($gt['win_condition']),
     'min_players' => $gt['min_players'] ?? 2,
     'max_players' => $gt['max_players']
 ], $gameTypes)) ?>;
