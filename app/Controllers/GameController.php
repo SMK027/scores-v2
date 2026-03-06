@@ -133,23 +133,19 @@ class GameController extends Controller
             $this->redirect("/spaces/{$id}/games/create");
         }
 
-        if (empty($playerIds) || count($playerIds) < 2) {
-            $this->setFlash('danger', 'Au moins 2 joueurs sont requis.');
-            $this->redirect("/spaces/{$id}/games/create");
-        }
-
-        // Vérifier le nombre de joueurs par rapport aux limites du type de jeu
         $playerCount = count($playerIds);
-        $minPlayers = (int) ($gameType['min_players'] ?? 2);
+        $minPlayers = (int) ($gameType['min_players'] ?? 1);
         $maxPlayers = $gameType['max_players'] ? (int) $gameType['max_players'] : null;
 
         if ($playerCount < $minPlayers) {
-            $this->setFlash('danger', "Ce type de jeu nécessite au minimum {$minPlayers} joueurs ({$playerCount} sélectionné(s)).");
+            $plural = $minPlayers > 1 ? 's' : '';
+            $this->setFlash('danger', "Ce type de jeu nécessite au minimum {$minPlayers} joueur{$plural} ({$playerCount} sélectionné(s)).");
             $this->redirect("/spaces/{$id}/games/create");
         }
 
         if ($maxPlayers !== null && $playerCount > $maxPlayers) {
-            $this->setFlash('danger', "Ce type de jeu autorise au maximum {$maxPlayers} joueurs ({$playerCount} sélectionné(s)).");
+            $plural = $maxPlayers > 1 ? 's' : '';
+            $this->setFlash('danger', "Ce type de jeu autorise au maximum {$maxPlayers} joueur{$plural} ({$playerCount} sélectionné(s)).");
             $this->redirect("/spaces/{$id}/games/create");
         }
 
