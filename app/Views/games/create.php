@@ -13,7 +13,10 @@
                 <select name="game_type_id" id="game_type_id" class="form-control" required>
                     <option value="">-- Choisir un type de jeu --</option>
                     <?php foreach ($gameTypes as $gt): ?>
-                        <option value="<?= $gt['id'] ?>" <?= (isset($old['game_type_id']) && $old['game_type_id'] == $gt['id']) ? 'selected' : '' ?>>
+                        <option value="<?= $gt['id'] ?>"
+                            data-min-players="<?= $gt['min_players'] ?? 2 ?>"
+                            data-max-players="<?= $gt['max_players'] ?? '' ?>"
+                            <?= (isset($old['game_type_id']) && $old['game_type_id'] == $gt['id']) ? 'selected' : '' ?>>
                             <?= e($gt['name']) ?> (<?= win_condition_label($gt['win_condition']) ?>)
                         </option>
                     <?php endforeach; ?>
@@ -22,7 +25,7 @@
 
             <div class="form-group">
                 <label class="form-label">Joueurs *</label>
-                <p class="text-muted text-small">Sélectionnez au moins 2 joueurs.</p>
+                <p id="player-count-info" class="text-muted text-small">Sélectionnez au moins 2 joueurs.</p>
                 <div class="player-checkboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.5rem;">
                     <?php foreach ($players as $player): ?>
                         <label class="checkbox-label" style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem;border:1px solid var(--gray-light);border-radius:var(--radius);cursor:pointer;">
