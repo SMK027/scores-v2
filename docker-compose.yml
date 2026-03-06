@@ -40,7 +40,7 @@ services:
     restart: unless-stopped
 
   db:
-    image: mysql:8.0
+    image: mariadb:10.11
     container_name: scores_db
     command: --default-time-zone='+02:00'
     environment:
