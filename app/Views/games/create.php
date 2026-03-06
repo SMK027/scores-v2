@@ -20,14 +20,10 @@
             <div class="form-group">
                 <label class="form-label">Joueurs *</label>
                 <p id="player-count-info" class="text-muted text-small">Sélectionnez au moins 2 joueurs.</p>
-                <div class="player-checkboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.5rem;">
-                    <?php foreach ($players as $player): ?>
-                        <label class="checkbox-label" style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem;border:1px solid var(--gray-light);border-radius:var(--radius);cursor:pointer;">
-                            <input type="checkbox" name="player_ids[]" value="<?= $player['id'] ?>"
-                                <?= (isset($old['player_ids']) && in_array($player['id'], $old['player_ids'])) ? 'checked' : '' ?>>
-                            <span><?= e($player['name']) ?></span>
-                        </label>
-                    <?php endforeach; ?>
+                <div id="selected-players" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;"></div>
+                <div class="autocomplete-wrapper" style="position:relative;">
+                    <input type="text" id="player_search" class="form-control" placeholder="Rechercher un joueur..." autocomplete="off">
+                    <div id="player_list" class="autocomplete-list" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:250px;overflow-y:auto;background:#fff;border:1px solid var(--gray-light);border-radius:var(--radius);margin-top:0.25rem;z-index:1000;box-shadow:0 4px 6px rgba(0,0,0,0.1);pointer-events:auto;transition:opacity 0.2s;"></div>
                 </div>
                 <?php if (empty($players)): ?>
                     <p class="text-muted">Aucun joueur disponible. <a href="/spaces/<?= $currentSpace['id'] ?>/players/create">Créer un joueur</a></p>
@@ -56,6 +52,14 @@ const gameTypes = <?= json_encode(array_map(fn($gt) => [
     'max_players' => $gt['max_players']
 ], $gameTypes)) ?>;
 
+const allPlayers = <?= json_encode(array_map(fn($p) => [
+    'id' => $p['id'],
+    'name' => $p['name']
+], $players)) ?>;
+
+const oldPlayerIds = <?= json_encode(isset($old['player_ids']) ? array_map('intval', $old['player_ids']) : []) ?>;
+
+// ==== Game type autocomplete ====
 const searchInput = document.getElementById('game_type_search');
 const hiddenInput = document.getElementById('game_type_id');
 const listContainer = document.getElementById('game_type_list');
@@ -67,7 +71,7 @@ function renderList(items) {
         </div>
     `).join('');
     
-    document.querySelectorAll('.autocomplete-item').forEach(item => {
+    document.querySelectorAll('#game_type_list .autocomplete-item').forEach(item => {
         item.addEventListener('click', () => {
             const gt = gameTypes.find(g => g.id == item.dataset.id);
             searchInput.value = gt.name;
@@ -109,6 +113,122 @@ searchInput.addEventListener('focus', () => {
 document.addEventListener('click', (e) => {
     if (!e.target.closest('.autocomplete-wrapper')) {
         hideList();
+        hidePlayerList();
     }
 });
+
+// ==== Player multi-select autocomplete ====
+const playerSearchInput = document.getElementById('player_search');
+const playerListContainer = document.getElementById('player_list');
+const selectedPlayersContainer = document.getElementById('selected-players');
+let selectedPlayerIds = new Set(oldPlayerIds);
+
+function renderSelectedPlayers() {
+    selectedPlayersContainer.innerHTML = '';
+    selectedPlayerIds.forEach(id => {
+        const player = allPlayers.find(p => p.id === id);
+        if (!player) return;
+
+        const tag = document.createElement('span');
+        tag.className = 'player-tag';
+        tag.style.cssText = 'display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.6rem;background:var(--primary);color:#fff;border-radius:20px;font-size:0.85rem;';
+        tag.innerHTML = `${player.name}<input type="hidden" name="player_ids[]" value="${player.id}"><button type="button" class="player-tag-remove" style="background:none;border:none;color:#fff;cursor:pointer;font-size:1rem;line-height:1;padding:0 0.1rem;opacity:0.8;" data-id="${player.id}">&times;</button>`;
+        selectedPlayersContainer.appendChild(tag);
+    });
+}
+
+function renderPlayerList(items) {
+    const available = items.filter(p => !selectedPlayerIds.has(p.id));
+    if (available.length === 0) {
+        playerListContainer.innerHTML = '<div style="padding:0.75rem;color:var(--gray);">Aucun joueur trouvé.</div>';
+    } else {
+        playerListContainer.innerHTML = available.map(p => `
+            <div class="autocomplete-item" style="padding:0.75rem;border-bottom:1px solid var(--gray-light);cursor:pointer;" data-id="${p.id}">
+                ${p.name}
+            </div>
+        `).join('');
+    }
+
+    document.querySelectorAll('#player_list .autocomplete-item').forEach(item => {
+        item.addEventListener('click', () => {
+            selectedPlayerIds.add(parseInt(item.dataset.id));
+            renderSelectedPlayers();
+            playerSearchInput.value = '';
+            renderPlayerList(allPlayers);
+            playerSearchInput.focus();
+        });
+    });
+}
+
+function showPlayerList() {
+    playerListContainer.style.display = 'block';
+    playerListContainer.style.opacity = '1';
+}
+
+function hidePlayerList() {
+    playerListContainer.style.opacity = '0';
+    setTimeout(() => playerListContainer.style.display = 'none', 200);
+}
+
+playerSearchInput.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase().trim();
+    const filtered = query ? allPlayers.filter(p => p.name.toLowerCase().includes(query)) : allPlayers;
+    renderPlayerList(filtered);
+    if (filtered.filter(p => !selectedPlayerIds.has(p.id)).length > 0 || query) {
+        showPlayerList();
+    } else {
+        hidePlayerList();
+    }
+});
+
+playerSearchInput.addEventListener('focus', () => {
+    renderPlayerList(allPlayers);
+    showPlayerList();
+});
+
+selectedPlayersContainer.addEventListener('click', (e) => {
+    const btn = e.target.closest('.player-tag-remove');
+    if (!btn) return;
+    selectedPlayerIds.delete(parseInt(btn.dataset.id));
+    renderSelectedPlayers();
+    renderPlayerList(allPlayers);
+});
+
+// Initialize pre-selected players
+if (selectedPlayerIds.size > 0) {
+    renderSelectedPlayers();
+}
+
+// ==== Player count info based on game type ====
+const playerCountInfo = document.getElementById('player-count-info');
+
+function updatePlayerCountInfo() {
+    const gtId = parseInt(hiddenInput.value);
+    const gt = gameTypes.find(g => g.id === gtId);
+    if (!gt) {
+        playerCountInfo.textContent = 'Sélectionnez au moins 2 joueurs.';
+        return;
+    }
+    const min = gt.min_players || 2;
+    const max = gt.max_players;
+    if (max !== null && min === max) {
+        playerCountInfo.textContent = 'Ce type de jeu nécessite exactement ' + min + ' joueur' + (min > 1 ? 's' : '') + '.';
+    } else if (max !== null) {
+        playerCountInfo.textContent = 'Sélectionnez entre ' + min + ' et ' + max + ' joueurs.';
+    } else {
+        playerCountInfo.textContent = 'Sélectionnez au minimum ' + min + ' joueur' + (min > 1 ? 's' : '') + '.';
+    }
+}
+
+// Override game type click to also update player count info
+document.querySelectorAll('#game_type_list .autocomplete-item').forEach(() => {});
+const origRenderList = renderList;
+renderList = function(items) {
+    origRenderList(items);
+    document.querySelectorAll('#game_type_list .autocomplete-item').forEach(item => {
+        item.addEventListener('click', () => updatePlayerCountInfo());
+    });
+};
+
+updatePlayerCountInfo();
 </script>

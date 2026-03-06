@@ -327,38 +327,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-// --- Game type player count info ---
-(function () {
-    var gameTypeSelect = document.getElementById('game_type_id');
-    var playerCountInfo = document.getElementById('player-count-info');
-
-    if (gameTypeSelect && playerCountInfo) {
-        function updatePlayerCountInfo() {
-            var selected = gameTypeSelect.options[gameTypeSelect.selectedIndex];
-            if (!selected || !selected.value) {
-                playerCountInfo.textContent = 'Sélectionnez au moins 2 joueurs.';
-                return;
-            }
-
-            var min = parseInt(selected.getAttribute('data-min-players')) || 2;
-            var max = selected.getAttribute('data-max-players');
-            max = max ? parseInt(max) : null;
-
-            if (max !== null && min === max) {
-                playerCountInfo.textContent = 'Ce type de jeu nécessite exactement ' + min + ' joueur' + (min > 1 ? 's' : '') + '.';
-            } else if (max !== null) {
-                playerCountInfo.textContent = 'Sélectionnez entre ' + min + ' et ' + max + ' joueurs.';
-            } else {
-                playerCountInfo.textContent = 'Sélectionnez au minimum ' + min + ' joueur' + (min > 1 ? 's' : '') + '.';
-            }
-        }
-
-        gameTypeSelect.addEventListener('change', updatePlayerCountInfo);
-        // Initialize on page load (in case a value is pre-selected)
-        updatePlayerCountInfo();
-    }
-})();
-
 // --- Password toggle visibility ---
 (function () {
     document.addEventListener('click', function (e) {
