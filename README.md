@@ -42,8 +42,56 @@ docker-compose exec db mysql -u root -proot_password scores_db < database/migrat
 ```
 
 L'application sera accessible sur :
-- **Application** : http://localhost:8080
-- **phpMyAdmin** : http://localhost:8081
+- **Application** : http://localhost:8089
+- **phpMyAdmin** : http://localhost:8090 (accessible uniquement en local)
+
+### Configuration selon l'environnement
+
+Le fichier `docker-compose.yml` actuel est configuré pour le **déploiement VPS** avec Traefik. Après un `git pull`, il faut ajuster les éléments suivants selon l'environnement cible :
+
+#### Éléments à vérifier / modifier
+
+| Élément | VPS (production) | Local (développement) |
+|---------|-------------------|-----------------------|
+| **Port de l'app** (`services.app.ports`) | `8089:80` | `8080:80` (ou autre port libre) |
+| **Labels Traefik** (`services.app.labels`) | Présents — routage vers `scores.leofranz.fr` avec SSL | **À supprimer** (pas de Traefik en local) |
+| **Réseau proxy** (`services.app.networks`) | `proxy` + `scores_network` | `scores_network` uniquement |
+| **Réseau externe** (`networks.proxy`) | `external: true` | **À supprimer** |
+| **Timezone MySQL** (`services.db.command`) | `--default-time-zone='+02:00'` | Ajuster selon le fuseau local (ex : `'+01:00'` pour CET) |
+| **Port phpMyAdmin** (`services.phpmyadmin.ports`) | `127.0.0.1:8090:80` (local uniquement) | `8081:80` (accessible depuis le réseau) |
+
+#### Fichier `.env`
+
+| Variable | VPS | Local |
+|----------|-----|-------|
+| `APP_URL` | `https://scores.leofranz.fr` | `http://localhost:8080` |
+| `APP_DEBUG` | `false` | `true` |
+| `APP_KEY` | Chaîne aléatoire sécurisée | Peut rester la valeur par défaut |
+| `SMTP_*` | Identifiants du serveur mail de production | Identifiants de test ou désactivé |
+
+#### Exemple : passer en mode local après un pull
+
+```yaml
+# docker-compose.yml — supprimer les labels Traefik du service app :
+    # labels:
+    #   - "traefik.enable=true"
+    #   - ...
+
+# Modifier le port de l'app :
+    ports:
+      - "8080:80"
+
+# Retirer le réseau proxy du service app :
+    networks:
+      - scores_network
+
+# Supprimer le réseau proxy en fin de fichier :
+# networks:
+#   proxy:
+#     external: true
+```
+
+> ⚠️ Le réseau externe `proxy` doit **exister au préalable** sur le VPS (`docker network create proxy`) pour que Traefik puisse router le trafic.
 
 ## Installation manuelle
 
