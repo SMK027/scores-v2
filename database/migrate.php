@@ -30,6 +30,7 @@ for ($i = 1; $i <= $maxRetries; $i++) {
             [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::MYSQL_ATTR_MULTI_STATEMENTS => true,
             ]
         );
         echo "[migrate] Connexion établie.\n";

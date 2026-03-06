@@ -202,5 +202,5 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- Insertion du compte super administrateur par défaut
 -- Mot de passe : Admin123! (hashé avec password_hash)
 -- -----------------------------------------------------------
-INSERT INTO `users` (`username`, `email`, `password_hash`, `global_role`)
+INSERT IGNORE INTO `users` (`username`, `email`, `password_hash`, `global_role`)
 VALUES ('admin', 'admin@scores.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'superadmin');

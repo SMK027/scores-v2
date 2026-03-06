@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS fail2ban_config (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Valeurs par défaut
-INSERT INTO fail2ban_config (setting_key, setting_value, label) VALUES
+INSERT IGNORE INTO fail2ban_config (setting_key, setting_value, label) VALUES
     ('enabled',        '1',  'Activer le fail2ban'),
     ('max_attempts',   '3',  'Nombre maximal de tentatives'),
     ('window_minutes', '15', 'Fenêtre de temps (minutes)'),

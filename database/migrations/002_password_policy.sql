@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS `password_policy` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Valeurs initiales de la politique
-INSERT INTO `password_policy` (`setting_key`, `setting_value`, `label`) VALUES
+INSERT IGNORE INTO `password_policy` (`setting_key`, `setting_value`, `label`) VALUES
     ('min_length',        '12',  'Longueur minimale'),
     ('require_lowercase', '1',   'Exiger une minuscule'),
     ('require_uppercase', '1',   'Exiger une majuscule'),

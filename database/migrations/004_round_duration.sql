@@ -7,10 +7,18 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
--- Ajouter les colonnes de timing sur les manches
-ALTER TABLE `rounds`
-    ADD COLUMN `started_at` DATETIME DEFAULT NULL AFTER `status`,
-    ADD COLUMN `ended_at` DATETIME DEFAULT NULL AFTER `started_at`;
+-- Ajouter les colonnes de timing sur les manches (si elles n'existent pas)
+SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'rounds' AND COLUMN_NAME = 'started_at');
+SET @sql = IF(@col_exists = 0, 'ALTER TABLE `rounds` ADD COLUMN `started_at` DATETIME DEFAULT NULL AFTER `status`', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'rounds' AND COLUMN_NAME = 'ended_at');
+SET @sql = IF(@col_exists = 0, 'ALTER TABLE `rounds` ADD COLUMN `ended_at` DATETIME DEFAULT NULL AFTER `started_at`', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- Initialiser started_at à partir de created_at pour les manches existantes
 UPDATE `rounds` SET `started_at` = `created_at` WHERE `started_at` IS NULL;
