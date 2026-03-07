@@ -26,6 +26,8 @@ use App\Controllers\RoundController;
 use App\Controllers\StatController;
 use App\Controllers\SearchController;
 use App\Controllers\AdminController;
+use App\Controllers\CompetitionController;
+use App\Controllers\CompetitionSessionController;
 use App\Models\IpBan;
 use App\Models\UserBan;
 
@@ -178,6 +180,31 @@ $router->get('/spaces/{id}/stats', StatController::class, 'index');
 // Recherche
 // ============================================================
 $router->get('/spaces/{id}/search', SearchController::class, 'index');
+
+// ============================================================
+// Compétitions (vue espace — staff + membres)
+// ============================================================
+$router->get('/spaces/{id}/competitions', CompetitionController::class, 'index');
+$router->get('/spaces/{id}/competitions/create', CompetitionController::class, 'createForm');
+$router->post('/spaces/{id}/competitions/create', CompetitionController::class, 'create');
+$router->get('/spaces/{id}/competitions/{cid}', CompetitionController::class, 'show');
+$router->post('/spaces/{id}/competitions/{cid}/activate', CompetitionController::class, 'activate');
+$router->post('/spaces/{id}/competitions/{cid}/close', CompetitionController::class, 'close');
+$router->post('/spaces/{id}/competitions/{cid}/sessions/add', CompetitionController::class, 'addSession');
+$router->post('/spaces/{id}/competitions/{cid}/delete', CompetitionController::class, 'delete');
+
+// ============================================================
+// Session de compétition (interface arbitre — sans auth utilisateur)
+// ============================================================
+$router->get('/competition/login', CompetitionSessionController::class, 'loginForm');
+$router->post('/competition/login', CompetitionSessionController::class, 'login');
+$router->get('/competition/logout', CompetitionSessionController::class, 'logout');
+$router->get('/competition/dashboard', CompetitionSessionController::class, 'dashboard');
+$router->post('/competition/games/create', CompetitionSessionController::class, 'createGame');
+$router->get('/competition/games/{gid}', CompetitionSessionController::class, 'showGame');
+$router->post('/competition/games/{gid}/rounds/create', CompetitionSessionController::class, 'createRound');
+$router->post('/competition/games/{gid}/rounds/{rid}/scores', CompetitionSessionController::class, 'updateScores');
+$router->post('/competition/games/{gid}/complete', CompetitionSessionController::class, 'completeGame');
 
 // ============================================================
 // Administration

@@ -66,6 +66,9 @@
                 <a href="/spaces/<?= $currentSpace['id'] ?>/search" class="sidebar-link <?= ($activeMenu ?? '') === 'search' ? 'active' : '' ?>">
                     🔍 Rechercher
                 </a>
+                <a href="/spaces/<?= $currentSpace['id'] ?>/competitions" class="sidebar-link <?= ($activeMenu ?? '') === 'competitions' ? 'active' : '' ?>">
+                    🏆 Compétitions
+                </a>
                 <?php if (isset($spaceRole) && in_array($spaceRole, ['admin', 'manager'])): ?>
                 <a href="/spaces/<?= $currentSpace['id'] ?>/members" class="sidebar-link <?= ($activeMenu ?? '') === 'members' ? 'active' : '' ?>">
                     ⚙️ Membres

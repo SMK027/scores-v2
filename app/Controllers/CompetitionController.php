@@ -1,0 +1,368 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers;
+
+use App\Core\Controller;
+use App\Core\Middleware;
+use App\Models\Competition;
+use App\Models\CompetitionSession;
+use App\Models\Space;
+use App\Models\Game;
+use App\Models\GamePlayer;
+use App\Models\Player;
+use App\Models\GameType;
+use App\Models\Round;
+use App\Models\RoundScore;
+use App\Config\Database;
+
+/**
+ * Contrôleur des compétitions.
+ * Accessible uniquement aux modérateurs, admins et super-admins globaux.
+ */
+class CompetitionController extends Controller
+{
+    private Competition $competition;
+    private CompetitionSession $session;
+    private Space $spaceModel;
+    private \PDO $pdo;
+
+    public function __construct()
+    {
+        $this->competition = new Competition();
+        $this->session     = new CompetitionSession();
+        $this->spaceModel  = new Space();
+        $this->pdo         = Database::getInstance()->getConnection();
+    }
+
+    /**
+     * Vérifie que l'utilisateur est staff global (moderator, admin ou superadmin).
+     */
+    private function requireStaff(): void
+    {
+        $this->requireGlobalRole(['moderator', 'admin', 'superadmin']);
+    }
+
+    /**
+     * Liste des compétitions d'un espace.
+     */
+    public function index(string $id): void
+    {
+        $this->requireAuth();
+        $space = $this->spaceModel->find((int) $id);
+        if (!$space) {
+            $this->setFlash('danger', 'Espace introuvable.');
+            $this->redirect('/spaces');
+        }
+
+        // Vérifier accès à l'espace (au minimum guest)
+        $member = Middleware::checkSpaceAccess((int) $id, $this->getCurrentUserId());
+        if (!$member) {
+            $this->setFlash('danger', 'Accès non autorisé.');
+            $this->redirect('/spaces');
+        }
+
+        $competitions = $this->competition->findBySpace((int) $id);
+        $isStaff = Middleware::isGlobalStaff();
+
+        $this->render('competitions/index', [
+            'title'        => 'Compétitions',
+            'currentSpace' => $space,
+            'spaceRole'    => $member['role'],
+            'activeMenu'   => 'competitions',
+            'competitions' => $competitions,
+            'isStaff'      => $isStaff,
+        ]);
+    }
+
+    /**
+     * Formulaire de création d'une compétition.
+     */
+    public function createForm(string $id): void
+    {
+        $this->requireStaff();
+
+        $space = $this->spaceModel->find((int) $id);
+        if (!$space) {
+            $this->setFlash('danger', 'Espace introuvable.');
+            $this->redirect('/spaces');
+        }
+        $member = Middleware::checkSpaceAccess((int) $id, $this->getCurrentUserId());
+
+        $this->render('competitions/create', [
+            'title'        => 'Nouvelle compétition',
+            'currentSpace' => $space,
+            'spaceRole'    => $member['role'] ?? 'admin',
+            'activeMenu'   => 'competitions',
+        ]);
+    }
+
+    /**
+     * Traite la création d'une compétition.
+     */
+    public function create(string $id): void
+    {
+        $this->requireStaff();
+        $this->validateCSRF();
+
+        $space = $this->spaceModel->find((int) $id);
+        if (!$space) {
+            $this->setFlash('danger', 'Espace introuvable.');
+            $this->redirect('/spaces');
+        }
+
+        $data = $this->getPostData(['name', 'description', 'starts_at', 'ends_at']);
+        $refereeNames = $_POST['referee_names'] ?? [];
+
+        if (empty($data['name']) || empty($data['starts_at']) || empty($data['ends_at'])) {
+            $this->setFlash('danger', 'Le nom, la date de début et la date de fin sont requis.');
+            $this->redirect("/spaces/{$id}/competitions/create");
+            return;
+        }
+
+        if (empty($refereeNames) || count(array_filter($refereeNames, fn($n) => trim($n) !== '')) === 0) {
+            $this->setFlash('danger', 'Vous devez ajouter au moins une session avec un nom d\'arbitre.');
+            $this->redirect("/spaces/{$id}/competitions/create");
+            return;
+        }
+
+        // Filtrer les noms vides
+        $refereeNames = array_values(array_filter($refereeNames, fn($n) => trim($n) !== ''));
+
+        $competitionId = $this->competition->create([
+            'space_id'    => (int) $id,
+            'name'        => $data['name'],
+            'description' => $data['description'] ?: null,
+            'status'      => 'planned',
+            'starts_at'   => $data['starts_at'],
+            'ends_at'     => $data['ends_at'],
+            'created_by'  => $this->getCurrentUserId(),
+        ]);
+
+        // Créer les sessions
+        $this->session->createBatch($competitionId, $refereeNames);
+
+        $this->setFlash('success', 'Compétition créée avec ' . count($refereeNames) . ' session(s).');
+        $this->redirect("/spaces/{$id}/competitions/{$competitionId}");
+    }
+
+    /**
+     * Affiche le détail d'une compétition.
+     */
+    public function show(string $id, string $cid): void
+    {
+        $this->requireAuth();
+
+        $space = $this->spaceModel->find((int) $id);
+        if (!$space) {
+            $this->setFlash('danger', 'Espace introuvable.');
+            $this->redirect('/spaces');
+        }
+        $member = Middleware::checkSpaceAccess((int) $id, $this->getCurrentUserId());
+        if (!$member) {
+            $this->setFlash('danger', 'Accès non autorisé.');
+            $this->redirect('/spaces');
+        }
+
+        $competition = $this->competition->findWithDetails((int) $cid);
+        if (!$competition || (int) $competition['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Compétition introuvable.');
+            $this->redirect("/spaces/{$id}/competitions");
+        }
+
+        $sessions = $this->session->findByCompetition((int) $cid);
+        $isStaff = Middleware::isGlobalStaff();
+
+        // Parties de la compétition
+        $stmt = $this->pdo->prepare("
+            SELECT g.*, gt.name AS game_type_name,
+                   cs.session_number, cs.referee_name,
+                   (SELECT COUNT(*) FROM game_players WHERE game_id = g.id) AS player_count
+            FROM games g
+            JOIN game_types gt ON gt.id = g.game_type_id
+            LEFT JOIN competition_sessions cs ON cs.id = g.session_id
+            WHERE g.competition_id = :cid
+            ORDER BY g.created_at DESC
+        ");
+        $stmt->execute(['cid' => (int) $cid]);
+        $games = $stmt->fetchAll();
+
+        // Classement de la compétition (manches gagnées)
+        $rankings = $this->computeCompetitionRankings((int) $cid, (int) $id);
+
+        $this->render('competitions/show', [
+            'title'        => $competition['name'],
+            'currentSpace' => $space,
+            'spaceRole'    => $member['role'],
+            'activeMenu'   => 'competitions',
+            'competition'  => $competition,
+            'sessions'     => $sessions,
+            'games'        => $games,
+            'rankings'     => $rankings,
+            'isStaff'      => $isStaff,
+        ]);
+    }
+
+    /**
+     * Active une compétition.
+     */
+    public function activate(string $id, string $cid): void
+    {
+        $this->requireStaff();
+        $this->validateCSRF();
+
+        $competition = $this->competition->find((int) $cid);
+        if (!$competition || (int) $competition['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Compétition introuvable.');
+            $this->redirect("/spaces/{$id}/competitions");
+            return;
+        }
+
+        $this->competition->activate((int) $cid);
+        $this->setFlash('success', 'Compétition activée.');
+        $this->redirect("/spaces/{$id}/competitions/{$cid}");
+    }
+
+    /**
+     * Clôture toutes les sessions et la compétition.
+     */
+    public function close(string $id, string $cid): void
+    {
+        $this->requireStaff();
+        $this->validateCSRF();
+
+        $competition = $this->competition->find((int) $cid);
+        if (!$competition || (int) $competition['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Compétition introuvable.');
+            $this->redirect("/spaces/{$id}/competitions");
+            return;
+        }
+
+        $this->competition->closeCompetition((int) $cid);
+        $this->setFlash('success', 'Compétition clôturée. Toutes les sessions sont désactivées.');
+        $this->redirect("/spaces/{$id}/competitions/{$cid}");
+    }
+
+    /**
+     * Ajoute une session supplémentaire.
+     */
+    public function addSession(string $id, string $cid): void
+    {
+        $this->requireStaff();
+        $this->validateCSRF();
+
+        $competition = $this->competition->find((int) $cid);
+        if (!$competition || (int) $competition['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Compétition introuvable.');
+            $this->redirect("/spaces/{$id}/competitions");
+            return;
+        }
+
+        $refereeName = trim($_POST['referee_name'] ?? '');
+        if (empty($refereeName)) {
+            $this->setFlash('danger', 'Le nom de l\'arbitre est requis.');
+            $this->redirect("/spaces/{$id}/competitions/{$cid}");
+            return;
+        }
+
+        $this->session->createBatch((int) $cid, [$refereeName]);
+        $this->setFlash('success', 'Session ajoutée.');
+        $this->redirect("/spaces/{$id}/competitions/{$cid}");
+    }
+
+    /**
+     * Supprime une compétition (et ses sessions en cascade).
+     */
+    public function delete(string $id, string $cid): void
+    {
+        $this->requireStaff();
+        $this->validateCSRF();
+
+        $competition = $this->competition->find((int) $cid);
+        if (!$competition || (int) $competition['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Compétition introuvable.');
+            $this->redirect("/spaces/{$id}/competitions");
+            return;
+        }
+
+        // Détacher les parties de la compétition (ne pas les supprimer, elles font partie de l'espace)
+        $this->pdo->prepare("UPDATE games SET competition_id = NULL, session_id = NULL WHERE competition_id = :cid")
+            ->execute(['cid' => (int) $cid]);
+
+        $this->competition->delete((int) $cid);
+        $this->setFlash('success', 'Compétition supprimée.');
+        $this->redirect("/spaces/{$id}/competitions");
+    }
+
+    /**
+     * Calcule le classement de la compétition par manches gagnées.
+     */
+    private function computeCompetitionRankings(int $competitionId, int $spaceId): array
+    {
+        // Manches terminées des parties de la compétition
+        $stmt = $this->pdo->prepare("
+            SELECT r.id AS round_id, gt.win_condition
+            FROM rounds r
+            JOIN games g ON g.id = r.game_id
+            JOIN game_types gt ON gt.id = g.game_type_id
+            WHERE g.competition_id = :cid
+              AND r.status = 'completed'
+        ");
+        $stmt->execute(['cid' => $competitionId]);
+        $rounds = $stmt->fetchAll();
+
+        $played = [];
+        $won    = [];
+
+        foreach ($rounds as $round) {
+            $scoreStmt = $this->pdo->prepare("
+                SELECT rs.player_id, rs.score FROM round_scores rs WHERE rs.round_id = :rid
+            ");
+            $scoreStmt->execute(['rid' => $round['round_id']]);
+            $scores = $scoreStmt->fetchAll();
+
+            if (empty($scores)) continue;
+
+            foreach ($scores as $s) {
+                $pid = (int) $s['player_id'];
+                $played[$pid] = ($played[$pid] ?? 0) + 1;
+            }
+
+            $scoreValues = array_column($scores, 'score');
+            $best = ($round['win_condition'] === 'ranking' || $round['win_condition'] === 'lowest_score')
+                ? min($scoreValues) : max($scoreValues);
+
+            foreach ($scores as $s) {
+                if ((float) $s['score'] === (float) $best) {
+                    $pid = (int) $s['player_id'];
+                    $won[$pid] = ($won[$pid] ?? 0) + 1;
+                }
+            }
+        }
+
+        // Récupérer les noms
+        $playerStmt = $this->pdo->prepare("SELECT id, name FROM players WHERE space_id = :sid");
+        $playerStmt->execute(['sid' => $spaceId]);
+        $players = $playerStmt->fetchAll();
+
+        $result = [];
+        foreach ($players as $p) {
+            $pid = (int) $p['id'];
+            if (!isset($played[$pid])) continue;
+            $result[] = [
+                'name'          => $p['name'],
+                'rounds_played' => $played[$pid],
+                'rounds_won'    => $won[$pid] ?? 0,
+                'win_rate'      => round(($won[$pid] ?? 0) * 100.0 / $played[$pid], 1),
+            ];
+        }
+
+        usort($result, fn($a, $b) => $b['rounds_won'] !== $a['rounds_won']
+            ? $b['rounds_won'] - $a['rounds_won']
+            : $b['win_rate'] <=> $a['win_rate']
+        );
+
+        return $result;
+    }
+}
