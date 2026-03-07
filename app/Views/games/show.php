@@ -231,7 +231,12 @@
                         <p class="text-muted text-small">Aucun score enregistré.</p>
                     <?php endif; ?>
 
-                    <?php if ($round['status'] !== 'completed' && in_array($spaceRole, ['admin', 'manager', 'member'])): ?>
+                    <?php
+                        $canEditScores = $round['status'] !== 'completed' && in_array($spaceRole, ['admin', 'manager', 'member']);
+                        $canCorrectScores = $round['status'] === 'completed' && in_array($spaceRole, ['admin', 'manager']);
+                    ?>
+
+                    <?php if ($canEditScores): ?>
                         <?php if ($game['win_condition'] === 'ranking'): ?>
                             <p class="text-muted text-small mb-1"><em>Saisissez la position finale de chaque joueur (1 = 1ère place, 2 = 2ème place, etc.)</em></p>
                         <?php elseif ($game['win_condition'] === 'win_loss'): ?>
@@ -270,6 +275,52 @@
                                 <button type="submit" class="btn btn-sm btn-primary" style="align-self:flex-end;">Enregistrer</button>
                             </div>
                         </form>
+                    <?php elseif ($canCorrectScores): ?>
+                        <button type="button" class="btn btn-sm btn-outline mt-1" onclick="this.style.display='none';this.nextElementSibling.style.display='block';">
+                            ✏️ Corriger les scores
+                        </button>
+                        <div style="display:none;">
+                            <?php if ($game['win_condition'] === 'ranking'): ?>
+                                <p class="text-muted text-small mb-1"><em>Corrigez la position finale de chaque joueur</em></p>
+                            <?php elseif ($game['win_condition'] === 'win_loss'): ?>
+                                <p class="text-muted text-small mb-1"><em>Corrigez le(s) gagnant(s) de cette manche</em></p>
+                            <?php else: ?>
+                                <p class="text-muted text-small mb-1"><em>Corrigez les scores de cette manche</em></p>
+                            <?php endif; ?>
+                            <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/<?= $round['id'] ?>/scores" class="score-form">
+                                <?= csrf_field() ?>
+                                <div class="d-flex gap-1 flex-wrap align-center mt-1">
+                                    <?php if ($game['win_condition'] === 'ranking'): ?>
+                                        <?php foreach ($gamePlayers as $gp): ?>
+                                            <div style="display:flex;flex-direction:column;min-width:100px;">
+                                                <label class="text-small"><?= e($gp['player_name']) ?></label>
+                                                <input type="number" name="scores[<?= $gp['player_id'] ?>]" class="form-control form-control-sm"
+                                                       min="1" step="1" placeholder="Position"
+                                                       value="<?= $roundScores[$round['id']][$gp['player_id']]['score'] ?? '' ?>">
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php elseif ($game['win_condition'] === 'win_loss'): ?>
+                                        <?php foreach ($gamePlayers as $gp): ?>
+                                            <div style="display:flex;align-items:center;gap:0.5rem;min-width:150px;">
+                                                <input type="checkbox" name="scores[<?= $gp['player_id'] ?>]" value="1" id="edit_win_<?= $round['id'] ?>_<?= $gp['player_id'] ?>"
+                                                       <?= (isset($roundScores[$round['id']][$gp['player_id']]) && $roundScores[$round['id']][$gp['player_id']]['score'] == 1) ? 'checked' : '' ?>>
+                                                <label for="edit_win_<?= $round['id'] ?>_<?= $gp['player_id'] ?>" class="text-small" style="margin:0;cursor:pointer;"><?= e($gp['player_name']) ?></label>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <?php foreach ($gamePlayers as $gp): ?>
+                                            <div style="display:flex;flex-direction:column;min-width:100px;">
+                                                <label class="text-small"><?= e($gp['player_name']) ?></label>
+                                                <input type="number" name="scores[<?= $gp['player_id'] ?>]" class="form-control form-control-sm"
+                                                       step="0.01" placeholder="Score"
+                                                       value="<?= $roundScores[$round['id']][$gp['player_id']]['score'] ?? '' ?>">
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                    <button type="submit" class="btn btn-sm btn-warning" style="align-self:flex-end;">Corriger</button>
+                                </div>
+                            </form>
+                        </div>
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>

@@ -90,7 +90,7 @@ class RoundController extends Controller
      */
     public function updateScores(string $id, string $gid, string $rid): void
     {
-        $this->checkAccess($id);
+        $ctx = $this->checkAccess($id);
 
         $game = $this->game->findWithDetails((int) $gid);
         if (!$game || $game['space_id'] != $id) {
@@ -112,7 +112,11 @@ class RoundController extends Controller
             return;
         }
 
-        if ($round['status'] === 'completed') {
+        $isCompleted = $round['status'] === 'completed';
+        $spaceRole = $ctx['member']['role'];
+
+        // Seuls admin/manager peuvent modifier une manche terminée
+        if ($isCompleted && !in_array($spaceRole, ['admin', 'manager'])) {
             if ($this->isAjax()) {
                 $this->jsonResponse(['success' => false, 'message' => 'Cette manche est déjà terminée.']);
             }
@@ -128,9 +132,11 @@ class RoundController extends Controller
             try {
                 $this->roundScore->saveScores((int) $rid, $scores, $game['win_condition'], (int) $gid);
 
-                // Marquer la manche comme terminée immédiatement
-                $this->roundPause->endAllOpenPauses((int) $rid);
-                $this->round->updateStatus((int) $rid, 'completed');
+                // Marquer la manche comme terminée si elle ne l'est pas déjà
+                if (!$isCompleted) {
+                    $this->roundPause->endAllOpenPauses((int) $rid);
+                    $this->round->updateStatus((int) $rid, 'completed');
+                }
 
                 $this->game->recalculateTotals((int) $gid);
             } catch (\Exception $e) {
@@ -143,11 +149,13 @@ class RoundController extends Controller
             }
         }
 
+        $msg = $isCompleted ? 'Scores corrigés.' : 'Scores enregistrés, manche terminée.';
+
         if ($this->isAjax()) {
-            $this->jsonResponse(['success' => true, 'message' => 'Scores enregistrés, manche terminée.']);
+            $this->jsonResponse(['success' => true, 'message' => $msg]);
         }
 
-        $this->setFlash('success', 'Scores enregistrés, manche terminée.');
+        $this->setFlash('success', $msg);
         $this->redirect("/spaces/{$id}/games/{$gid}");
     }
 
