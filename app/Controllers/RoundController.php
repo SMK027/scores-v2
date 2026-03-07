@@ -127,6 +127,11 @@ class RoundController extends Controller
         if (!empty($scores) || $game['win_condition'] === 'win_loss') {
             try {
                 $this->roundScore->saveScores((int) $rid, $scores, $game['win_condition'], (int) $gid);
+
+                // Marquer la manche comme terminée immédiatement
+                $this->roundPause->endAllOpenPauses((int) $rid);
+                $this->round->updateStatus((int) $rid, 'completed');
+
                 $this->game->recalculateTotals((int) $gid);
             } catch (\Exception $e) {
                 if ($this->isAjax()) {
@@ -139,10 +144,10 @@ class RoundController extends Controller
         }
 
         if ($this->isAjax()) {
-            $this->jsonResponse(['success' => true, 'message' => 'Scores enregistrés.']);
+            $this->jsonResponse(['success' => true, 'message' => 'Scores enregistrés, manche terminée.']);
         }
 
-        $this->setFlash('success', 'Scores enregistrés.');
+        $this->setFlash('success', 'Scores enregistrés, manche terminée.');
         $this->redirect("/spaces/{$id}/games/{$gid}");
     }
 
