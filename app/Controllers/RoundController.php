@@ -57,6 +57,14 @@ class RoundController extends Controller
     }
 
     /**
+     * Vérifie si la partie de compétition est protégée pour l'utilisateur courant.
+     */
+    private function isCompetitionProtected(array $game): bool
+    {
+        return !empty($game['competition_id']) && !Middleware::isGlobalStaff();
+    }
+
+    /**
      * Créer une nouvelle manche.
      */
     public function create(string $id, string $gid): void
@@ -67,6 +75,12 @@ class RoundController extends Controller
         if (!$game || $game['space_id'] != $id) {
             $this->setFlash('danger', 'Partie introuvable.');
             $this->redirect("/spaces/{$id}/games");
+            return;
+        }
+
+        if ($this->isCompetitionProtected($game)) {
+            $this->setFlash('danger', 'Les parties de compétition ne peuvent être modifiées que par l\'équipe de modération globale.');
+            $this->redirect("/spaces/{$id}/games/{$gid}");
             return;
         }
 
@@ -99,6 +113,15 @@ class RoundController extends Controller
             }
             $this->setFlash('danger', 'Partie introuvable.');
             $this->redirect("/spaces/{$id}/games");
+            return;
+        }
+
+        if ($this->isCompetitionProtected($game)) {
+            if ($this->isAjax()) {
+                $this->jsonResponse(['success' => false, 'message' => 'Les parties de compétition ne peuvent être modifiées que par l\'équipe de modération globale.']);
+            }
+            $this->setFlash('danger', 'Les parties de compétition ne peuvent être modifiées que par l\'équipe de modération globale.');
+            $this->redirect("/spaces/{$id}/games/{$gid}");
             return;
         }
 
@@ -173,6 +196,12 @@ class RoundController extends Controller
             return;
         }
 
+        if ($this->isCompetitionProtected($game)) {
+            $this->setFlash('danger', 'Les parties de compétition ne peuvent être modifiées que par l\'équipe de modération globale.');
+            $this->redirect("/spaces/{$id}/games/{$gid}");
+            return;
+        }
+
         $round = $this->round->find((int) $rid);
         if (!$round || $round['game_id'] != $gid) {
             $this->setFlash('danger', 'Manche introuvable.');
@@ -231,6 +260,12 @@ class RoundController extends Controller
         if (!$game || $game['space_id'] != $id) {
             $this->setFlash('danger', 'Partie introuvable.');
             $this->redirect("/spaces/{$id}/games");
+            return;
+        }
+
+        if ($this->isCompetitionProtected($game)) {
+            $this->setFlash('danger', 'Les parties de compétition ne peuvent être supprimées que par l\'équipe de modération globale.');
+            $this->redirect("/spaces/{$id}/games/{$gid}");
             return;
         }
 

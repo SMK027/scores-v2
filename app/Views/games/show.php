@@ -1,3 +1,10 @@
+<?php
+// Permissions : pour les parties de compétition, seul le staff global peut agir
+$isCompetitionGame = $isCompetitionGame ?? false;
+$isGlobalStaff = $isGlobalStaff ?? false;
+$canManageGame = $isCompetitionGame ? $isGlobalStaff : in_array($spaceRole, ['admin', 'manager', 'member']);
+$canDeleteGame = $isCompetitionGame ? $isGlobalStaff : in_array($spaceRole, ['admin', 'manager']);
+?>
 <div class="page-header">
     <div>
         <h1>
@@ -12,7 +19,7 @@
     </div>
     <div class="d-flex gap-1 flex-wrap">
         <a href="/spaces/<?= $currentSpace['id'] ?>/games" class="btn btn-outline btn-sm">← Retour</a>
-        <?php if (in_array($spaceRole, ['admin', 'manager', 'member'])): ?>
+        <?php if ($canManageGame): ?>
             <?php if ($game['status'] !== 'completed'): ?>
                 <a href="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/edit" class="btn btn-sm btn-outline">Modifier</a>
             <?php endif; ?>
@@ -21,7 +28,7 @@
 </div>
 
 <!-- Gestion du statut -->
-<?php if (in_array($spaceRole, ['admin', 'manager', 'member'])): ?>
+<?php if ($canManageGame): ?>
 <div class="card mb-3">
     <div class="card-body d-flex gap-1 flex-wrap align-center">
         <strong class="text-small">Statut :</strong>
@@ -129,7 +136,7 @@
 <div class="card mb-3">
     <div class="card-header d-flex justify-between align-center">
         <h3>Manches</h3>
-        <?php if (in_array($game['status'], ['in_progress', 'paused']) && in_array($spaceRole, ['admin', 'manager', 'member'])): ?>
+        <?php if (in_array($game['status'], ['in_progress', 'paused']) && $canManageGame): ?>
             <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/create" style="display:inline;">
                 <?= csrf_field() ?>
                 <button type="submit" class="btn btn-sm btn-primary">+ Ajouter une manche</button>
@@ -148,7 +155,7 @@
                             <span class="badge <?= round_status_class($round['status']) ?>" style="font-size:0.75em;">
                                 <?= round_status_label($round['status']) ?>
                             </span>
-                            <?php if ($round['status'] !== 'completed' && in_array($spaceRole, ['admin', 'manager', 'member'])): ?>
+                            <?php if ($round['status'] !== 'completed' && $canManageGame): ?>
                                 <?php if ($round['status'] === 'in_progress'): ?>
                                     <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/<?= $round['id'] ?>/status" style="display:inline;">
                                         <?= csrf_field() ?>
@@ -168,7 +175,7 @@
                                     <button type="submit" class="btn btn-sm btn-success" data-confirm="Terminer cette manche ?" title="Terminer">✓</button>
                                 </form>
                             <?php endif; ?>
-                            <?php if (in_array($spaceRole, ['admin', 'manager'])): ?>
+                            <?php if ($canDeleteGame): ?>
                                 <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/<?= $round['id'] ?>/delete" style="display:inline;">
                                     <?= csrf_field() ?>
                                     <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Supprimer cette manche et ses scores ?" title="Supprimer">🗑</button>
@@ -238,8 +245,8 @@
                     <?php endif; ?>
 
                     <?php
-                        $canEditScores = $round['status'] !== 'completed' && in_array($spaceRole, ['admin', 'manager', 'member']);
-                        $canCorrectScores = $round['status'] === 'completed' && in_array($spaceRole, ['admin', 'manager']);
+                        $canEditScores = $round['status'] !== 'completed' && $canManageGame;
+                        $canCorrectScores = $round['status'] === 'completed' && $canDeleteGame;
                     ?>
 
                     <?php if ($canEditScores): ?>
@@ -384,7 +391,7 @@
 </div>
 
 <!-- Actions dangereuses -->
-<?php if (in_array($spaceRole, ['admin', 'manager'])): ?>
+<?php if ($canDeleteGame): ?>
 <div class="card mb-3" style="border-color:var(--danger);">
     <div class="card-header" style="background:var(--danger-light,#fff0f0);"><h3 style="color:var(--danger);">Zone de danger</h3></div>
     <div class="card-body">

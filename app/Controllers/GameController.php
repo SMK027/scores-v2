@@ -53,6 +53,15 @@ class GameController extends Controller
     }
 
     /**
+     * Vérifie si une partie de compétition est protégée pour l'utilisateur courant.
+     * Retourne true si la partie est liée à une compétition ET l'utilisateur n'est pas staff global.
+     */
+    private function isCompetitionProtected(array $game): bool
+    {
+        return !empty($game['competition_id']) && !Middleware::isGlobalStaff();
+    }
+
+    /**
      * Liste les parties d'un espace.
      */
     public function index(string $id): void
@@ -220,6 +229,9 @@ class GameController extends Controller
         $commentModel = new Comment();
         $comments = $commentModel->findByGame((int) $gid);
 
+        $isCompetitionGame = !empty($game['competition_id']);
+        $isGlobalStaff = Middleware::isGlobalStaff();
+
         $this->render('games/show', [
             'title'            => $game['game_type_name'],
             'currentSpace'     => $ctx['space'],
@@ -232,6 +244,8 @@ class GameController extends Controller
             'roundDurations'   => $roundDurations,
             'totalPlaySeconds' => $totalPlaySeconds,
             'comments'         => $comments,
+            'isCompetitionGame' => $isCompetitionGame,
+            'isGlobalStaff'     => $isGlobalStaff,
         ]);
     }
 
@@ -246,6 +260,12 @@ class GameController extends Controller
         if (!$game || $game['space_id'] != $id) {
             $this->setFlash('danger', 'Partie introuvable.');
             $this->redirect("/spaces/{$id}/games");
+        }
+
+        if ($this->isCompetitionProtected($game)) {
+            $this->setFlash('danger', 'Les parties de compétition ne peuvent être modifiées que par l\'équipe de modération globale.');
+            $this->redirect("/spaces/{$id}/games/{$gid}");
+            return;
         }
 
         $gameTypes = $this->gameTypeModel->findBySpace((int) $id);
@@ -272,6 +292,13 @@ class GameController extends Controller
         $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
         $this->validateCSRF();
 
+        $game = $this->gameModel->find((int) $gid);
+        if ($game && $this->isCompetitionProtected($game)) {
+            $this->setFlash('danger', 'Les parties de compétition ne peuvent être modifiées que par l\'équipe de modération globale.');
+            $this->redirect("/spaces/{$id}/games/{$gid}");
+            return;
+        }
+
         $data = $this->getPostData(['notes']);
 
         $this->gameModel->update((int) $gid, [
@@ -290,6 +317,13 @@ class GameController extends Controller
         $ctx = $this->checkAccess($id, ['admin', 'manager']);
         $this->validateCSRF();
 
+        $game = $this->gameModel->find((int) $gid);
+        if ($game && $this->isCompetitionProtected($game)) {
+            $this->setFlash('danger', 'Les parties de compétition ne peuvent être supprimées que par l\'équipe de modération globale.');
+            $this->redirect("/spaces/{$id}/games/{$gid}");
+            return;
+        }
+
         $this->gameModel->delete((int) $gid);
         $this->setFlash('success', 'Partie supprimée.');
         $this->redirect("/spaces/{$id}/games");
@@ -302,6 +336,13 @@ class GameController extends Controller
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
         $this->validateCSRF();
+
+        $game = $this->gameModel->find((int) $gid);
+        if ($game && $this->isCompetitionProtected($game)) {
+            $this->setFlash('danger', 'Les parties de compétition ne peuvent être modifiées que par l\'équipe de modération globale.');
+            $this->redirect("/spaces/{$id}/games/{$gid}");
+            return;
+        }
 
         $status = $_POST['status'] ?? '';
         $validStatuses = ['pending', 'in_progress', 'paused', 'completed'];
