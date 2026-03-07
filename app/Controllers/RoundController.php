@@ -244,6 +244,7 @@ class RoundController extends Controller
         $this->validateCSRF();
 
         $this->round->deleteWithScores((int) $rid);
+        $this->round->renumberRounds((int) $gid);
         $this->game->recalculateTotals((int) $gid);
 
         $this->setFlash('success', 'Manche supprimée.');

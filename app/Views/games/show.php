@@ -153,19 +153,25 @@
                                     <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/<?= $round['id'] ?>/status" style="display:inline;">
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="status" value="paused">
-                                        <button type="submit" class="btn btn-sm btn-warning" data-confirm="Mettre cette manche en pause ?">⏸ Pause</button>
+                                        <button type="submit" class="btn btn-sm btn-warning" data-confirm="Mettre cette manche en pause ?" title="Pause">⏸</button>
                                     </form>
                                 <?php elseif ($round['status'] === 'paused'): ?>
                                     <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/<?= $round['id'] ?>/status" style="display:inline;">
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="status" value="in_progress">
-                                        <button type="submit" class="btn btn-sm btn-success" data-confirm="Reprendre cette manche ?">▶ Reprendre</button>
+                                        <button type="submit" class="btn btn-sm btn-success" data-confirm="Reprendre cette manche ?" title="Reprendre">▶</button>
                                     </form>
                                 <?php endif; ?>
                                 <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/<?= $round['id'] ?>/status" style="display:inline;">
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="status" value="completed">
-                                    <button type="submit" class="btn btn-sm btn-success" data-confirm="Terminer cette manche ?">✓ Terminer</button>
+                                    <button type="submit" class="btn btn-sm btn-success" data-confirm="Terminer cette manche ?" title="Terminer">✓</button>
+                                </form>
+                            <?php endif; ?>
+                            <?php if (in_array($spaceRole, ['admin', 'manager'])): ?>
+                                <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/<?= $round['id'] ?>/delete" style="display:inline;">
+                                    <?= csrf_field() ?>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Supprimer cette manche et ses scores ?" title="Supprimer">🗑</button>
                                 </form>
                             <?php endif; ?>
                         </div>
@@ -276,8 +282,8 @@
                             </div>
                         </form>
                     <?php elseif ($canCorrectScores): ?>
-                        <button type="button" class="btn btn-sm btn-outline mt-1" onclick="this.style.display='none';this.nextElementSibling.style.display='block';">
-                            ✏️ Corriger les scores
+                        <button type="button" class="btn btn-sm btn-outline mt-1" onclick="this.style.display='none';this.nextElementSibling.style.display='block';" title="Corriger les scores">
+                            ✏️
                         </button>
                         <div style="display:none;">
                             <?php if ($game['win_condition'] === 'ranking'): ?>

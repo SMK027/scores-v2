@@ -79,6 +79,27 @@ class Round extends Model
     }
 
     /**
+     * Renuméro les manches d'une partie (1, 2, 3, …) après suppression.
+     */
+    public function renumberRounds(int $gameId): void
+    {
+        $stmt = $this->db->prepare("
+            SELECT id FROM {$this->table}
+            WHERE game_id = :game_id
+            ORDER BY round_number ASC, id ASC
+        ");
+        $stmt->execute(['game_id' => $gameId]);
+        $rows = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+        $update = $this->db->prepare("
+            UPDATE {$this->table} SET round_number = :num WHERE id = :id
+        ");
+        foreach ($rows as $i => $roundId) {
+            $update->execute(['num' => $i + 1, 'id' => $roundId]);
+        }
+    }
+
+    /**
      * Compte les manches d'une partie
      */
     public function countByGame(int $gameId): int
