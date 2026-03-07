@@ -19,9 +19,7 @@ class Player extends Model
     public function findBySpace(int $spaceId): array
     {
         $stmt = $this->query(
-            "SELECT p.*, u.username as linked_username,
-                    (SELECT COUNT(DISTINCT gp.game_id) FROM game_players gp WHERE gp.player_id = p.id) as game_count,
-                    (SELECT COUNT(*) FROM game_players gp WHERE gp.player_id = p.id AND gp.is_winner = 1) as win_count
+            "SELECT p.*, u.username as linked_username
              FROM {$this->table} p
              LEFT JOIN users u ON p.user_id = u.id
              WHERE p.space_id = :space_id

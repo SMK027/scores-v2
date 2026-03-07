@@ -22,8 +22,8 @@
                         <tr>
                             <th>Nom</th>
                             <th>Compte lié</th>
-                            <th>Parties</th>
-                            <th>Victoires</th>
+                            <th>Manches jouées</th>
+                            <th>Manches gagnées</th>
                             <th>Taux</th>
                             <?php if (in_array($spaceRole, ['admin', 'manager'])): ?>
                                 <th class="text-right">Actions</th>
@@ -37,12 +37,12 @@
                                 <td class="text-muted">
                                     <?= $player['linked_username'] ? e($player['linked_username']) : '<span class="text-muted">—</span>' ?>
                                 </td>
-                                <td><?= $player['game_count'] ?></td>
-                                <td><?= $player['win_count'] ?></td>
+                                <td><?= $player['rounds_played'] ?></td>
+                                <td><?= $player['rounds_won'] ?></td>
                                 <td>
-                                    <?php if ($player['game_count'] > 0): ?>
+                                    <?php if ($player['rounds_played'] > 0): ?>
                                         <span class="badge badge-success">
-                                            <?= round(($player['win_count'] / $player['game_count']) * 100) ?>%
+                                            <?= round(($player['rounds_won'] / $player['rounds_played']) * 100) ?>%
                                         </span>
                                     <?php else: ?>
                                         <span class="text-muted">—</span>

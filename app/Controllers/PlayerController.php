@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\Middleware;
+use App\Config\Database;
 use App\Models\Player;
 use App\Models\Space;
 use App\Models\SpaceMember;
@@ -19,12 +20,14 @@ class PlayerController extends Controller
     private Player $playerModel;
     private Space $spaceModel;
     private SpaceMember $spaceMemberModel;
+    private \PDO $pdo;
 
     public function __construct()
     {
         $this->playerModel = new Player();
         $this->spaceModel = new Space();
         $this->spaceMemberModel = new SpaceMember();
+        $this->pdo = Database::getInstance()->getConnection();
     }
 
     private function checkAccess(string $spaceId, array $roles = ['admin', 'manager', 'member', 'guest']): array
@@ -51,7 +54,15 @@ class PlayerController extends Controller
         $ctx = $this->checkAccess($id);
         $players = $this->playerModel->findBySpace((int) $id);
 
-        // Récupérer les membres de l'espace pour la liaison
+        // Calculer les stats par manches (rounds) pour chaque joueur
+        $roundStats = $this->computeRoundStats((int) $id);
+        foreach ($players as &$player) {
+            $pid = (int) $player['id'];
+            $player['rounds_played'] = $roundStats[$pid]['played'] ?? 0;
+            $player['rounds_won']    = $roundStats[$pid]['won'] ?? 0;
+        }
+        unset($player);
+
         $this->render('players/index', [
             'title'        => 'Joueurs',
             'currentSpace' => $ctx['space'],
@@ -59,6 +70,79 @@ class PlayerController extends Controller
             'activeMenu'   => 'players',
             'players'      => $players,
         ]);
+    }
+
+    /**
+     * Calcule les manches jouées et gagnées par joueur dans l'espace.
+     * Même logique que StatController::getTopPlayers() : le gagnant d'une
+     * manche est celui qui a le meilleur score selon la win_condition du jeu.
+     * En cas d'égalité au meilleur score, tous les ex-aequo sont gagnants.
+     *
+     * @return array<int, array{played: int, won: int}> Indexé par player_id
+     */
+    private function computeRoundStats(int $spaceId): array
+    {
+        // Récupérer toutes les manches terminées des parties terminées
+        $stmt = $this->pdo->prepare("
+            SELECT r.id AS round_id, gt.win_condition
+            FROM rounds r
+            JOIN games g ON g.id = r.game_id
+            JOIN game_types gt ON gt.id = g.game_type_id
+            WHERE g.space_id = :space_id
+              AND g.status = 'completed'
+              AND r.status = 'completed'
+        ");
+        $stmt->execute(['space_id' => $spaceId]);
+        $rounds = $stmt->fetchAll();
+
+        $played = []; // player_id => int
+        $won    = []; // player_id => int
+
+        foreach ($rounds as $round) {
+            $scoreStmt = $this->pdo->prepare("
+                SELECT rs.player_id, rs.score
+                FROM round_scores rs
+                WHERE rs.round_id = :round_id
+            ");
+            $scoreStmt->execute(['round_id' => $round['round_id']]);
+            $scores = $scoreStmt->fetchAll();
+
+            if (empty($scores)) {
+                continue;
+            }
+
+            // Compter la manche comme jouée pour chaque participant
+            foreach ($scores as $s) {
+                $pid = (int) $s['player_id'];
+                $played[$pid] = ($played[$pid] ?? 0) + 1;
+            }
+
+            // Déterminer le meilleur score selon la condition de victoire
+            $scoreValues = array_column($scores, 'score');
+            if ($round['win_condition'] === 'ranking' || $round['win_condition'] === 'lowest_score') {
+                $bestScore = min($scoreValues);
+            } else {
+                $bestScore = max($scoreValues);
+            }
+
+            // Tous les joueurs au meilleur score gagnent la manche
+            foreach ($scores as $s) {
+                if ((float) $s['score'] === (float) $bestScore) {
+                    $pid = (int) $s['player_id'];
+                    $won[$pid] = ($won[$pid] ?? 0) + 1;
+                }
+            }
+        }
+
+        $result = [];
+        foreach ($played as $pid => $count) {
+            $result[$pid] = [
+                'played' => $count,
+                'won'    => $won[$pid] ?? 0,
+            ];
+        }
+
+        return $result;
     }
 
     /**
