@@ -106,17 +106,17 @@ class StatController extends Controller
      * Une manche est considérée gagnée si le joueur a le meilleur score
      * (selon la win_condition du jeu). En cas d'égalité au 1er rang,
      * tous les joueurs ex-aequo sont comptés comme gagnants.
+     * Inclut toutes les manches terminées, y compris celles des parties en cours.
      */
     private function getTopPlayers(int $spaceId, int $limit): array
     {
-        // Récupérer toutes les manches terminées des parties terminées de l'espace
+        // Récupérer toutes les manches terminées de l'espace (parties en cours incluses)
         $stmt = $this->pdo->prepare("
             SELECT r.id AS round_id, g.id AS game_id, gt.win_condition
             FROM rounds r
             JOIN games g ON g.id = r.game_id
             JOIN game_types gt ON gt.id = g.game_type_id
             WHERE g.space_id = :space_id
-              AND g.status = 'completed'
               AND r.status = 'completed'
         ");
         $stmt->execute(['space_id' => $spaceId]);
@@ -200,7 +200,7 @@ class StatController extends Controller
     }
 
     /**
-     * Dernières parties terminées.
+     * Dernières parties (terminées ou en cours).
      */
     private function getRecentCompleted(int $spaceId, int $limit): array
     {
@@ -213,7 +213,7 @@ class StatController extends Controller
                     WHERE gp2.game_id = g.id AND gp2.rank = 1) AS winner_name
             FROM games g
             JOIN game_types gt ON gt.id = g.game_type_id
-            WHERE g.space_id = :space_id AND g.status = 'completed'
+            WHERE g.space_id = :space_id
             ORDER BY g.created_at DESC
             LIMIT :lim
         ");

@@ -77,19 +77,19 @@ class PlayerController extends Controller
      * Même logique que StatController::getTopPlayers() : le gagnant d'une
      * manche est celui qui a le meilleur score selon la win_condition du jeu.
      * En cas d'égalité au meilleur score, tous les ex-aequo sont gagnants.
+     * Inclut toutes les manches terminées, y compris celles des parties en cours.
      *
      * @return array<int, array{played: int, won: int}> Indexé par player_id
      */
     private function computeRoundStats(int $spaceId): array
     {
-        // Récupérer toutes les manches terminées des parties terminées
+        // Récupérer toutes les manches terminées de l'espace (parties en cours incluses)
         $stmt = $this->pdo->prepare("
             SELECT r.id AS round_id, gt.win_condition
             FROM rounds r
             JOIN games g ON g.id = r.game_id
             JOIN game_types gt ON gt.id = g.game_type_id
             WHERE g.space_id = :space_id
-              AND g.status = 'completed'
               AND r.status = 'completed'
         ");
         $stmt->execute(['space_id' => $spaceId]);

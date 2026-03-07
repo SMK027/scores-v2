@@ -81,18 +81,19 @@
         </div>
     </div>
 
-    <!-- Dernières parties terminées -->
+    <!-- Dernières parties -->
     <div class="card">
         <div class="card-header"><h3>🎮 Dernières parties</h3></div>
         <div class="card-body">
             <?php if (empty($recentGames)): ?>
-                <p class="text-muted text-center">Aucune partie terminée.</p>
+                <p class="text-muted text-center">Aucune partie.</p>
             <?php else: ?>
                 <div class="table-responsive">
                     <table class="table table-sm">
                         <thead>
                             <tr>
                                 <th>Jeu</th>
+                                <th>Statut</th>
                                 <th>Gagnant</th>
                                 <th class="text-right">Joueurs</th>
                                 <th class="text-right">Date</th>
@@ -106,7 +107,16 @@
                                             <?= e($game['game_type_name']) ?>
                                         </a>
                                     </td>
-                                    <td class="font-bold"><?= e($game['winner_name'] ?? '-') ?></td>
+                                    <td>
+                                        <?php if ($game['status'] === 'completed'): ?>
+                                            <span class="badge badge-success">Terminée</span>
+                                        <?php elseif ($game['status'] === 'paused'): ?>
+                                            <span class="badge badge-warning">En pause</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-info">En cours</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="font-bold"><?= e($game['winner_name'] ?? '—') ?></td>
                                     <td class="text-right"><?= $game['player_count'] ?></td>
                                     <td class="text-right text-muted text-small"><?= time_ago($game['created_at']) ?></td>
                                 </tr>
