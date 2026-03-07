@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: scores_app
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+      - ./data/uploads:/var/www/html/public/uploads
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - APP_URL=${APP_URL}
+      - APP_DEBUG=${APP_DEBUG}
+      - APP_KEY=${APP_KEY}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_ENCRYPTION=${SMTP_ENCRYPTION}
+      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS}
+      - MAIL_FROM_NAME=${MAIL_FROM_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - scores_network
+    restart: unless-stopped
+
+  db:
+    image: mariadb:10.11
+    container_name: scores_db
+    command: --default-time-zone='+01:00'
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: scores_db
+      MYSQL_USER: scores_user
+      MYSQL_PASSWORD: scores_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - scores_network
+    restart: unless-stopped
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: scores_phpmyadmin
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: scores_user
+      PMA_PASSWORD: scores_password
+    depends_on:
+      - db
+    networks:
+      - scores_network
+    restart: unless-stopped
+
+networks:
+  scores_network:
+    driver: bridge
