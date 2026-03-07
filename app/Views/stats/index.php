@@ -45,27 +45,33 @@
                             <tr>
                                 <th>#</th>
                                 <th>Joueur</th>
-                                <th class="text-right">Victoires</th>
-                                <th class="text-right">Parties</th>
+                                <th class="text-right">Manches gagnées</th>
+                                <th class="text-right">Manches jouées</th>
                                 <th class="text-right">Taux</th>
-                                <th class="text-right">Score moy.</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($topPlayers as $i => $player): ?>
+                            <?php
+                                $lastWon = null;
+                                $displayRank = 0;
+                                foreach ($topPlayers as $i => $player):
+                                    if ($lastWon === null || $player['rounds_won'] !== $lastWon) {
+                                        $displayRank = $i + 1;
+                                    }
+                                    $lastWon = $player['rounds_won'];
+                            ?>
                                 <tr>
                                     <td>
-                                        <?php if ($i === 0): ?>🥇
-                                        <?php elseif ($i === 1): ?>🥈
-                                        <?php elseif ($i === 2): ?>🥉
-                                        <?php else: ?><?= $i + 1 ?>
+                                        <?php if ($displayRank === 1): ?>🥇
+                                        <?php elseif ($displayRank === 2): ?>🥈
+                                        <?php elseif ($displayRank === 3): ?>🥉
+                                        <?php else: ?><?= $displayRank ?>
                                         <?php endif; ?>
                                     </td>
                                     <td class="font-bold"><?= e($player['name']) ?></td>
-                                    <td class="text-right"><?= $player['wins'] ?></td>
-                                    <td class="text-right"><?= $player['games_played'] ?></td>
+                                    <td class="text-right"><?= $player['rounds_won'] ?></td>
+                                    <td class="text-right"><?= $player['rounds_played'] ?></td>
                                     <td class="text-right"><?= $player['win_rate'] ?>%</td>
-                                    <td class="text-right"><?= $player['avg_score'] ?? '-' ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

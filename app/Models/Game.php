@@ -165,11 +165,23 @@ class Game extends Model
         );
         $players = $playersStmt->fetchAll();
 
-        foreach ($players as $rank => $player) {
-            $isWinner = ($rank === 0) ? 1 : 0;
+        // Classement avec gestion des égalités (dense rank)
+        $currentRank = 0;
+        $lastScore = null;
+
+        foreach ($players as $index => $player) {
+            $score = (float) $player['total_score'];
+
+            // Nouveau rang seulement si le score diffère du précédent
+            if ($lastScore === null || $score !== $lastScore) {
+                $currentRank = $index + 1;
+            }
+            $lastScore = $score;
+
+            $isWinner = ($currentRank === 1) ? 1 : 0;
             $this->query(
                 "UPDATE game_players SET `rank` = :rank, is_winner = :is_winner WHERE id = :id",
-                ['rank' => $rank + 1, 'is_winner' => $isWinner, 'id' => $player['id']]
+                ['rank' => $currentRank, 'is_winner' => $isWinner, 'id' => $player['id']]
             );
         }
     }
