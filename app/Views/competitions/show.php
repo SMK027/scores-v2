@@ -6,12 +6,14 @@
             $statusBadge = match ($competition['status']) {
                 'planned' => 'badge-warning',
                 'active'  => 'badge-success',
+                'paused'  => 'badge-info',
                 'closed'  => 'badge-secondary',
                 default   => '',
             };
             $statusLabel = match ($competition['status']) {
                 'planned' => 'Planifiée',
                 'active'  => 'Active',
+                'paused'  => 'En pause',
                 'closed'  => 'Clôturée',
                 default   => $competition['status'],
             };
@@ -30,6 +32,11 @@
     <div class="d-flex gap-1 flex-wrap">
         <a href="/spaces/<?= $currentSpace['id'] ?>/competitions" class="btn btn-outline btn-sm">← Retour</a>
         <?php if ($isStaff): ?>
+            <?php if ($competition['status'] !== 'closed'): ?>
+                <a href="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/edit" class="btn btn-sm btn-outline" title="Modifier">
+                    <i class="bi bi-pencil"></i> Modifier
+                </a>
+            <?php endif; ?>
             <?php if ($competition['status'] === 'planned'): ?>
                 <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/activate" style="display:inline;">
                     <?= csrf_field() ?>
@@ -37,6 +44,20 @@
                 </form>
             <?php endif; ?>
             <?php if ($competition['status'] === 'active'): ?>
+                <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/pause" style="display:inline;">
+                    <?= csrf_field() ?>
+                    <button class="btn btn-sm btn-info" data-confirm="Mettre en pause ? Les arbitres ne pourront plus saisir.">⏸ Pause</button>
+                </form>
+                <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/close" style="display:inline;">
+                    <?= csrf_field() ?>
+                    <button class="btn btn-sm btn-warning" data-confirm="Clôturer ? Toutes les sessions seront désactivées.">⏹ Clôturer</button>
+                </form>
+            <?php endif; ?>
+            <?php if ($competition['status'] === 'paused'): ?>
+                <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/resume" style="display:inline;">
+                    <?= csrf_field() ?>
+                    <button class="btn btn-sm btn-success" data-confirm="Reprendre la compétition ?">▶ Reprendre</button>
+                </form>
                 <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/close" style="display:inline;">
                     <?= csrf_field() ?>
                     <button class="btn btn-sm btn-warning" data-confirm="Clôturer ? Toutes les sessions seront désactivées.">⏹ Clôturer</button>

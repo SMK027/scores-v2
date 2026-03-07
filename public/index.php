@@ -188,7 +188,11 @@ $router->get('/spaces/{id}/competitions', CompetitionController::class, 'index')
 $router->get('/spaces/{id}/competitions/create', CompetitionController::class, 'createForm');
 $router->post('/spaces/{id}/competitions/create', CompetitionController::class, 'create');
 $router->get('/spaces/{id}/competitions/{cid}', CompetitionController::class, 'show');
+$router->get('/spaces/{id}/competitions/{cid}/edit', CompetitionController::class, 'editForm');
+$router->post('/spaces/{id}/competitions/{cid}/edit', CompetitionController::class, 'update');
 $router->post('/spaces/{id}/competitions/{cid}/activate', CompetitionController::class, 'activate');
+$router->post('/spaces/{id}/competitions/{cid}/pause', CompetitionController::class, 'pause');
+$router->post('/spaces/{id}/competitions/{cid}/resume', CompetitionController::class, 'resume');
 $router->post('/spaces/{id}/competitions/{cid}/close', CompetitionController::class, 'close');
 $router->post('/spaces/{id}/competitions/{cid}/sessions/add', CompetitionController::class, 'addSession');
 $router->post('/spaces/{id}/competitions/{cid}/delete', CompetitionController::class, 'delete');

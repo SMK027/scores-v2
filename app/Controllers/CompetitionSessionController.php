@@ -77,6 +77,22 @@ class CompetitionSessionController extends Controller
             exit;
         }
 
+        // Vérifier que la compétition n'est pas en pause ou clôturée
+        $competition = (new Competition())->find($data['competition_id']);
+        if ($competition && $competition['status'] === 'paused') {
+            $this->renderMinimal('competitions/session_paused', [
+                'title'   => 'Compétition en pause',
+                'session' => $data,
+            ]);
+            exit;
+        }
+        if ($competition && $competition['status'] === 'closed') {
+            Session::remove('competition_session');
+            $this->setFlash('warning', 'Cette compétition est clôturée.');
+            $this->redirect('/competition/login');
+            exit;
+        }
+
         return $data;
     }
 

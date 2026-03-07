@@ -205,6 +205,70 @@ class CompetitionController extends Controller
     }
 
     /**
+     * Formulaire de modification d'une compétition.
+     */
+    public function editForm(string $id, string $cid): void
+    {
+        $this->requireStaff();
+
+        $space = $this->spaceModel->find((int) $id);
+        if (!$space) {
+            $this->setFlash('danger', 'Espace introuvable.');
+            $this->redirect('/spaces');
+        }
+        $member = Middleware::checkSpaceAccess((int) $id, $this->getCurrentUserId());
+
+        $competition = $this->competition->find((int) $cid);
+        if (!$competition || (int) $competition['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Compétition introuvable.');
+            $this->redirect("/spaces/{$id}/competitions");
+            return;
+        }
+
+        $this->render('competitions/edit', [
+            'title'        => 'Modifier la compétition',
+            'currentSpace' => $space,
+            'spaceRole'    => $member['role'] ?? 'admin',
+            'activeMenu'   => 'competitions',
+            'competition'  => $competition,
+        ]);
+    }
+
+    /**
+     * Traite la modification d'une compétition.
+     */
+    public function update(string $id, string $cid): void
+    {
+        $this->requireStaff();
+        $this->validateCSRF();
+
+        $competition = $this->competition->find((int) $cid);
+        if (!$competition || (int) $competition['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Compétition introuvable.');
+            $this->redirect("/spaces/{$id}/competitions");
+            return;
+        }
+
+        $data = $this->getPostData(['name', 'description', 'starts_at', 'ends_at']);
+
+        if (empty($data['name']) || empty($data['starts_at']) || empty($data['ends_at'])) {
+            $this->setFlash('danger', 'Le nom, la date de début et la date de fin sont requis.');
+            $this->redirect("/spaces/{$id}/competitions/{$cid}/edit");
+            return;
+        }
+
+        $this->competition->update((int) $cid, [
+            'name'        => $data['name'],
+            'description' => $data['description'] ?: null,
+            'starts_at'   => $data['starts_at'],
+            'ends_at'     => $data['ends_at'],
+        ]);
+
+        $this->setFlash('success', 'Compétition mise à jour.');
+        $this->redirect("/spaces/{$id}/competitions/{$cid}");
+    }
+
+    /**
      * Active une compétition.
      */
     public function activate(string $id, string $cid): void
@@ -221,6 +285,58 @@ class CompetitionController extends Controller
 
         $this->competition->activate((int) $cid);
         $this->setFlash('success', 'Compétition activée.');
+        $this->redirect("/spaces/{$id}/competitions/{$cid}");
+    }
+
+    /**
+     * Met en pause une compétition active.
+     */
+    public function pause(string $id, string $cid): void
+    {
+        $this->requireStaff();
+        $this->validateCSRF();
+
+        $competition = $this->competition->find((int) $cid);
+        if (!$competition || (int) $competition['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Compétition introuvable.');
+            $this->redirect("/spaces/{$id}/competitions");
+            return;
+        }
+
+        if ($competition['status'] !== 'active') {
+            $this->setFlash('danger', 'Seule une compétition active peut être mise en pause.');
+            $this->redirect("/spaces/{$id}/competitions/{$cid}");
+            return;
+        }
+
+        $this->competition->pause((int) $cid);
+        $this->setFlash('success', 'Compétition mise en pause.');
+        $this->redirect("/spaces/{$id}/competitions/{$cid}");
+    }
+
+    /**
+     * Reprend une compétition en pause.
+     */
+    public function resume(string $id, string $cid): void
+    {
+        $this->requireStaff();
+        $this->validateCSRF();
+
+        $competition = $this->competition->find((int) $cid);
+        if (!$competition || (int) $competition['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Compétition introuvable.');
+            $this->redirect("/spaces/{$id}/competitions");
+            return;
+        }
+
+        if ($competition['status'] !== 'paused') {
+            $this->setFlash('danger', 'Seule une compétition en pause peut être reprise.');
+            $this->redirect("/spaces/{$id}/competitions/{$cid}");
+            return;
+        }
+
+        $this->competition->resume((int) $cid);
+        $this->setFlash('success', 'Compétition reprise.');
         $this->redirect("/spaces/{$id}/competitions/{$cid}");
     }
 

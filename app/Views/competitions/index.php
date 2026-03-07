@@ -34,12 +34,14 @@
                         $statusBadge = match ($c['status']) {
                             'planned' => 'badge-warning',
                             'active'  => 'badge-success',
+                            'paused'  => 'badge-info',
                             'closed'  => 'badge-secondary',
                             default   => '',
                         };
                         $statusLabel = match ($c['status']) {
                             'planned' => 'Planifiée',
                             'active'  => 'Active',
+                            'paused'  => 'En pause',
                             'closed'  => 'Clôturée',
                             default   => $c['status'],
                         };

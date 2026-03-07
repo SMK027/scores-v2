@@ -68,4 +68,20 @@ class Competition extends Model
     {
         $this->update($id, ['status' => 'active']);
     }
+
+    /**
+     * Met la compétition en pause (les sessions restent actives mais bloquées).
+     */
+    public function pause(int $id): void
+    {
+        $this->update($id, ['status' => 'paused']);
+    }
+
+    /**
+     * Reprend une compétition en pause.
+     */
+    public function resume(int $id): void
+    {
+        $this->update($id, ['status' => 'active']);
+    }
 }
