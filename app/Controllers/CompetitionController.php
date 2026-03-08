@@ -539,8 +539,11 @@ class CompetitionController extends Controller
                 . "<li><strong>ID de la compétition :</strong> " . $competitionId . "</li>"
                 . "<li><strong>Numéro de session :</strong> " . (int) $s['session_number'] . "</li>"
                 . "<li><strong>Mot de passe :</strong> " . htmlspecialchars($s['password']) . "</li>"
-                . "</ul>"
-                . "<p>Connectez-vous sur la page <code>/competition/login</code> pour accéder à votre interface de saisie.</p>"
+                . "</ul>";
+
+            $loginUrl = rtrim(getenv('APP_URL') ?: ($_SERVER['REQUEST_SCHEME'] ?? 'https') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), '/') . '/competition/login';
+
+            $body .= "<p>Connectez-vous ici pour accéder à votre interface de saisie : <a href=\"" . htmlspecialchars($loginUrl) . "\">" . htmlspecialchars($loginUrl) . "</a></p>"
                 . "<p>— L'équipe Scores</p>";
 
             try {
