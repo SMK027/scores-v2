@@ -23,7 +23,7 @@
                 <div class="form-group">
                     <label for="password" class="form-label">Mot de passe</label>
                     <input type="text" id="password" name="password" class="form-control"
-                           required maxlength="6" placeholder="6 caractères" autocomplete="off">
+                           required maxlength="12" placeholder="12 caractères" autocomplete="off">
                 </div>
 
                 <div class="form-group">

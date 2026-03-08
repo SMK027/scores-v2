@@ -39,6 +39,7 @@
             <div id="sessionsContainer">
                 <div class="d-flex gap-1 mb-2 session-row">
                     <input type="text" name="referee_names[]" class="form-control" placeholder="Nom de l'arbitre" required style="flex:1;">
+                    <input type="email" name="referee_emails[]" class="form-control" placeholder="Email de l'arbitre" style="flex:1;">
                     <button type="button" class="btn btn-sm btn-outline" onclick="this.closest('.session-row').remove()" title="Supprimer">
                         <i class="bi bi-trash"></i>
                     </button>
@@ -62,6 +63,7 @@ function addSessionRow() {
     const div = document.createElement('div');
     div.className = 'd-flex gap-1 mb-2 session-row';
     div.innerHTML = '<input type="text" name="referee_names[]" class="form-control" placeholder="Nom de l\'arbitre" required style="flex:1;">' +
+        '<input type="email" name="referee_emails[]" class="form-control" placeholder="Email de l\'arbitre" style="flex:1;">' +
         '<button type="button" class="btn btn-sm btn-outline" onclick="this.closest(\'.session-row\').remove()" title="Supprimer"><i class="bi bi-trash"></i></button>';
     container.appendChild(div);
     div.querySelector('input').focus();

@@ -78,7 +78,8 @@
         <?php if ($isStaff && $competition['status'] !== 'closed'): ?>
             <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/sessions/add" class="d-flex gap-1">
                 <?= csrf_field() ?>
-                <input type="text" name="referee_name" class="form-control form-control-sm" placeholder="Nom de l'arbitre" required style="width:200px;">
+                <input type="text" name="referee_name" class="form-control form-control-sm" placeholder="Nom de l'arbitre" required style="width:150px;">
+                <input type="email" name="referee_email" class="form-control form-control-sm" placeholder="Email (optionnel)" style="width:200px;">
                 <button class="btn btn-sm btn-primary">+ Session</button>
             </form>
         <?php endif; ?>
@@ -98,24 +99,58 @@
                             <?php endif; ?>
                             <th>Parties</th>
                             <th>Statut</th>
+                            <?php if ($isStaff): ?>
+                                <th>Actions</th>
+                            <?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($sessions as $s): ?>
                         <tr>
                             <td><strong><?= (int) $s['session_number'] ?></strong></td>
-                            <td><?= e($s['referee_name']) ?></td>
+                            <td>
+                                <?= e($s['referee_name']) ?>
+                                <?php if (!empty($s['referee_email'])): ?>
+                                    <span class="text-muted text-small">(<?= e($s['referee_email']) ?>)</span>
+                                <?php endif; ?>
+                            </td>
                             <?php if ($isStaff): ?>
-                                <td><code><?= e($s['password']) ?></code></td>
+                                <td>
+                                    <span class="session-password" data-hidden="true" style="cursor:pointer;" onclick="this.dataset.hidden=this.dataset.hidden==='true'?'false':'true';this.querySelector('.pw-mask').style.display=this.dataset.hidden==='true'?'inline':'none';this.querySelector('.pw-value').style.display=this.dataset.hidden==='true'?'none':'inline';">
+                                        <span class="pw-mask">••••••••••••</span>
+                                        <code class="pw-value" style="display:none;"><?= e($s['password']) ?></code>
+                                    </span>
+                                </td>
                             <?php endif; ?>
                             <td><?= (int) $s['game_count'] ?></td>
                             <td>
-                                <?php if ($s['is_active']): ?>
+                                <?php if ($s['is_locked']): ?>
+                                    <span class="badge badge-danger">🔒 Verrouillée</span>
+                                <?php elseif ($s['is_active']): ?>
                                     <span class="badge badge-success">Active</span>
                                 <?php else: ?>
                                     <span class="badge badge-secondary">Inactive</span>
                                 <?php endif; ?>
                             </td>
+                            <?php if ($isStaff): ?>
+                                <td class="d-flex gap-1 flex-wrap">
+                                    <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/sessions/<?= $s['id'] ?>/reset-password" style="display:inline;">
+                                        <?= csrf_field() ?>
+                                        <button type="submit" class="btn btn-sm btn-outline" data-confirm="Réinitialiser le mot de passe de cette session ?" title="Réinitialiser MDP">🔑</button>
+                                    </form>
+                                    <?php if ($s['is_active']): ?>
+                                        <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/sessions/<?= $s['id'] ?>/deactivate" style="display:inline;">
+                                            <?= csrf_field() ?>
+                                            <button type="submit" class="btn btn-sm btn-warning" data-confirm="Interrompre cette session ? L'arbitre sera déconnecté." title="Interrompre">⏹</button>
+                                        </form>
+                                    <?php else: ?>
+                                        <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/sessions/<?= $s['id'] ?>/reactivate" style="display:inline;">
+                                            <?= csrf_field() ?>
+                                            <button type="submit" class="btn btn-sm btn-success" data-confirm="Réactiver cette session ?" title="Réactiver">▶</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </td>
+                            <?php endif; ?>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -126,19 +161,22 @@
                 <div class="card mt-2" style="background:var(--bg-secondary); border:1px dashed var(--border-color);">
                     <div class="card-body text-small">
                         <strong>Codes de connexion arbitres :</strong>
-                        <p class="text-muted">Competition ID : <code><?= (int) $competition['id'] ?></code></p>
-                        <p class="text-muted">URL de connexion : <code>/competition/login</code></p>
-                        <ul style="list-style:none;padding:0;">
-                            <?php foreach ($sessions as $s): ?>
-                                <?php if ($s['is_active']): ?>
-                                <li>
-                                    Session <strong>#<?= (int) $s['session_number'] ?></strong>
-                                    (<?= e($s['referee_name']) ?>) —
-                                    Mot de passe : <code><?= e($s['password']) ?></code>
-                                </li>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </ul>
+                        <button type="button" class="btn btn-sm btn-outline" onclick="var el=this.nextElementSibling;el.style.display=el.style.display==='none'?'block':'none';" style="margin-left:0.5rem;">Consulter les mots de passe</button>
+                        <div style="display:none;">
+                            <p class="text-muted mt-1">Competition ID : <code><?= (int) $competition['id'] ?></code></p>
+                            <p class="text-muted">URL de connexion : <code>/competition/login</code></p>
+                            <ul style="list-style:none;padding:0;">
+                                <?php foreach ($sessions as $s): ?>
+                                    <?php if ($s['is_active']): ?>
+                                    <li>
+                                        Session <strong>#<?= (int) $s['session_number'] ?></strong>
+                                        (<?= e($s['referee_name']) ?>) —
+                                        Mot de passe : <code><?= e($s['password']) ?></code>
+                                    </li>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             <?php endif; ?>

@@ -195,6 +195,9 @@ $router->post('/spaces/{id}/competitions/{cid}/pause', CompetitionController::cl
 $router->post('/spaces/{id}/competitions/{cid}/resume', CompetitionController::class, 'resume');
 $router->post('/spaces/{id}/competitions/{cid}/close', CompetitionController::class, 'close');
 $router->post('/spaces/{id}/competitions/{cid}/sessions/add', CompetitionController::class, 'addSession');
+$router->post('/spaces/{id}/competitions/{cid}/sessions/{sid}/reset-password', CompetitionController::class, 'resetSessionPassword');
+$router->post('/spaces/{id}/competitions/{cid}/sessions/{sid}/deactivate', CompetitionController::class, 'deactivateSession');
+$router->post('/spaces/{id}/competitions/{cid}/sessions/{sid}/reactivate', CompetitionController::class, 'reactivateSession');
 $router->post('/spaces/{id}/competitions/{cid}/delete', CompetitionController::class, 'delete');
 
 // ============================================================

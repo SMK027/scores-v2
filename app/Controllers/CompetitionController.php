@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Core\Mailer;
 use App\Core\Middleware;
 use App\Models\Competition;
 use App\Models\CompetitionSession;
@@ -113,7 +114,8 @@ class CompetitionController extends Controller
         }
 
         $data = $this->getPostData(['name', 'description', 'starts_at', 'ends_at']);
-        $refereeNames = $_POST['referee_names'] ?? [];
+        $refereeNames  = $_POST['referee_names'] ?? [];
+        $refereeEmails = $_POST['referee_emails'] ?? [];
 
         if (empty($data['name']) || empty($data['starts_at']) || empty($data['ends_at'])) {
             $this->setFlash('danger', 'Le nom, la date de début et la date de fin sont requis.');
@@ -127,8 +129,16 @@ class CompetitionController extends Controller
             return;
         }
 
-        // Filtrer les noms vides
-        $refereeNames = array_values(array_filter($refereeNames, fn($n) => trim($n) !== ''));
+        // Construire le tableau de referees avec noms et emails
+        $referees = [];
+        foreach ($refereeNames as $i => $name) {
+            $name = trim($name);
+            if ($name === '') continue;
+            $referees[] = [
+                'name'  => $name,
+                'email' => trim($refereeEmails[$i] ?? ''),
+            ];
+        }
 
         $competitionId = $this->competition->create([
             'space_id'    => (int) $id,
@@ -141,9 +151,12 @@ class CompetitionController extends Controller
         ]);
 
         // Créer les sessions
-        $this->session->createBatch($competitionId, $refereeNames);
+        $created = $this->session->createBatch($competitionId, $referees);
 
-        $this->setFlash('success', 'Compétition créée avec ' . count($refereeNames) . ' session(s).');
+        // Envoyer les emails aux arbitres
+        $this->sendSessionEmails($created, $data['name'], $competitionId);
+
+        $this->setFlash('success', 'Compétition créée avec ' . count($referees) . ' session(s).');
         $this->redirect("/spaces/{$id}/competitions/{$competitionId}");
     }
 
@@ -375,15 +388,111 @@ class CompetitionController extends Controller
             return;
         }
 
-        $refereeName = trim($_POST['referee_name'] ?? '');
+        $refereeName  = trim($_POST['referee_name'] ?? '');
+        $refereeEmail = trim($_POST['referee_email'] ?? '');
         if (empty($refereeName)) {
             $this->setFlash('danger', 'Le nom de l\'arbitre est requis.');
             $this->redirect("/spaces/{$id}/competitions/{$cid}");
             return;
         }
 
-        $this->session->createBatch((int) $cid, [$refereeName]);
+        $created = $this->session->createBatch((int) $cid, [['name' => $refereeName, 'email' => $refereeEmail]]);
+        $this->sendSessionEmails($created, $competition['name'], (int) $cid);
         $this->setFlash('success', 'Session ajoutée.');
+        $this->redirect("/spaces/{$id}/competitions/{$cid}");
+    }
+
+    /**
+     * Réinitialise le mot de passe d'une session et envoie un email.
+     */
+    public function resetSessionPassword(string $id, string $cid, string $sid): void
+    {
+        $this->requireStaff();
+        $this->validateCSRF();
+
+        $competition = $this->competition->find((int) $cid);
+        if (!$competition || (int) $competition['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Compétition introuvable.');
+            $this->redirect("/spaces/{$id}/competitions");
+            return;
+        }
+
+        $session = $this->session->find((int) $sid);
+        if (!$session || (int) $session['competition_id'] !== (int) $cid) {
+            $this->setFlash('danger', 'Session introuvable.');
+            $this->redirect("/spaces/{$id}/competitions/{$cid}");
+            return;
+        }
+
+        $newPassword = $this->session->resetPassword((int) $sid);
+
+        // Envoyer l'email si l'arbitre a un email
+        if (!empty($session['referee_email'])) {
+            $this->sendSessionEmails([
+                [
+                    'referee_name'   => $session['referee_name'],
+                    'referee_email'  => $session['referee_email'],
+                    'session_number' => $session['session_number'],
+                    'password'       => $newPassword,
+                ],
+            ], $competition['name'], (int) $cid);
+        }
+
+        $this->setFlash('success', 'Mot de passe réinitialisé pour la session #' . $session['session_number'] . '. Nouveau : ' . $newPassword);
+        $this->redirect("/spaces/{$id}/competitions/{$cid}");
+    }
+
+    /**
+     * Interrompt (désactive) une session à distance.
+     */
+    public function deactivateSession(string $id, string $cid, string $sid): void
+    {
+        $this->requireStaff();
+        $this->validateCSRF();
+
+        $competition = $this->competition->find((int) $cid);
+        if (!$competition || (int) $competition['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Compétition introuvable.');
+            $this->redirect("/spaces/{$id}/competitions");
+            return;
+        }
+
+        $session = $this->session->find((int) $sid);
+        if (!$session || (int) $session['competition_id'] !== (int) $cid) {
+            $this->setFlash('danger', 'Session introuvable.');
+            $this->redirect("/spaces/{$id}/competitions/{$cid}");
+            return;
+        }
+
+        $this->session->deactivate((int) $sid);
+        $this->setFlash('success', 'Session #' . $session['session_number'] . ' interrompue.');
+        $this->redirect("/spaces/{$id}/competitions/{$cid}");
+    }
+
+    /**
+     * Réactive une session interrompue.
+     */
+    public function reactivateSession(string $id, string $cid, string $sid): void
+    {
+        $this->requireStaff();
+        $this->validateCSRF();
+
+        $competition = $this->competition->find((int) $cid);
+        if (!$competition || (int) $competition['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Compétition introuvable.');
+            $this->redirect("/spaces/{$id}/competitions");
+            return;
+        }
+
+        $session = $this->session->find((int) $sid);
+        if (!$session || (int) $session['competition_id'] !== (int) $cid) {
+            $this->setFlash('danger', 'Session introuvable.');
+            $this->redirect("/spaces/{$id}/competitions/{$cid}");
+            return;
+        }
+
+        $this->session->reactivate((int) $sid);
+        $this->setFlash('success', 'Session #' . $session['session_number'] . ' réactivée.');
         $this->redirect("/spaces/{$id}/competitions/{$cid}");
     }
 
@@ -409,6 +518,40 @@ class CompetitionController extends Controller
         $this->competition->delete((int) $cid);
         $this->setFlash('success', 'Compétition supprimée.');
         $this->redirect("/spaces/{$id}/competitions");
+    }
+
+    /**
+     * Envoie un email de connexion à chaque arbitre ayant un email.
+     */
+    private function sendSessionEmails(array $sessions, string $competitionName, int $competitionId): void
+    {
+        $mailer = new Mailer();
+        foreach ($sessions as $s) {
+            $email = $s['referee_email'] ?? '';
+            if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                continue;
+            }
+
+            $body = "<h2>Scores — Compétition : " . htmlspecialchars($competitionName) . "</h2>"
+                . "<p>Bonjour <strong>" . htmlspecialchars($s['referee_name']) . "</strong>,</p>"
+                . "<p>Voici vos identifiants de connexion pour la session d'arbitrage :</p>"
+                . "<ul>"
+                . "<li><strong>ID de la compétition :</strong> " . $competitionId . "</li>"
+                . "<li><strong>Numéro de session :</strong> " . (int) $s['session_number'] . "</li>"
+                . "<li><strong>Mot de passe :</strong> " . htmlspecialchars($s['password']) . "</li>"
+                . "</ul>"
+                . "<p>Connectez-vous sur la page <code>/competition/login</code> pour accéder à votre interface de saisie.</p>"
+                . "<p>— L'équipe Scores</p>";
+
+            try {
+                $mailer->send($email, "Scores — Vos identifiants d'arbitrage", $body);
+            } catch (\RuntimeException $e) {
+                // Ne pas bloquer la création si l'email échoue
+                if (getenv('APP_DEBUG') === 'true') {
+                    error_log("Email arbitre échoué ({$email}): " . $e->getMessage());
+                }
+            }
+        }
     }
 
     /**

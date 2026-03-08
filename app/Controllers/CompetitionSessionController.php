@@ -131,8 +131,29 @@ class CompetitionSessionController extends Controller
             return;
         }
 
+        // Vérifier si la session existe et si elle est verrouillée
+        $targetSession = $this->sessionModel->findByCompetitionAndNumber($competitionId, $sessionNumber);
+        if ($targetSession && $targetSession['is_locked']) {
+            $this->setFlash('danger', 'Cette session est verrouillée suite à trop de tentatives échouées. Contactez un membre de l\'équipe.');
+            $this->redirect('/competition/login');
+            return;
+        }
+
         $session = $this->sessionModel->authenticate($competitionId, $sessionNumber, $password);
         if (!$session) {
+            // Enregistrer la tentative échouée si la session existe
+            if ($targetSession) {
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+                $this->sessionModel->recordFailedAttempt((int) $targetSession['id'], $ip);
+                // Verrouiller après 3 tentatives en 15 minutes
+                $recentAttempts = $this->sessionModel->countRecentFailedAttempts((int) $targetSession['id'], 15);
+                if ($recentAttempts >= 3) {
+                    $this->sessionModel->lock((int) $targetSession['id']);
+                    $this->setFlash('danger', 'Session verrouillée : trop de tentatives échouées. Contactez un membre de l\'équipe pour la réinitialiser.');
+                    $this->redirect('/competition/login');
+                    return;
+                }
+            }
             $this->setFlash('danger', 'Identifiants invalides ou session désactivée.');
             $this->redirect('/competition/login');
             return;
