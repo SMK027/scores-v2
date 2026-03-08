@@ -22,8 +22,11 @@
 
                 <div class="form-group">
                     <label for="password" class="form-label">Mot de passe</label>
-                    <input type="text" id="password" name="password" class="form-control"
-                           required placeholder="Mot de passe" autocomplete="off">
+                    <div style="position:relative;">
+                        <input type="password" id="password" name="password" class="form-control"
+                               required placeholder="Mot de passe" autocomplete="off" style="padding-right:3rem;">
+                        <button type="button" onclick="var p=document.getElementById('password');if(p.type==='password'){p.type='text';this.textContent='🙈';}else{p.type='password';this.textContent='👁';}" style="position:absolute;right:0.5rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.1rem;padding:0;">👁</button>
+                    </div>
                 </div>
 
                 <div class="form-group">
