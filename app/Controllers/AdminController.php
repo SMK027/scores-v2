@@ -159,23 +159,59 @@ class AdminController extends Controller
     {
         $this->checkAdmin();
 
-        $stmt = $this->pdo->prepare("
+        $search = trim($_GET['search'] ?? '');
+        $status = $_GET['status'] ?? '';
+        $sort   = $_GET['sort'] ?? '';
+
+        $where  = [];
+        $params = [];
+
+        if ($search !== '') {
+            $where[] = '(s.name LIKE :search OR u.username LIKE :search)';
+            $params['search'] = '%' . $search . '%';
+        }
+
+        if ($status === 'restricted') {
+            $where[] = 's.restrictions IS NOT NULL';
+        } elseif ($status === 'deletion') {
+            $where[] = 's.scheduled_deletion_at IS NOT NULL';
+        } elseif ($status === 'clean') {
+            $where[] = 's.restrictions IS NULL AND s.scheduled_deletion_at IS NULL';
+        }
+
+        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $orderSql = match ($sort) {
+            'name'         => 's.name ASC',
+            'members_desc' => 'member_count DESC',
+            'members_asc'  => 'member_count ASC',
+            'games_desc'   => 'game_count DESC',
+            'games_asc'    => 'game_count ASC',
+            'oldest'       => 's.created_at ASC',
+            default        => 's.scheduled_deletion_at IS NOT NULL DESC, s.restrictions IS NOT NULL DESC, s.created_at DESC',
+        };
+
+        $sql = "
             SELECT s.*, u.username AS owner_name,
                    (SELECT COUNT(*) FROM space_members WHERE space_id = s.id) AS member_count,
                    (SELECT COUNT(*) FROM games WHERE space_id = s.id) AS game_count
             FROM spaces s
             JOIN users u ON u.id = s.created_by
-            ORDER BY s.scheduled_deletion_at IS NOT NULL DESC,
-                     s.restrictions IS NOT NULL DESC,
-                     s.created_at DESC
-        ");
-        $stmt->execute();
+            {$whereSql}
+            ORDER BY {$orderSql}
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
         $spaces = $stmt->fetchAll();
 
         $this->render('admin/spaces', [
             'title'      => 'Gestion des espaces',
             'activeMenu' => 'admin',
             'spaces'     => $spaces,
+            'search'     => $search,
+            'status'     => $status,
+            'sort'       => $sort,
         ]);
     }
 

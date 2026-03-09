@@ -3,6 +3,34 @@
     <a href="/admin" class="btn btn-outline">← Retour</a>
 </div>
 
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="GET" action="/admin/spaces" class="d-flex gap-1 flex-wrap align-center">
+            <input type="text" name="search" class="form-control" placeholder="Rechercher par nom ou créateur…"
+                   value="<?= e($search ?? '') ?>" style="max-width:250px;">
+            <select name="status" class="form-control" style="max-width:200px;">
+                <option value="">Tous les statuts</option>
+                <option value="restricted" <?= ($status ?? '') === 'restricted' ? 'selected' : '' ?>>🔒 Restreints</option>
+                <option value="deletion" <?= ($status ?? '') === 'deletion' ? 'selected' : '' ?>>💣 Suppression prévue</option>
+                <option value="clean" <?= ($status ?? '') === 'clean' ? 'selected' : '' ?>>✅ Sans restriction</option>
+            </select>
+            <select name="sort" class="form-control" style="max-width:200px;">
+                <option value="">Tri par défaut</option>
+                <option value="name" <?= ($sort ?? '') === 'name' ? 'selected' : '' ?>>Nom (A→Z)</option>
+                <option value="members_desc" <?= ($sort ?? '') === 'members_desc' ? 'selected' : '' ?>>Membres ↓</option>
+                <option value="members_asc" <?= ($sort ?? '') === 'members_asc' ? 'selected' : '' ?>>Membres ↑</option>
+                <option value="games_desc" <?= ($sort ?? '') === 'games_desc' ? 'selected' : '' ?>>Parties ↓</option>
+                <option value="games_asc" <?= ($sort ?? '') === 'games_asc' ? 'selected' : '' ?>>Parties ↑</option>
+                <option value="oldest" <?= ($sort ?? '') === 'oldest' ? 'selected' : '' ?>>Plus ancien</option>
+            </select>
+            <button type="submit" class="btn btn-primary">Filtrer</button>
+            <?php if (!empty($search) || !empty($status) || !empty($sort)): ?>
+                <a href="/admin/spaces" class="btn btn-outline">Réinitialiser</a>
+            <?php endif; ?>
+        </form>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-body">
         <div class="table-responsive">
