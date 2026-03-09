@@ -44,11 +44,24 @@ class SessionTest extends TestCase
         $this->assertTrue(Session::has('key'));
     }
 
+    public function testHasReturnsFalseForNull(): void
+    {
+        Session::set('key', null);
+        $this->assertFalse(Session::has('key'));
+    }
+
     public function testRemove(): void
     {
         Session::set('key', 'value');
         Session::remove('key');
         $this->assertFalse(Session::has('key'));
+    }
+
+    public function testRemoveNonExistentKey(): void
+    {
+        // Ne doit pas lever d'exception
+        Session::remove('nonexistent');
+        $this->assertFalse(Session::has('nonexistent'));
     }
 
     public function testFlash(): void
@@ -58,12 +71,33 @@ class SessionTest extends TestCase
         $this->assertIsArray($flash);
         $this->assertSame('success', $flash['type']);
         $this->assertSame('Opération réussie', $flash['message']);
-        // Flash should be consumed after get
+        // Flash doit être consommé après lecture
         $this->assertNull(Session::getFlash());
     }
 
     public function testFlashReturnsNullWhenNotSet(): void
     {
         $this->assertNull(Session::getFlash());
+    }
+
+    public function testSetOverwritesExistingValue(): void
+    {
+        Session::set('key', 'first');
+        Session::set('key', 'second');
+        $this->assertSame('second', Session::get('key'));
+    }
+
+    public function testSetComplexData(): void
+    {
+        $data = ['user' => ['id' => 1, 'name' => 'Alice'], 'roles' => ['admin']];
+        Session::set('data', $data);
+        $this->assertSame($data, Session::get('data'));
+    }
+
+    public function testGetWithDefaultDoesNotSetValue(): void
+    {
+        $value = Session::get('key', 'default');
+        $this->assertSame('default', $value);
+        $this->assertFalse(Session::has('key'));
     }
 }

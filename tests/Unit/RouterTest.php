@@ -40,4 +40,102 @@ class RouterTest extends TestCase
 
         $this->assertInstanceOf(Router::class, $result);
     }
+
+    public function testDispatchCallsCorrectAction(): void
+    {
+        $this->router->get('/hello', RouterTestController::class, 'index');
+
+        ob_start();
+        $this->router->dispatch('GET', '/hello');
+        $output = ob_get_clean();
+
+        $this->assertSame('index_called', $output);
+    }
+
+    public function testDispatchExtractsNamedParameters(): void
+    {
+        $this->router->get('/users/{id}', RouterTestController::class, 'show');
+
+        ob_start();
+        $this->router->dispatch('GET', '/users/42');
+        $output = ob_get_clean();
+
+        $this->assertSame('show_42', $output);
+    }
+
+    public function testDispatchMultipleParameters(): void
+    {
+        $this->router->get('/spaces/{spaceId}/games/{gameId}', RouterTestController::class, 'nested');
+
+        ob_start();
+        $this->router->dispatch('GET', '/spaces/5/games/10');
+        $output = ob_get_clean();
+
+        $this->assertSame('nested_5_10', $output);
+    }
+
+    public function testDispatch404ForUnknownRoute(): void
+    {
+        $this->router->get('/exists', RouterTestController::class, 'index');
+
+        ob_start();
+        $this->router->dispatch('GET', '/does-not-exist');
+        ob_end_clean();
+
+        $this->assertSame(404, http_response_code());
+    }
+
+    public function testDispatchMethodMismatch(): void
+    {
+        $this->router->get('/only-get', RouterTestController::class, 'index');
+
+        ob_start();
+        $this->router->dispatch('POST', '/only-get');
+        ob_end_clean();
+
+        $this->assertSame(404, http_response_code());
+    }
+
+    public function testDispatchTrimsTrailingSlash(): void
+    {
+        $this->router->get('/clean', RouterTestController::class, 'index');
+
+        ob_start();
+        $this->router->dispatch('GET', '/clean/');
+        $output = ob_get_clean();
+
+        $this->assertSame('index_called', $output);
+    }
+
+    public function testDispatchStripsQueryString(): void
+    {
+        $this->router->get('/search', RouterTestController::class, 'index');
+
+        ob_start();
+        $this->router->dispatch('GET', '/search?q=test&page=1');
+        $output = ob_get_clean();
+
+        $this->assertSame('index_called', $output);
+    }
+}
+
+/**
+ * Contrôleur factice pour les tests du Router.
+ */
+class RouterTestController
+{
+    public function index(): void
+    {
+        echo 'index_called';
+    }
+
+    public function show(string $id): void
+    {
+        echo 'show_' . $id;
+    }
+
+    public function nested(string $spaceId, string $gameId): void
+    {
+        echo 'nested_' . $spaceId . '_' . $gameId;
+    }
 }

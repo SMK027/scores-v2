@@ -15,7 +15,6 @@ class CSRFTest extends TestCase
 {
     protected function setUp(): void
     {
-        // Simuler une session
         if (session_status() === PHP_SESSION_NONE) {
             @session_start();
         }
@@ -32,6 +31,12 @@ class CSRFTest extends TestCase
         $token = CSRF::generate();
         $this->assertNotEmpty($token);
         $this->assertIsString($token);
+    }
+
+    public function testGenerateTokenIs64HexChars(): void
+    {
+        $token = CSRF::generate();
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $token);
     }
 
     public function testGenerateTokenIsConsistentWithinSession(): void
@@ -59,12 +64,25 @@ class CSRFTest extends TestCase
         $this->assertFalse(CSRF::validate(''));
     }
 
+    public function testValidateReturnsFalseWhenNoSessionToken(): void
+    {
+        // Pas de token en session
+        $this->assertFalse(CSRF::validate('some_token'));
+    }
+
     public function testRegenerateChangesToken(): void
     {
         $token1 = CSRF::generate();
         CSRF::regenerate();
         $token2 = CSRF::generate();
         $this->assertNotSame($token1, $token2);
+    }
+
+    public function testRegenerateInvalidatesOldToken(): void
+    {
+        $oldToken = CSRF::generate();
+        CSRF::regenerate();
+        $this->assertFalse(CSRF::validate($oldToken));
     }
 
     public function testFieldReturnsHiddenInput(): void
@@ -74,5 +92,13 @@ class CSRFTest extends TestCase
         $this->assertStringContainsString('type="hidden"', $field);
         $this->assertStringContainsString('name="csrf_token"', $field);
         $this->assertStringContainsString($token, $field);
+    }
+
+    public function testFieldEscapesTokenValue(): void
+    {
+        $field = CSRF::field();
+        // Le champ doit être un input bien formé
+        $this->assertStringStartsWith('<input ', $field);
+        $this->assertStringContainsString('value="', $field);
     }
 }
