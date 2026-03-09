@@ -33,7 +33,12 @@
                             <td class="text-right"><?= $space['game_count'] ?></td>
                             <td class="text-muted text-small"><?= format_date($space['created_at']) ?></td>
                             <td class="text-right">
-                                <a href="/spaces/<?= $space['id'] ?>" class="btn btn-sm btn-outline">Voir</a>
+                                <div class="d-flex gap-1 justify-end">
+                                    <a href="/spaces/<?= $space['id'] ?>" class="btn btn-sm btn-outline">Voir</a>
+                                    <a href="/admin/spaces/<?= $space['id'] ?>/restrictions" class="btn btn-sm btn-outline<?= !empty($space['restrictions']) ? '-danger' : '' ?>">
+                                        <?= !empty($space['restrictions']) ? '🔒 Restreint' : '🔒 Restrictions' ?>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>

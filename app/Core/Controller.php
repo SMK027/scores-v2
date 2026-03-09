@@ -141,4 +141,17 @@ abstract class Controller
         $id = Session::get('user_id');
         return $id ? (int) $id : null;
     }
+
+    /**
+     * Vérifie si une fonctionnalité est restreinte pour un espace.
+     * Si oui, affiche un message et redirige.
+     */
+    protected function checkSpaceRestriction(int $spaceId, string $key): void
+    {
+        $spaceModel = new \App\Models\Space();
+        if ($spaceModel->isRestricted($spaceId, $key)) {
+            $this->setFlash('danger', 'Cette fonctionnalité est temporairement restreinte par l\'administration du site.');
+            $this->redirect('/spaces/' . $spaceId);
+        }
+    }
 }

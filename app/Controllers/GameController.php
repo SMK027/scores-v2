@@ -96,6 +96,7 @@ class GameController extends Controller
     public function createForm(string $id): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
+        $this->checkSpaceRestriction((int) $id, 'games');
 
         $gameTypes = $this->gameTypeModel->findBySpace((int) $id);
         $players = $this->playerModel->findBySpace((int) $id);
@@ -126,6 +127,7 @@ class GameController extends Controller
     public function create(string $id): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
+        $this->checkSpaceRestriction((int) $id, 'games');
         $this->validateCSRF();
 
         $data = $this->getPostData(['game_type_id', 'notes']);
@@ -258,6 +260,7 @@ class GameController extends Controller
     public function editForm(string $id, string $gid): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
+        $this->checkSpaceRestriction((int) $id, 'games');
 
         $game = $this->gameModel->findWithDetails((int) $gid);
         if (!$game || $game['space_id'] != $id) {
@@ -293,6 +296,7 @@ class GameController extends Controller
     public function update(string $id, string $gid): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
+        $this->checkSpaceRestriction((int) $id, 'games');
         $this->validateCSRF();
 
         $game = $this->gameModel->find((int) $gid);
@@ -301,6 +305,8 @@ class GameController extends Controller
             $this->redirect("/spaces/{$id}/games/{$gid}");
             return;
         }
+
+        $data = $this->getPostData(['notes']);
 
         $data = $this->getPostData(['notes']);
 
@@ -320,6 +326,7 @@ class GameController extends Controller
     public function delete(string $id, string $gid): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager']);
+        $this->checkSpaceRestriction((int) $id, 'games');
         $this->validateCSRF();
 
         $game = $this->gameModel->find((int) $gid);

@@ -66,6 +66,7 @@ class GameTypeController extends Controller
     public function createForm(string $id): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
+        $this->checkSpaceRestriction((int) $id, 'game_types');
         $this->render('game_types/create', [
             'title'        => 'Nouveau type de jeu',
             'currentSpace' => $ctx['space'],
@@ -80,6 +81,7 @@ class GameTypeController extends Controller
     public function create(string $id): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
+        $this->checkSpaceRestriction((int) $id, 'game_types');
         $this->validateCSRF();
 
         $data = $this->getPostData(['name', 'description', 'win_condition', 'min_players', 'max_players']);
@@ -110,6 +112,7 @@ class GameTypeController extends Controller
     public function editForm(string $id, string $gtid): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager']);
+        $this->checkSpaceRestriction((int) $id, 'game_types');
         $gameType = $this->gameTypeModel->find((int) $gtid);
 
         if (!$gameType || $gameType['space_id'] != $id) {
@@ -132,6 +135,7 @@ class GameTypeController extends Controller
     public function update(string $id, string $gtid): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager']);
+        $this->checkSpaceRestriction((int) $id, 'game_types');
         $this->validateCSRF();
 
         $data = $this->getPostData(['name', 'description', 'win_condition', 'min_players', 'max_players']);
@@ -161,6 +165,7 @@ class GameTypeController extends Controller
     public function delete(string $id, string $gtid): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager']);
+        $this->checkSpaceRestriction((int) $id, 'game_types');
         $this->validateCSRF();
 
         ActivityLog::logSpace((int) $id, 'game_type.delete', $this->getCurrentUserId(), 'game_type', (int) $gtid);

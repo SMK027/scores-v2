@@ -84,6 +84,7 @@ class CompetitionController extends Controller
     public function createForm(string $id): void
     {
         $this->requireStaff();
+        $this->checkSpaceRestriction((int) $id, 'competitions');
 
         $space = $this->spaceModel->find((int) $id);
         if (!$space) {
@@ -106,6 +107,7 @@ class CompetitionController extends Controller
     public function create(string $id): void
     {
         $this->requireStaff();
+        $this->checkSpaceRestriction((int) $id, 'competitions');
         $this->validateCSRF();
 
         $space = $this->spaceModel->find((int) $id);

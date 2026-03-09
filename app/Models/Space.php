@@ -49,4 +49,71 @@ class Space extends Model
         $result = $stmt->fetch();
         return $result ?: null;
     }
+
+    /**
+     * Clés de restriction possibles.
+     */
+    public const RESTRICTION_KEYS = [
+        'games'        => 'Création/modification/suppression de parties',
+        'members'      => 'Ajout/modification des membres',
+        'invites'      => 'Création de liens d\'invitation',
+        'competitions' => 'Création de compétitions',
+        'game_types'   => 'Création/modification/suppression de types de jeux',
+    ];
+
+    /**
+     * Retourne les restrictions actives d'un espace (tableau associatif).
+     */
+    public function getRestrictions(int $id): array
+    {
+        $space = $this->find($id);
+        if (!$space || empty($space['restrictions'])) {
+            return [];
+        }
+        $data = json_decode($space['restrictions'], true);
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * Vérifie si une fonctionnalité est restreinte pour un espace.
+     */
+    public function isRestricted(int $spaceId, string $key): bool
+    {
+        $restrictions = $this->getRestrictions($spaceId);
+        return !empty($restrictions[$key]);
+    }
+
+    /**
+     * Met à jour les restrictions d'un espace.
+     */
+    public function setRestrictions(int $id, array $restrictions, ?string $reason, int $adminId): bool
+    {
+        $active = array_filter($restrictions);
+        $json = empty($active) ? null : json_encode($active, JSON_UNESCAPED_UNICODE);
+
+        $stmt = $this->query(
+            "UPDATE {$this->table}
+             SET restrictions = :restrictions,
+                 restriction_reason = :reason,
+                 restricted_by = :admin_id,
+                 restricted_at = :at
+             WHERE id = :id",
+            [
+                'restrictions' => $json,
+                'reason'       => empty($active) ? null : $reason,
+                'admin_id'     => empty($active) ? null : $adminId,
+                'at'           => empty($active) ? null : date('Y-m-d H:i:s'),
+                'id'           => $id,
+            ]
+        );
+        return $stmt->rowCount() > 0;
+    }
+
+    /**
+     * Vérifie si un espace a au moins une restriction active.
+     */
+    public function hasAnyRestriction(int $id): bool
+    {
+        return !empty($this->getRestrictions($id));
+    }
 }

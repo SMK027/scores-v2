@@ -245,6 +245,10 @@ $router->post('/admin/bans/ips/{bid}/revoke', AdminController::class, 'revokeIpB
 // Journal d'activité
 $router->get('/admin/logs', AdminController::class, 'activityLogs');
 
+// Restrictions d'espaces
+$router->get('/admin/spaces/{id}/restrictions', AdminController::class, 'spaceRestrictions');
+$router->post('/admin/spaces/{id}/restrictions', AdminController::class, 'updateSpaceRestrictions');
+
 // Dispatcher la requête
 $method = $_SERVER['REQUEST_METHOD'];
 $uri = $_SERVER['REQUEST_URI'];

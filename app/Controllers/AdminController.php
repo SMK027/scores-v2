@@ -165,7 +165,7 @@ class AdminController extends Controller
                    (SELECT COUNT(*) FROM games WHERE space_id = s.id) AS game_count
             FROM spaces s
             JOIN users u ON u.id = s.created_by
-            ORDER BY s.created_at DESC
+            ORDER BY s.restrictions IS NOT NULL DESC, s.created_at DESC
         ");
         $stmt->execute();
         $spaces = $stmt->fetchAll();
@@ -594,6 +594,80 @@ class AdminController extends Controller
             'pagination' => $result,
             'filters'    => $filters,
         ]);
+    }
+
+    /**
+     * Formulaire de gestion des restrictions d'un espace.
+     */
+    public function spaceRestrictions(string $id): void
+    {
+        $this->checkAdminOrSuperAdmin();
+
+        $spaceModel = new Space();
+        $space = $spaceModel->find((int) $id);
+        if (!$space) {
+            $this->setFlash('danger', 'Espace introuvable.');
+            $this->redirect('/admin/spaces');
+            return;
+        }
+
+        $restrictions = $spaceModel->getRestrictions((int) $id);
+
+        $this->render('admin/space_restrictions', [
+            'title'           => 'Restrictions — ' . $space['name'],
+            'activeMenu'      => 'admin',
+            'space'           => $space,
+            'restrictions'    => $restrictions,
+            'restrictionKeys' => Space::RESTRICTION_KEYS,
+        ]);
+    }
+
+    /**
+     * Enregistre les restrictions d'un espace.
+     */
+    public function updateSpaceRestrictions(string $id): void
+    {
+        $this->checkAdminOrSuperAdmin();
+        $this->validateCSRF();
+
+        $spaceModel = new Space();
+        $space = $spaceModel->find((int) $id);
+        if (!$space) {
+            $this->setFlash('danger', 'Espace introuvable.');
+            $this->redirect('/admin/spaces');
+            return;
+        }
+
+        $restrictions = [];
+        foreach (array_keys(Space::RESTRICTION_KEYS) as $key) {
+            if (!empty($_POST['restrict_' . $key])) {
+                $restrictions[$key] = true;
+            }
+        }
+
+        $reason = trim($_POST['reason'] ?? '');
+
+        if (!empty($restrictions) && empty($reason)) {
+            $this->setFlash('danger', 'Un motif est requis pour appliquer des restrictions.');
+            $this->redirect('/admin/spaces/' . $id . '/restrictions');
+            return;
+        }
+
+        $spaceModel->setRestrictions((int) $id, $restrictions, $reason, $this->getCurrentUserId());
+
+        ActivityLog::logAdmin(
+            empty($restrictions) ? 'space.restrictions_removed' : 'space.restrictions_updated',
+            $this->getCurrentUserId(),
+            'space',
+            (int) $id,
+            ['restrictions' => $restrictions, 'reason' => $reason]
+        );
+
+        $this->setFlash('success', empty($restrictions)
+            ? 'Toutes les restrictions ont été levées.'
+            : 'Restrictions mises à jour.'
+        );
+        $this->redirect('/admin/spaces/' . $id . '/restrictions');
     }
 
     /**

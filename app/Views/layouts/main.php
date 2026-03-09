@@ -87,6 +87,17 @@
         </aside>
         <main class="main-content with-sidebar">
             <?php include __DIR__ . '/../partials/flash.php'; ?>
+            <?php
+                $__spaceRestrictions = (new \App\Models\Space())->getRestrictions($currentSpace['id']);
+                if (!empty($__spaceRestrictions)):
+            ?>
+            <div class="alert alert-warning" style="border-left:4px solid var(--danger,#dc3545);margin-bottom:1rem;">
+                <strong>⚠️ Certaines fonctionnalités de cet espace sont temporairement restreintes par l'administration du site.</strong>
+                <?php if (!empty($currentSpace['restriction_reason'])): ?>
+                    <br><span class="text-muted">Motif : <?= e($currentSpace['restriction_reason']) ?></span>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
             <?= $content ?>
         </main>
     </div>

@@ -264,6 +264,7 @@ class SpaceController extends Controller
     {
         $this->requireAuth();
         $this->validateCSRF();
+        $this->checkSpaceRestriction((int) $id, 'members');
 
         $member = Middleware::checkSpaceAccess((int) $id, $this->getCurrentUserId(), ['admin', 'manager']);
         if (!$member) {
@@ -443,6 +444,7 @@ class SpaceController extends Controller
     {
         $this->requireAuth();
         $this->validateCSRF();
+        $this->checkSpaceRestriction((int) $id, 'invites');
 
         $member = Middleware::checkSpaceAccess((int) $id, $this->getCurrentUserId(), ['admin', 'manager']);
         if (!$member) {
