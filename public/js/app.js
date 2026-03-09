@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // =========================================================
     // Auto-fermeture des alertes flash
     // =========================================================
-    const alerts = document.querySelectorAll('.alert');
+    const alerts = document.querySelectorAll('.alert:not(.alert-persistent)');
     alerts.forEach(function (alert) {
         setTimeout(function () {
             alert.style.transition = 'opacity 0.3s ease, transform 0.3s ease';

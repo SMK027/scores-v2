@@ -91,7 +91,7 @@
                 $__spaceRestrictions = (new \App\Models\Space())->getRestrictions($currentSpace['id']);
                 if (!empty($__spaceRestrictions)):
             ?>
-            <div class="alert alert-warning" style="border-left:4px solid var(--danger,#dc3545);margin-bottom:1rem;">
+            <div class="alert alert-warning alert-persistent" style="border-left:4px solid var(--danger,#dc3545);margin-bottom:1rem;">
                 <strong>⚠️ Certaines fonctionnalités de cet espace sont temporairement restreintes par l'administration du site.</strong>
                 <?php if (!empty($currentSpace['restriction_reason'])): ?>
                     <br><span class="text-muted">Motif : <?= e($currentSpace['restriction_reason']) ?></span>
@@ -103,7 +103,7 @@
                 $__delDt = new \DateTimeImmutable($currentSpace['scheduled_deletion_at'], $__delParis);
                 $__delIso = $__delDt->format('c');
             ?>
-            <div class="alert alert-danger" style="border-left:4px solid var(--danger,#dc3545);margin-bottom:1rem;">
+            <div class="alert alert-danger alert-persistent" style="border-left:4px solid var(--danger,#dc3545);margin-bottom:1rem;">
                 <div>
                     <strong>💣 Cet espace est programmé pour suppression le <?= $__delDt->format('d/m/Y à H:i') ?> (heure de Paris).</strong>
                     <?php if (!empty($currentSpace['deletion_reason'])): ?>
