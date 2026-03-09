@@ -29,6 +29,7 @@
     <a href="/admin/fail2ban" class="btn btn-outline">🛡️ Fail2ban</a>
     <a href="/admin/bans/users" class="btn btn-outline">🚫 Bannissements comptes</a>
     <a href="/admin/bans/ips" class="btn btn-outline">🌐 Bannissements IP</a>
+    <a href="/admin/logs" class="btn btn-outline">📋 Journal d'activité</a>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">

@@ -566,6 +566,36 @@ class AdminController extends Controller
         $this->redirect('/admin/bans/ips');
     }
 
+    // =========================================================
+    // Journal d'activité
+    // =========================================================
+
+    /**
+     * Affiche le journal d'activité global.
+     */
+    public function activityLogs(): void
+    {
+        $this->checkAdminOrSuperAdmin();
+
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $filters = [
+            'scope'  => $_GET['scope'] ?? '',
+            'action' => $_GET['action'] ?? '',
+            'user'   => $_GET['user'] ?? '',
+        ];
+
+        $logModel = new ActivityLog();
+        $result = $logModel->search($filters, $page, 50);
+
+        $this->render('admin/activity_logs', [
+            'title'      => 'Journal d\'activité',
+            'activeMenu' => 'admin',
+            'logs'       => $result['data'],
+            'pagination' => $result,
+            'filters'    => $filters,
+        ]);
+    }
+
     /**
      * Convertit une durée en spécification d'intervalle ISO 8601.
      */

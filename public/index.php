@@ -239,6 +239,9 @@ $router->get('/admin/bans/ips/create', AdminController::class, 'ipBanForm');
 $router->post('/admin/bans/ips/create', AdminController::class, 'createIpBan');
 $router->post('/admin/bans/ips/{bid}/revoke', AdminController::class, 'revokeIpBan');
 
+// Journal d'activité
+$router->get('/admin/logs', AdminController::class, 'activityLogs');
+
 // Dispatcher la requête
 $method = $_SERVER['REQUEST_METHOD'];
 $uri = $_SERVER['REQUEST_URI'];

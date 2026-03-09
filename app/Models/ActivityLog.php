@@ -139,4 +139,59 @@ class ActivityLog extends Model
         );
         return $stmt->fetchAll();
     }
+
+    /**
+     * Récupère tous les logs avec filtres et pagination.
+     */
+    public function search(array $filters = [], int $page = 1, int $perPage = 50): array
+    {
+        $where = [];
+        $params = [];
+
+        if (!empty($filters['scope'])) {
+            $where[] = 'al.scope = :scope';
+            $params['scope'] = $filters['scope'];
+        }
+        if (!empty($filters['action'])) {
+            $where[] = 'al.action LIKE :action';
+            $params['action'] = '%' . $filters['action'] . '%';
+        }
+        if (!empty($filters['user'])) {
+            $where[] = 'u.username LIKE :user';
+            $params['user'] = '%' . $filters['user'] . '%';
+        }
+
+        $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+        $offset = ($page - 1) * $perPage;
+
+        // Count total
+        $countStmt = $this->query(
+            "SELECT COUNT(*) FROM {$this->table} al
+             LEFT JOIN users u ON al.user_id = u.id
+             {$whereClause}",
+            $params
+        );
+        $total = (int) $countStmt->fetchColumn();
+
+        // Fetch page
+        $params['lim'] = $perPage;
+        $params['off'] = $offset;
+        $stmt = $this->query(
+            "SELECT al.*, u.username
+             FROM {$this->table} al
+             LEFT JOIN users u ON al.user_id = u.id
+             {$whereClause}
+             ORDER BY al.created_at DESC
+             LIMIT :lim OFFSET :off",
+            $params
+        );
+
+        return [
+            'data'     => $stmt->fetchAll(),
+            'total'    => $total,
+            'page'     => $page,
+            'perPage'  => $perPage,
+            'lastPage' => max(1, (int) ceil($total / $perPage)),
+        ];
+    }
 }
