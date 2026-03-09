@@ -84,7 +84,7 @@ class ActivityLog extends Model
             'entity_id' => $entityId,
             'user_id' => $userId,
             'session_id' => $sessionId,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+            'ip_address' => get_client_ip(),
             'details' => $details ? json_encode($details, JSON_UNESCAPED_UNICODE) : null,
         ]);
     }

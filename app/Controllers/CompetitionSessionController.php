@@ -144,7 +144,7 @@ class CompetitionSessionController extends Controller
         if (!$session) {
             // Enregistrer la tentative échouée si la session existe
             if ($targetSession) {
-                $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+                $ip = get_client_ip();
                 $this->sessionModel->recordFailedAttempt((int) $targetSession['id'], $ip);
                 // Verrouiller après 3 tentatives en 15 minutes
                 $recentAttempts = $this->sessionModel->countRecentFailedAttempts((int) $targetSession['id'], 15);
