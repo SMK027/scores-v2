@@ -68,9 +68,43 @@
                             <span class="badge badge-primary"><?= space_role_label($space['user_role']) ?></span>
                             <span class="text-muted text-small">👥 <?= $space['member_count'] ?> membre(s)</span>
                         </div>
+                        <?php if (!empty($space['scheduled_deletion_at'])):
+                            $__sDt = new DateTimeImmutable($space['scheduled_deletion_at'], new DateTimeZone('Europe/Paris'));
+                        ?>
+                        <div class="mt-1" style="padding:0.4rem 0.6rem;border-radius:var(--border-radius);background:rgba(239,71,111,0.12);border:1px solid rgba(239,71,111,0.3);">
+                            <span style="font-size:0.85em;color:var(--danger,#dc3545);font-weight:600;">
+                                💣 Suppression prévue le <?= $__sDt->format('d/m/Y à H:i') ?>
+                            </span>
+                            <br><span class="space-countdown" data-target="<?= $__sDt->format('c') ?>" style="font-size:0.85em;font-weight:bold;color:var(--danger,#dc3545);"></span>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </a>
         <?php endforeach; ?>
     </div>
+    <script>
+    (function(){
+        var els = document.querySelectorAll('.space-countdown');
+        if(!els.length) return;
+        function update(){
+            els.forEach(function(el){
+                var diff = new Date(el.dataset.target).getTime() - Date.now();
+                if(diff <= 0){ el.textContent = '⏰ Délai expiré — suppression imminente'; return; }
+                var d = Math.floor(diff/86400000);
+                var h = Math.floor((diff%86400000)/3600000);
+                var m = Math.floor((diff%3600000)/60000);
+                var s = Math.floor((diff%60000)/1000);
+                var p = [];
+                if(d > 0) p.push(d + 'j');
+                p.push(h + 'h');
+                p.push(m + 'min');
+                p.push(s + 's');
+                el.textContent = '⏳ ' + p.join(' ');
+            });
+        }
+        update();
+        setInterval(update, 1000);
+    })();
+    </script>
 <?php endif; ?>
