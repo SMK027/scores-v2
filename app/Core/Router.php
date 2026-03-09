@@ -31,6 +31,24 @@ class Router
     }
 
     /**
+     * Enregistre une route PUT.
+     */
+    public function put(string $path, string $controller, string $action): self
+    {
+        $this->addRoute('PUT', $path, $controller, $action);
+        return $this;
+    }
+
+    /**
+     * Enregistre une route DELETE.
+     */
+    public function delete(string $path, string $controller, string $action): self
+    {
+        $this->addRoute('DELETE', $path, $controller, $action);
+        return $this;
+    }
+
+    /**
      * Ajoute une route au registre.
      */
     private function addRoute(string $method, string $path, string $controller, string $action): void

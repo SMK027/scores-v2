@@ -28,18 +28,45 @@ use App\Controllers\SearchController;
 use App\Controllers\AdminController;
 use App\Controllers\CompetitionController;
 use App\Controllers\CompetitionSessionController;
+use App\Controllers\Api\AuthApiController;
+use App\Controllers\Api\SpaceApiController;
+use App\Controllers\Api\GameApiController;
+use App\Controllers\Api\GameTypeApiController;
+use App\Controllers\Api\PlayerApiController;
+use App\Controllers\Api\ProfileApiController;
+use App\Controllers\Api\StatApiController;
+use App\Controllers\Api\SearchApiController;
 use App\Models\IpBan;
 use App\Models\UserBan;
 
-// Démarrer la session
+// ============================================================
+// CORS pour l'API mobile
+// ============================================================
+$requestUri = $_SERVER['REQUEST_URI'] ?? '';
+if (str_starts_with(parse_url($requestUri, PHP_URL_PATH) ?? '', '/api/')) {
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+    header('Access-Control-Max-Age: 86400');
+
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        http_response_code(204);
+        exit;
+    }
+}
+
+// Démarrer la session (pas nécessaire pour les routes API pures, mais requis pour le Middleware)
 Session::start();
 
 // ============================================================
-// Vérification globale de bannissement IP
+// Vérification globale de bannissement IP (sauf API — gérée par JWT)
 // ============================================================
 $clientIp = get_client_ip();
-$ipBanModel = new IpBan();
-$ipBan = $ipBanModel->findActiveBan($clientIp);
+$isApiRequest = str_starts_with(parse_url($requestUri, PHP_URL_PATH) ?? '', '/api/');
+
+if (!$isApiRequest) {
+    $ipBanModel = new IpBan();
+    $ipBan = $ipBanModel->findActiveBan($clientIp);
 if ($ipBan) {
     // Si l'utilisateur est connecté, le déconnecter
     if (Session::get('user_id')) {
@@ -62,10 +89,12 @@ if ($ipBan) {
     echo '</div></body></html>';
     exit;
 }
+} // end if !isApiRequest
 
 // ============================================================
-// Vérification bannissement du compte (utilisateur connecté)
+// Vérification bannissement du compte (utilisateur connecté, hors API)
 // ============================================================
+if (!$isApiRequest) {
 $loggedUserId = Session::get('user_id');
 if ($loggedUserId) {
     $userBanModel = new UserBan();
@@ -85,6 +114,7 @@ if ($loggedUserId) {
         exit;
     }
 }
+} // end if !isApiRequest
 
 // Initialiser le routeur
 $router = new Router();
@@ -253,6 +283,77 @@ $router->post('/admin/spaces/{id}/restrictions', AdminController::class, 'update
 $router->get('/admin/spaces/{id}/schedule-deletion', AdminController::class, 'scheduleDeletion');
 $router->post('/admin/spaces/{id}/schedule-deletion', AdminController::class, 'updateScheduleDeletion');
 $router->post('/admin/spaces/{id}/cancel-deletion', AdminController::class, 'cancelScheduledDeletion');
+
+// ============================================================
+// API REST Mobile
+// ============================================================
+
+// Auth
+$router->post('/api/login', AuthApiController::class, 'login');
+$router->post('/api/register', AuthApiController::class, 'register');
+$router->get('/api/me', AuthApiController::class, 'me');
+
+// Profil
+$router->get('/api/profile', ProfileApiController::class, 'show');
+$router->put('/api/profile', ProfileApiController::class, 'update');
+$router->put('/api/profile/password', ProfileApiController::class, 'updatePassword');
+
+// Espaces
+$router->get('/api/spaces', SpaceApiController::class, 'index');
+$router->post('/api/spaces', SpaceApiController::class, 'create');
+$router->get('/api/spaces/{id}', SpaceApiController::class, 'show');
+$router->put('/api/spaces/{id}', SpaceApiController::class, 'update');
+$router->delete('/api/spaces/{id}', SpaceApiController::class, 'delete');
+$router->post('/api/spaces/{id}/leave', SpaceApiController::class, 'leave');
+
+// Membres
+$router->get('/api/spaces/{id}/members', SpaceApiController::class, 'members');
+$router->post('/api/spaces/{id}/members', SpaceApiController::class, 'addMember');
+$router->put('/api/spaces/{id}/members/{mid}/role', SpaceApiController::class, 'updateMemberRole');
+$router->delete('/api/spaces/{id}/members/{mid}', SpaceApiController::class, 'removeMember');
+
+// Invitations
+$router->post('/api/invitations/{invId}/accept', SpaceApiController::class, 'acceptInvitation');
+$router->post('/api/invitations/{invId}/decline', SpaceApiController::class, 'declineInvitation');
+$router->post('/api/spaces/join/{token}', SpaceApiController::class, 'join');
+
+// Types de jeux
+$router->get('/api/spaces/{id}/game-types', GameTypeApiController::class, 'index');
+$router->get('/api/spaces/{id}/game-types/{gtid}', GameTypeApiController::class, 'show');
+$router->post('/api/spaces/{id}/game-types', GameTypeApiController::class, 'create');
+$router->put('/api/spaces/{id}/game-types/{gtid}', GameTypeApiController::class, 'update');
+$router->delete('/api/spaces/{id}/game-types/{gtid}', GameTypeApiController::class, 'delete');
+
+// Joueurs
+$router->get('/api/spaces/{id}/players', PlayerApiController::class, 'index');
+$router->get('/api/spaces/{id}/players/{pid}', PlayerApiController::class, 'show');
+$router->post('/api/spaces/{id}/players', PlayerApiController::class, 'create');
+$router->put('/api/spaces/{id}/players/{pid}', PlayerApiController::class, 'update');
+$router->delete('/api/spaces/{id}/players/{pid}', PlayerApiController::class, 'delete');
+
+// Parties
+$router->get('/api/spaces/{id}/games', GameApiController::class, 'index');
+$router->get('/api/spaces/{id}/games/{gid}', GameApiController::class, 'show');
+$router->post('/api/spaces/{id}/games', GameApiController::class, 'create');
+$router->put('/api/spaces/{id}/games/{gid}', GameApiController::class, 'update');
+$router->delete('/api/spaces/{id}/games/{gid}', GameApiController::class, 'delete');
+$router->put('/api/spaces/{id}/games/{gid}/status', GameApiController::class, 'updateStatus');
+
+// Commentaires
+$router->post('/api/spaces/{id}/games/{gid}/comments', GameApiController::class, 'addComment');
+$router->delete('/api/spaces/{id}/games/{gid}/comments/{cid}', GameApiController::class, 'deleteComment');
+
+// Manches
+$router->post('/api/spaces/{id}/games/{gid}/rounds', GameApiController::class, 'createRound');
+$router->put('/api/spaces/{id}/games/{gid}/rounds/{rid}/scores', GameApiController::class, 'updateScores');
+$router->put('/api/spaces/{id}/games/{gid}/rounds/{rid}/status', GameApiController::class, 'updateRoundStatus');
+$router->delete('/api/spaces/{id}/games/{gid}/rounds/{rid}', GameApiController::class, 'deleteRound');
+
+// Statistiques
+$router->get('/api/spaces/{id}/stats', StatApiController::class, 'index');
+
+// Recherche
+$router->get('/api/spaces/{id}/search', SearchApiController::class, 'index');
 
 // Dispatcher la requête
 $method = $_SERVER['REQUEST_METHOD'];
