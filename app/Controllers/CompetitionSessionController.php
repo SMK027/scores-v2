@@ -17,6 +17,7 @@ use App\Models\Round;
 use App\Models\RoundScore;
 use App\Models\RoundPause;
 use App\Config\Database;
+use App\Models\ActivityLog;
 
 /**
  * Contrôleur pour l'interface arbitre des sessions de compétition.
@@ -175,6 +176,8 @@ class CompetitionSessionController extends Controller
             'competition_name' => $session['competition_name'],
         ]);
 
+        ActivityLog::logCompetition((int) $session['competition_id'], 'session.login', null, 'competition_session', (int) $session['id'], ['referee' => $session['referee_name'], 'session_number' => (int) $session['session_number']]);
+
         $this->redirect('/competition/dashboard');
     }
 
@@ -183,6 +186,10 @@ class CompetitionSessionController extends Controller
      */
     public function logout(): void
     {
+        $data = $this->getSessionData();
+        if ($data) {
+            ActivityLog::logCompetition($data['competition_id'], 'session.logout', null, 'competition_session', $data['session_id'], ['referee' => $data['referee_name']]);
+        }
         Session::remove('competition_session');
         $this->setFlash('success', 'Session terminée.');
         $this->redirect('/competition/login');
@@ -291,6 +298,8 @@ class CompetitionSessionController extends Controller
 
         $this->gamePlayer->addPlayers($gameId, $playerIds);
 
+        ActivityLog::logCompetition($data['competition_id'], 'session.game_create', null, 'game', $gameId, ['session_id' => $data['session_id'], 'referee' => $data['referee_name']]);
+
         $this->setFlash('success', 'Partie créée.');
         $this->redirect("/competition/games/{$gameId}");
     }
@@ -359,6 +368,9 @@ class CompetitionSessionController extends Controller
         }
 
         $this->round->createForGame((int) $gid);
+
+        ActivityLog::logCompetition($data['competition_id'], 'session.round_create', null, 'game', (int) $gid, ['session_id' => $data['session_id']]);
+
         $this->setFlash('success', 'Manche ajoutée.');
         $this->redirect("/competition/games/{$gid}");
     }
@@ -402,6 +414,8 @@ class CompetitionSessionController extends Controller
             $this->game->recalculateTotals((int) $gid);
         }
 
+        ActivityLog::logCompetition($data['competition_id'], 'session.scores_saved', null, 'round', (int) $rid, ['game_id' => (int) $gid, 'session_id' => $data['session_id']]);
+
         $this->setFlash('success', 'Scores enregistrés, manche terminée.');
         $this->redirect("/competition/games/{$gid}");
     }
@@ -431,6 +445,8 @@ class CompetitionSessionController extends Controller
             'ended_at' => date('Y-m-d H:i:s'),
         ]);
         $this->game->recalculateTotals((int) $gid);
+
+        ActivityLog::logCompetition($data['competition_id'], 'session.game_complete', null, 'game', (int) $gid, ['session_id' => $data['session_id']]);
 
         $this->setFlash('success', 'Partie terminée.');
         $this->redirect('/competition/dashboard');

@@ -13,6 +13,7 @@ use App\Models\IpBan;
 use App\Models\PasswordPolicy;
 use App\Models\Fail2banConfig;
 use App\Config\Database;
+use App\Models\ActivityLog;
 
 /**
  * Contrôleur d'administration globale (superadmin, admin, moderator).
@@ -145,6 +146,8 @@ class AdminController extends Controller
 
         $this->userModel->updateGlobalRole((int) $uid, $role);
 
+        ActivityLog::logAdmin('user.role_update', $this->getCurrentUserId(), 'user', (int) $uid, ['username' => $user['username'], 'new_role' => $role]);
+
         $this->setFlash('success', "Rôle de {$user['username']} mis à jour : {$role}");
         $this->redirect('/admin/users');
     }
@@ -231,6 +234,8 @@ class AdminController extends Controller
 
         $f2bModel->updateAll($updates);
 
+        ActivityLog::logAdmin('fail2ban.update', $this->getCurrentUserId(), null, null, $updates);
+
         $this->setFlash('success', 'Configuration Fail2ban mise à jour avec succès.');
         $this->redirect('/admin/fail2ban');
     }
@@ -275,6 +280,8 @@ class AdminController extends Controller
         }
 
         $policyModel->updateAll($updates);
+
+        ActivityLog::logAdmin('password_policy.update', $this->getCurrentUserId(), null, null, $updates);
 
         $this->setFlash('success', 'Politique de mot de passe mise à jour avec succès.');
         $this->redirect('/admin/password-policy');
@@ -413,6 +420,8 @@ class AdminController extends Controller
         $banModel = new UserBan();
         $banModel->ban((int) $data['user_id'], $this->getCurrentUserId(), $data['reason'], $expiresAt);
 
+        ActivityLog::logAdmin('user.ban', $this->getCurrentUserId(), 'user', (int) $data['user_id'], ['username' => $user['username'], 'reason' => $data['reason'], 'permanent' => ($expiresAt === null)]);
+
         // Invalider les sessions de l'utilisateur banni en marquant le ban
         // (la vérification dans index.php le déconnectera à sa prochaine requête)
 
@@ -438,6 +447,9 @@ class AdminController extends Controller
         }
 
         $banModel->revoke((int) $bid, $this->getCurrentUserId());
+
+        ActivityLog::logAdmin('user.unban', $this->getCurrentUserId(), 'user_ban', (int) $bid);
+
         $this->setFlash('success', 'Bannissement annulé.');
         $this->redirect('/admin/bans/users');
     }
@@ -523,6 +535,8 @@ class AdminController extends Controller
         $banModel = new IpBan();
         $banModel->ban($data['ip_address'], $this->getCurrentUserId(), $data['reason'], $expiresAt);
 
+        ActivityLog::logAdmin('ip.ban', $this->getCurrentUserId(), 'ip', null, ['ip' => $data['ip_address'], 'reason' => $data['reason'], 'permanent' => ($expiresAt === null)]);
+
         $this->setFlash('success', 'L\'adresse IP « ' . e($data['ip_address']) . ' » a été bannie.');
         $this->redirect('/admin/bans/ips');
     }
@@ -545,6 +559,9 @@ class AdminController extends Controller
         }
 
         $banModel->revoke((int) $bid, $this->getCurrentUserId());
+
+        ActivityLog::logAdmin('ip.unban', $this->getCurrentUserId(), 'ip_ban', (int) $bid);
+
         $this->setFlash('success', 'Bannissement d\'IP annulé.');
         $this->redirect('/admin/bans/ips');
     }

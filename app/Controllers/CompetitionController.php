@@ -17,6 +17,7 @@ use App\Models\GameType;
 use App\Models\Round;
 use App\Models\RoundScore;
 use App\Config\Database;
+use App\Models\ActivityLog;
 
 /**
  * Contrôleur des compétitions.
@@ -153,6 +154,8 @@ class CompetitionController extends Controller
         // Créer les sessions
         $created = $this->session->createBatch($competitionId, $referees);
 
+        ActivityLog::logCompetition($competitionId, 'competition.create', $this->getCurrentUserId(), 'competition', $competitionId, ['name' => $data['name'], 'sessions' => count($referees)]);
+
         // Envoyer les emails aux arbitres
         $emailResult = $this->sendSessionEmails($created, $data['name'], $competitionId);
 
@@ -286,6 +289,8 @@ class CompetitionController extends Controller
             'ends_at'     => $data['ends_at'],
         ]);
 
+        ActivityLog::logCompetition((int) $cid, 'competition.update', $this->getCurrentUserId(), 'competition', (int) $cid, ['name' => $data['name']]);
+
         $this->setFlash('success', 'Compétition mise à jour.');
         $this->redirect("/spaces/{$id}/competitions/{$cid}");
     }
@@ -306,6 +311,9 @@ class CompetitionController extends Controller
         }
 
         $this->competition->activate((int) $cid);
+
+        ActivityLog::logCompetition((int) $cid, 'competition.activate', $this->getCurrentUserId(), 'competition', (int) $cid);
+
         $this->setFlash('success', 'Compétition activée.');
         $this->redirect("/spaces/{$id}/competitions/{$cid}");
     }
@@ -332,6 +340,9 @@ class CompetitionController extends Controller
         }
 
         $this->competition->pause((int) $cid);
+
+        ActivityLog::logCompetition((int) $cid, 'competition.pause', $this->getCurrentUserId(), 'competition', (int) $cid);
+
         $this->setFlash('success', 'Compétition mise en pause.');
         $this->redirect("/spaces/{$id}/competitions/{$cid}");
     }
@@ -358,6 +369,9 @@ class CompetitionController extends Controller
         }
 
         $this->competition->resume((int) $cid);
+
+        ActivityLog::logCompetition((int) $cid, 'competition.resume', $this->getCurrentUserId(), 'competition', (int) $cid);
+
         $this->setFlash('success', 'Compétition reprise.');
         $this->redirect("/spaces/{$id}/competitions/{$cid}");
     }
@@ -378,6 +392,9 @@ class CompetitionController extends Controller
         }
 
         $this->competition->closeCompetition((int) $cid);
+
+        ActivityLog::logCompetition((int) $cid, 'competition.close', $this->getCurrentUserId(), 'competition', (int) $cid);
+
         $this->setFlash('success', 'Compétition clôturée. Toutes les sessions sont désactivées.');
         $this->redirect("/spaces/{$id}/competitions/{$cid}");
     }
@@ -406,6 +423,9 @@ class CompetitionController extends Controller
         }
 
         $created = $this->session->createBatch((int) $cid, [['name' => $refereeName, 'email' => $refereeEmail]]);
+
+        ActivityLog::logCompetition((int) $cid, 'session.add', $this->getCurrentUserId(), 'competition_session', null, ['referee' => $refereeName]);
+
         $emailResult = $this->sendSessionEmails($created, $competition['name'], (int) $cid);
 
         $msg = 'Session ajoutée.';
@@ -441,6 +461,8 @@ class CompetitionController extends Controller
         }
 
         $newPassword = $this->session->resetPassword((int) $sid);
+
+        ActivityLog::logCompetition((int) $cid, 'session.password_reset', $this->getCurrentUserId(), 'competition_session', (int) $sid, ['session_number' => $session['session_number']]);
 
         // Envoyer l'email si l'arbitre a un email
         $msg = 'Mot de passe réinitialisé pour la session #' . $session['session_number'] . '. Nouveau : ' . $newPassword;
@@ -488,6 +510,9 @@ class CompetitionController extends Controller
         }
 
         $this->session->deactivate((int) $sid);
+
+        ActivityLog::logCompetition((int) $cid, 'session.deactivate', $this->getCurrentUserId(), 'competition_session', (int) $sid, ['session_number' => $session['session_number']]);
+
         $this->setFlash('success', 'Session #' . $session['session_number'] . ' interrompue.');
         $this->redirect("/spaces/{$id}/competitions/{$cid}");
     }
@@ -515,6 +540,9 @@ class CompetitionController extends Controller
         }
 
         $this->session->reactivate((int) $sid);
+
+        ActivityLog::logCompetition((int) $cid, 'session.reactivate', $this->getCurrentUserId(), 'competition_session', (int) $sid, ['session_number' => $session['session_number']]);
+
         $this->setFlash('success', 'Session #' . $session['session_number'] . ' réactivée.');
         $this->redirect("/spaces/{$id}/competitions/{$cid}");
     }
@@ -533,6 +561,8 @@ class CompetitionController extends Controller
             $this->redirect("/spaces/{$id}/competitions");
             return;
         }
+
+        ActivityLog::logCompetition((int) $cid, 'competition.delete', $this->getCurrentUserId(), 'competition', (int) $cid, ['name' => $competition['name']]);
 
         // Détacher les parties de la compétition (ne pas les supprimer, elles font partie de l'espace)
         $this->pdo->prepare("UPDATE games SET competition_id = NULL, session_id = NULL WHERE competition_id = :cid")

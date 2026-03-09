@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\Middleware;
+use App\Models\ActivityLog;
 use App\Models\Space;
 use App\Models\SpaceMember;
 use App\Models\SpaceInvite;
@@ -80,6 +81,8 @@ class SpaceController extends Controller
 
         // Ajouter le créateur comme admin
         $this->memberModel->addMember($spaceId, $userId, 'admin');
+
+        ActivityLog::logSpace($spaceId, 'space.create', $userId, 'space', $spaceId, ['name' => $data['name']]);
 
         $this->setFlash('success', 'Espace "' . $data['name'] . '" créé avec succès.');
         $this->redirect('/spaces/' . $spaceId);
@@ -181,6 +184,8 @@ class SpaceController extends Controller
             'description' => $data['description'],
         ]);
 
+        ActivityLog::logSpace((int) $id, 'space.update', $this->getCurrentUserId(), 'space', (int) $id, ['name' => $data['name']]);
+
         $this->setFlash('success', 'Espace mis à jour.');
         $this->redirect('/spaces/' . $id);
     }
@@ -204,6 +209,8 @@ class SpaceController extends Controller
             $this->setFlash('danger', 'Seul le super administrateur peut supprimer un espace.');
             $this->redirect('/spaces/' . $id);
         }
+
+        ActivityLog::logSpace((int) $id, 'space.delete', $this->getCurrentUserId(), 'space', (int) $id);
 
         $this->spaceModel->delete((int) $id);
         $this->setFlash('success', 'Espace supprimé.');
@@ -277,6 +284,9 @@ class SpaceController extends Controller
         }
 
         $this->memberModel->addMember((int) $id, $user['id'], $role);
+
+        ActivityLog::logSpace((int) $id, 'member.add', $this->getCurrentUserId(), 'user', $user['id'], ['username' => $username, 'role' => $role]);
+
         $this->setFlash('success', $username . ' a été ajouté à l\'espace.');
         $this->redirect('/spaces/' . $id . '/members');
     }
@@ -297,6 +307,8 @@ class SpaceController extends Controller
 
         $role = $_POST['role'] ?? 'member';
         $this->memberModel->updateRole((int) $mid, $role);
+
+        ActivityLog::logSpace((int) $id, 'member.role_update', $this->getCurrentUserId(), 'space_member', (int) $mid, ['role' => $role]);
 
         $this->setFlash('success', 'Rôle mis à jour.');
         $this->redirect('/spaces/' . $id . '/members');
@@ -325,6 +337,8 @@ class SpaceController extends Controller
             $this->redirect('/spaces/' . $id . '/members');
         }
 
+        ActivityLog::logSpace((int) $id, 'member.remove', $this->getCurrentUserId(), 'user', (int) ($memberToRemove['user_id'] ?? $mid));
+
         $this->memberModel->delete((int) $mid);
         $this->setFlash('success', 'Membre retiré de l\'espace.');
         $this->redirect('/spaces/' . $id . '/members');
@@ -345,6 +359,9 @@ class SpaceController extends Controller
         }
 
         $token = $this->inviteModel->createInvite((int) $id, $this->getCurrentUserId());
+
+        ActivityLog::logSpace((int) $id, 'invite.create', $this->getCurrentUserId(), 'space_invite', null);
+
         $link = url('spaces/join/' . $token);
 
         \App\Core\Session::set('invite_link', $link);
@@ -374,6 +391,9 @@ class SpaceController extends Controller
         }
 
         $this->memberModel->addMember($spaceId, $userId, 'member');
+
+        ActivityLog::logSpace($spaceId, 'member.join', $userId, 'user', $userId);
+
         $this->setFlash('success', 'Vous avez rejoint l\'espace "' . $invite['space_name'] . '" !');
         $this->redirect('/spaces/' . $spaceId);
     }
@@ -409,6 +429,8 @@ class SpaceController extends Controller
             return;
         }
 
+        ActivityLog::logSpace((int) $id, 'member.leave', $userId, 'user', $userId);
+
         $this->memberModel->delete($member['id']);
         $this->setFlash('success', 'Vous avez quitté l\'espace « ' . e($space['name']) . ' ».');
         $this->redirect('/spaces');
@@ -427,6 +449,8 @@ class SpaceController extends Controller
             $this->setFlash('danger', 'Permissions insuffisantes.');
             $this->redirect('/spaces/' . $id . '/members');
         }
+
+        ActivityLog::logSpace((int) $id, 'invite.revoke', $this->getCurrentUserId(), 'space_invite', (int) $iid);
 
         $this->inviteModel->delete((int) $iid);
         $this->setFlash('success', 'Invitation désactivée.');

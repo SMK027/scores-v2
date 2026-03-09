@@ -11,6 +11,7 @@ use App\Models\RoundScore;
 use App\Models\RoundPause;
 use App\Models\Game;
 use App\Models\Space;
+use App\Models\ActivityLog;
 
 class RoundController extends Controller
 {
@@ -95,6 +96,8 @@ class RoundController extends Controller
         $data = $this->getPostData(['notes']);
         $this->round->createForGame((int) $gid, $data['notes'] ?: null);
 
+        ActivityLog::logSpace((int) $id, 'round.create', $this->getCurrentUserId(), 'game', (int) $gid);
+
         $this->setFlash('success', 'Manche ajoutée avec succès.');
         $this->redirect("/spaces/{$id}/games/{$gid}");
     }
@@ -174,6 +177,8 @@ class RoundController extends Controller
 
         $msg = $isCompleted ? 'Scores corrigés.' : 'Scores enregistrés, manche terminée.';
 
+        ActivityLog::logSpace((int) $id, $isCompleted ? 'round.scores_corrected' : 'round.scores_saved', $this->getCurrentUserId(), 'round', (int) $rid, ['game_id' => (int) $gid]);
+
         if ($this->isAjax()) {
             $this->jsonResponse(['success' => true, 'message' => $msg]);
         }
@@ -239,6 +244,8 @@ class RoundController extends Controller
             $this->game->recalculateTotals((int) $gid);
         }
 
+        ActivityLog::logSpace((int) $id, 'round.status_change', $this->getCurrentUserId(), 'round', (int) $rid, ['status' => $status, 'game_id' => (int) $gid]);
+
         $labels = [
             'in_progress' => 'reprise',
             'paused'      => 'mise en pause',
@@ -281,6 +288,8 @@ class RoundController extends Controller
         $this->round->deleteWithScores((int) $rid);
         $this->round->renumberRounds((int) $gid);
         $this->game->recalculateTotals((int) $gid);
+
+        ActivityLog::logSpace((int) $id, 'round.delete', $this->getCurrentUserId(), 'round', (int) $rid, ['game_id' => (int) $gid]);
 
         $this->setFlash('success', 'Manche supprimée.');
         $this->redirect("/spaces/{$id}/games/{$gid}");

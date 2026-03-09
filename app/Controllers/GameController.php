@@ -15,6 +15,7 @@ use App\Models\Round;
 use App\Models\RoundScore;
 use App\Models\RoundPause;
 use App\Models\Comment;
+use App\Models\ActivityLog;
 
 /**
  * Contrôleur des parties.
@@ -175,6 +176,8 @@ class GameController extends Controller
 
         $this->gamePlayerModel->addPlayers($gameId, $playerIds);
 
+        ActivityLog::logSpace((int) $id, 'game.create', $this->getCurrentUserId(), 'game', $gameId, ['game_type' => $gameType['name'], 'players' => count($playerIds)]);
+
         $this->setFlash('success', 'Partie créée et lancée !');
         $this->redirect("/spaces/{$id}/games/{$gameId}");
     }
@@ -305,6 +308,8 @@ class GameController extends Controller
             'notes' => $data['notes'],
         ]);
 
+        ActivityLog::logSpace((int) $id, 'game.update', $this->getCurrentUserId(), 'game', (int) $gid);
+
         $this->setFlash('success', 'Partie mise à jour.');
         $this->redirect("/spaces/{$id}/games/{$gid}");
     }
@@ -323,6 +328,8 @@ class GameController extends Controller
             $this->redirect("/spaces/{$id}/games/{$gid}");
             return;
         }
+
+        ActivityLog::logSpace((int) $id, 'game.delete', $this->getCurrentUserId(), 'game', (int) $gid);
 
         $this->gameModel->delete((int) $gid);
         $this->setFlash('success', 'Partie supprimée.');
@@ -364,6 +371,8 @@ class GameController extends Controller
 
         $this->gameModel->update((int) $gid, $updateData);
 
+        ActivityLog::logSpace((int) $id, 'game.status_change', $this->getCurrentUserId(), 'game', (int) $gid, ['status' => $status]);
+
         $this->setFlash('success', 'Statut mis à jour : ' . game_status_label($status));
         $this->redirect("/spaces/{$id}/games/{$gid}");
     }
@@ -389,6 +398,8 @@ class GameController extends Controller
             'content' => $content,
         ]);
 
+        ActivityLog::logSpace((int) $id, 'game.comment_add', $this->getCurrentUserId(), 'game', (int) $gid);
+
         $this->setFlash('success', 'Commentaire ajouté.');
         $this->redirect("/spaces/{$id}/games/{$gid}");
     }
@@ -406,6 +417,7 @@ class GameController extends Controller
 
         // Seul l'auteur ou un admin peut supprimer
         if ($comment && ($comment['user_id'] == $this->getCurrentUserId() || Middleware::isGlobalStaff())) {
+            ActivityLog::logSpace((int) $id, 'game.comment_delete', $this->getCurrentUserId(), 'comment', (int) $cid);
             $commentModel->delete((int) $cid);
             $this->setFlash('success', 'Commentaire supprimé.');
         }

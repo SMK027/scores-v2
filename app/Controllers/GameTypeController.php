@@ -8,6 +8,7 @@ use App\Core\Controller;
 use App\Core\Middleware;
 use App\Models\GameType;
 use App\Models\Space;
+use App\Models\ActivityLog;
 
 /**
  * Contrôleur des types de jeux.
@@ -97,6 +98,8 @@ class GameTypeController extends Controller
             'max_players'   => !empty($data['max_players']) ? (int) $data['max_players'] : null,
         ]);
 
+        ActivityLog::logSpace((int) $id, 'game_type.create', $this->getCurrentUserId(), 'game_type', null, ['name' => $data['name']]);
+
         $this->setFlash('success', 'Type de jeu créé.');
         $this->redirect("/spaces/{$id}/game-types");
     }
@@ -146,6 +149,8 @@ class GameTypeController extends Controller
             'max_players'   => !empty($data['max_players']) ? (int) $data['max_players'] : null,
         ]);
 
+        ActivityLog::logSpace((int) $id, 'game_type.update', $this->getCurrentUserId(), 'game_type', (int) $gtid, ['name' => $data['name']]);
+
         $this->setFlash('success', 'Type de jeu mis à jour.');
         $this->redirect("/spaces/{$id}/game-types");
     }
@@ -157,6 +162,8 @@ class GameTypeController extends Controller
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager']);
         $this->validateCSRF();
+
+        ActivityLog::logSpace((int) $id, 'game_type.delete', $this->getCurrentUserId(), 'game_type', (int) $gtid);
 
         $this->gameTypeModel->delete((int) $gtid);
         $this->setFlash('success', 'Type de jeu supprimé.');

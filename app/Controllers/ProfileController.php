@@ -8,6 +8,7 @@ use App\Core\Controller;
 use App\Core\Session;
 use App\Models\User;
 use App\Models\PasswordPolicy;
+use App\Models\ActivityLog;
 
 /**
  * Contrôleur de profil utilisateur.
@@ -193,9 +194,12 @@ class ProfileController extends Controller
 
         $this->userModel->updateProfile($userId, $updateData);
 
+        ActivityLog::logAuth('profile.update', $userId);
+
         // Mise à jour du mot de passe si demandé
         if (!empty($data['new_password'])) {
             $this->userModel->updatePassword($userId, $data['new_password']);
+            ActivityLog::logAuth('password.change', $userId);
         }
 
         // Mettre à jour la session

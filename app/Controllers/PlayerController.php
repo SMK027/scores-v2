@@ -11,6 +11,7 @@ use App\Models\Player;
 use App\Models\Space;
 use App\Models\SpaceMember;
 use App\Models\User;
+use App\Models\ActivityLog;
 
 /**
  * Contrôleur des joueurs.
@@ -196,6 +197,9 @@ class PlayerController extends Controller
         }
 
         $this->playerModel->create($createData);
+
+        ActivityLog::logSpace((int) $id, 'player.create', $this->getCurrentUserId(), 'player', null, ['name' => $data['name']]);
+
         $this->setFlash('success', 'Joueur ajouté.');
         $this->redirect("/spaces/{$id}/players");
     }
@@ -256,6 +260,9 @@ class PlayerController extends Controller
         }
 
         $this->playerModel->update((int) $pid, $updateData);
+
+        ActivityLog::logSpace((int) $id, 'player.update', $this->getCurrentUserId(), 'player', (int) $pid, ['name' => $data['name']]);
+
         $this->setFlash('success', 'Joueur mis à jour.');
         $this->redirect("/spaces/{$id}/players");
     }
@@ -267,6 +274,8 @@ class PlayerController extends Controller
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager']);
         $this->validateCSRF();
+
+        ActivityLog::logSpace((int) $id, 'player.delete', $this->getCurrentUserId(), 'player', (int) $pid);
 
         $this->playerModel->delete((int) $pid);
         $this->setFlash('success', 'Joueur supprimé.');

@@ -16,6 +16,7 @@ use App\Models\IpBan;
 use App\Models\LoginAttempt;
 use App\Models\LoginLock;
 use App\Models\Fail2banConfig;
+use App\Models\ActivityLog;
 
 /**
  * Contrôleur d'authentification.
@@ -139,6 +140,8 @@ class AuthController extends Controller
 
         // Régénérer le token CSRF
         CSRF::regenerate();
+
+        ActivityLog::logAuth('login.success', (int) $user['id']);
 
         $this->setFlash('success', 'Bienvenue, ' . $user['username'] . ' !');
         $this->redirect('/spaces');
@@ -297,6 +300,8 @@ class AuthController extends Controller
         Session::set('avatar', $user['avatar'] ?? '');
         CSRF::regenerate();
 
+        ActivityLog::logAuth('register', $userId);
+
         $this->setFlash('success', 'Inscription réussie ! Bienvenue, ' . $user['username'] . ' !');
         $this->redirect('/spaces');
     }
@@ -306,6 +311,9 @@ class AuthController extends Controller
      */
     public function logout(): void
     {
+        $userId = $this->getCurrentUserId();
+        ActivityLog::logAuth('logout', $userId);
+
         Session::destroy();
         // Redémarrer une session propre pour le flash
         Session::start();
@@ -444,6 +452,8 @@ class AuthController extends Controller
 
         // Marquer le token comme utilisé
         $resetModel->markUsed($token);
+
+        ActivityLog::logAuth('password.reset', (int) $resetData['user_id']);
 
         $this->setFlash('success', 'Votre mot de passe a été réinitialisé avec succès. Vous pouvez vous connecter.');
         $this->redirect('/login');
