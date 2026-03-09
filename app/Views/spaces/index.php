@@ -3,6 +3,51 @@
     <a href="/spaces/create" class="btn btn-primary">+ Créer un espace</a>
 </div>
 
+<?php if (!empty($pendingInvitations)): ?>
+    <div class="card mb-3" style="border-color:var(--primary);">
+        <div class="card-header">
+            <h3>📩 Invitations reçues (<?= count($pendingInvitations) ?>)</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Espace</th>
+                            <th>Invité par</th>
+                            <th>Rôle proposé</th>
+                            <th>Date</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($pendingInvitations as $inv): ?>
+                            <tr>
+                                <td><strong><?= e($inv['space_name']) ?></strong></td>
+                                <td><?= e($inv['invited_by_name']) ?></td>
+                                <td><span class="badge badge-primary"><?= space_role_label($inv['role']) ?></span></td>
+                                <td class="text-muted text-small"><?= format_date($inv['created_at'], 'd/m/Y H:i') ?></td>
+                                <td class="text-right">
+                                    <div class="d-flex gap-1 justify-end">
+                                        <form method="POST" action="/invitations/<?= $inv['id'] ?>/accept">
+                                            <?= csrf_field() ?>
+                                            <button type="submit" class="btn btn-sm btn-primary">Accepter</button>
+                                        </form>
+                                        <form method="POST" action="/invitations/<?= $inv['id'] ?>/decline">
+                                            <?= csrf_field() ?>
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Refuser cette invitation ?">Refuser</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
+
 <?php if (empty($spaces)): ?>
     <div class="empty-state">
         <div class="empty-icon">🏠</div>

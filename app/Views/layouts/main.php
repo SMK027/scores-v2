@@ -17,7 +17,10 @@
             </button>
             <div class="navbar-menu" id="navbarMenu">
                 <?php if (is_authenticated()): ?>
-                    <a href="/spaces" class="navbar-link">Mes espaces</a>
+                    <?php
+                        $__pendingInvCount = (new \App\Models\SpaceInvitation())->countPendingForUser(current_user_id());
+                    ?>
+                    <a href="/spaces" class="navbar-link">Mes espaces<?php if ($__pendingInvCount > 0): ?> <span class="badge badge-danger" style="font-size:0.7em;vertical-align:middle;"><?= $__pendingInvCount ?></span><?php endif; ?></a>
                     <?php if (\App\Core\Middleware::isGlobalStaff()): ?>
                         <a href="/admin" class="navbar-link">Administration</a>
                     <?php endif; ?>

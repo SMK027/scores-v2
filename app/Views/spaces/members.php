@@ -2,12 +2,13 @@
     <h1>Membres de l'espace</h1>
 </div>
 
-<!-- Ajouter un membre -->
+<!-- Inviter un membre -->
 <div class="card mb-3">
     <div class="card-header">
-        <h3>Ajouter un membre</h3>
+        <h3>Inviter un membre</h3>
     </div>
     <div class="card-body">
+        <p class="text-muted text-small mb-2">L'utilisateur recevra une invitation qu'il pourra accepter ou refuser.</p>
         <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/members/add" class="d-flex gap-1 flex-wrap align-center">
             <?= csrf_field() ?>
             <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0;">
@@ -20,7 +21,7 @@
                     <option value="guest">Invité</option>
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary">Ajouter</button>
+            <button type="submit" class="btn btn-primary">Inviter</button>
         </form>
     </div>
 </div>
@@ -94,6 +95,46 @@
             <?= csrf_field() ?>
             <button type="submit" class="btn btn-warning" data-confirm="Voulez-vous vraiment quitter cet espace ?">Quitter l'espace</button>
         </form>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- Invitations en attente -->
+<?php if (!empty($pendingInvitations)): ?>
+<div class="card mb-3">
+    <div class="card-header">
+        <h3>📩 Invitations en attente (<?= count($pendingInvitations) ?>)</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Utilisateur</th>
+                        <th>Rôle proposé</th>
+                        <th>Invité par</th>
+                        <th>Date</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($pendingInvitations as $inv): ?>
+                        <tr>
+                            <td><strong><?= e($inv['invited_username']) ?></strong></td>
+                            <td><span class="badge badge-primary"><?= space_role_label($inv['role']) ?></span></td>
+                            <td class="text-muted"><?= e($inv['invited_by_name']) ?></td>
+                            <td class="text-muted text-small"><?= format_date($inv['created_at'], 'd/m/Y H:i') ?></td>
+                            <td class="text-right">
+                                <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/invitations/<?= $inv['id'] ?>/cancel" style="display:inline;">
+                                    <?= csrf_field() ?>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Annuler cette invitation ?">Annuler</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 <?php endif; ?>

@@ -10,6 +10,7 @@ use App\Models\ActivityLog;
 use App\Models\Space;
 use App\Models\SpaceMember;
 use App\Models\SpaceInvite;
+use App\Models\SpaceInvitation;
 use App\Models\User;
 
 /**
@@ -20,12 +21,14 @@ class SpaceController extends Controller
     private Space $spaceModel;
     private SpaceMember $memberModel;
     private SpaceInvite $inviteModel;
+    private SpaceInvitation $invitationModel;
 
     public function __construct()
     {
         $this->spaceModel = new Space();
         $this->memberModel = new SpaceMember();
         $this->inviteModel = new SpaceInvite();
+        $this->invitationModel = new SpaceInvitation();
     }
 
     /**
@@ -34,11 +37,14 @@ class SpaceController extends Controller
     public function index(): void
     {
         $this->requireAuth();
-        $spaces = $this->spaceModel->findByUser($this->getCurrentUserId());
+        $userId = $this->getCurrentUserId();
+        $spaces = $this->spaceModel->findByUser($userId);
+        $pendingInvitations = $this->invitationModel->findPendingForUser($userId);
 
         $this->render('spaces/index', [
-            'title'  => 'Mes espaces',
-            'spaces' => $spaces,
+            'title'              => 'Mes espaces',
+            'spaces'             => $spaces,
+            'pendingInvitations' => $pendingInvitations,
         ]);
     }
 
@@ -238,19 +244,21 @@ class SpaceController extends Controller
 
         $members = $this->memberModel->findBySpace((int) $id);
         $activeInvites = $this->inviteModel->findActiveBySpace((int) $id);
+        $pendingInvitations = $this->invitationModel->findPendingForSpace((int) $id);
 
         $this->render('spaces/members', [
-            'title'         => 'Membres',
-            'currentSpace'  => $space,
-            'spaceRole'     => $member['role'],
-            'activeMenu'    => 'members',
-            'members'       => $members,
-            'activeInvites' => $activeInvites,
+            'title'              => 'Membres',
+            'currentSpace'       => $space,
+            'spaceRole'          => $member['role'],
+            'activeMenu'         => 'members',
+            'members'            => $members,
+            'activeInvites'      => $activeInvites,
+            'pendingInvitations' => $pendingInvitations,
         ]);
     }
 
     /**
-     * Ajoute un membre par nom d'utilisateur.
+     * Envoie une invitation à un utilisateur (par nom d'utilisateur).
      */
     public function addMember(string $id): void
     {
@@ -281,13 +289,97 @@ class SpaceController extends Controller
         if ($this->memberModel->isMember((int) $id, $user['id'])) {
             $this->setFlash('warning', 'Cet utilisateur est déjà membre de l\'espace.');
             $this->redirect('/spaces/' . $id . '/members');
+            return;
         }
 
-        $this->memberModel->addMember((int) $id, $user['id'], $role);
+        if ($this->invitationModel->hasPendingInvite((int) $id, $user['id'])) {
+            $this->setFlash('warning', 'Une invitation est déjà en attente pour cet utilisateur.');
+            $this->redirect('/spaces/' . $id . '/members');
+            return;
+        }
 
-        ActivityLog::logSpace((int) $id, 'member.add', $this->getCurrentUserId(), 'user', $user['id'], ['username' => $username, 'role' => $role]);
+        $this->invitationModel->invite((int) $id, $user['id'], $this->getCurrentUserId(), $role);
 
-        $this->setFlash('success', $username . ' a été ajouté à l\'espace.');
+        ActivityLog::logSpace((int) $id, 'member.invite', $this->getCurrentUserId(), 'user', $user['id'], ['username' => $username, 'role' => $role]);
+
+        $this->setFlash('success', 'Invitation envoyée à ' . $username . '.');
+        $this->redirect('/spaces/' . $id . '/members');
+    }
+
+    /**
+     * Accepte une invitation reçue.
+     */
+    public function acceptInvitation(string $invId): void
+    {
+        $this->requireAuth();
+        $this->validateCSRF();
+
+        $invitation = $this->invitationModel->find((int) $invId);
+        if (!$invitation || $invitation['invited_user_id'] != $this->getCurrentUserId() || $invitation['status'] !== 'pending') {
+            $this->setFlash('danger', 'Invitation introuvable ou déjà traitée.');
+            $this->redirect('/spaces');
+            return;
+        }
+
+        $this->invitationModel->accept((int) $invId);
+        $this->memberModel->addMember($invitation['space_id'], $this->getCurrentUserId(), $invitation['role']);
+
+        ActivityLog::logSpace($invitation['space_id'], 'member.accept_invite', $this->getCurrentUserId(), 'space_invitation', (int) $invId);
+
+        $this->setFlash('success', 'Vous avez rejoint l\'espace !');
+        $this->redirect('/spaces/' . $invitation['space_id']);
+    }
+
+    /**
+     * Refuse une invitation reçue.
+     */
+    public function declineInvitation(string $invId): void
+    {
+        $this->requireAuth();
+        $this->validateCSRF();
+
+        $invitation = $this->invitationModel->find((int) $invId);
+        if (!$invitation || $invitation['invited_user_id'] != $this->getCurrentUserId() || $invitation['status'] !== 'pending') {
+            $this->setFlash('danger', 'Invitation introuvable ou déjà traitée.');
+            $this->redirect('/spaces');
+            return;
+        }
+
+        $this->invitationModel->decline((int) $invId);
+
+        ActivityLog::logSpace($invitation['space_id'], 'member.decline_invite', $this->getCurrentUserId(), 'space_invitation', (int) $invId);
+
+        $this->setFlash('info', 'Invitation refusée.');
+        $this->redirect('/spaces');
+    }
+
+    /**
+     * Annule une invitation en attente (par un admin/manager de l'espace).
+     */
+    public function cancelInvitation(string $id, string $invId): void
+    {
+        $this->requireAuth();
+        $this->validateCSRF();
+
+        $member = Middleware::checkSpaceAccess((int) $id, $this->getCurrentUserId(), ['admin', 'manager']);
+        if (!$member) {
+            $this->setFlash('danger', 'Permissions insuffisantes.');
+            $this->redirect('/spaces/' . $id . '/members');
+            return;
+        }
+
+        $invitation = $this->invitationModel->find((int) $invId);
+        if (!$invitation || $invitation['space_id'] != (int) $id || $invitation['status'] !== 'pending') {
+            $this->setFlash('danger', 'Invitation introuvable ou déjà traitée.');
+            $this->redirect('/spaces/' . $id . '/members');
+            return;
+        }
+
+        $this->invitationModel->cancel((int) $invId);
+
+        ActivityLog::logSpace((int) $id, 'member.cancel_invite', $this->getCurrentUserId(), 'space_invitation', (int) $invId);
+
+        $this->setFlash('success', 'Invitation annulée.');
         $this->redirect('/spaces/' . $id . '/members');
     }
 

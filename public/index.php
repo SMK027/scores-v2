@@ -128,6 +128,9 @@ $router->post('/spaces/{id}/members/{mid}/role', SpaceController::class, 'update
 $router->post('/spaces/{id}/members/{mid}/remove', SpaceController::class, 'removeMember');
 $router->post('/spaces/{id}/invite', SpaceController::class, 'invite');
 $router->post('/spaces/{id}/invite/{iid}/revoke', SpaceController::class, 'revokeInvite');
+$router->post('/spaces/{id}/invitations/{invId}/cancel', SpaceController::class, 'cancelInvitation');
+$router->post('/invitations/{invId}/accept', SpaceController::class, 'acceptInvitation');
+$router->post('/invitations/{invId}/decline', SpaceController::class, 'declineInvitation');
 
 // ============================================================
 // Types de jeux
