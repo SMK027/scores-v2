@@ -154,9 +154,18 @@ class CompetitionController extends Controller
         $created = $this->session->createBatch($competitionId, $referees);
 
         // Envoyer les emails aux arbitres
-        $this->sendSessionEmails($created, $data['name'], $competitionId);
+        $emailResult = $this->sendSessionEmails($created, $data['name'], $competitionId);
 
-        $this->setFlash('success', 'Compétition créée avec ' . count($referees) . ' session(s).');
+        $msg = 'Compétition créée avec ' . count($referees) . ' session(s).';
+        if ($emailResult['sent'] > 0) {
+            $msg .= ' ' . $emailResult['sent'] . ' email(s) envoyé(s).';
+        }
+        if (!empty($emailResult['failed'])) {
+            $msg .= ' ⚠ Échec d\'envoi pour : ' . implode(', ', $emailResult['failed']) . '.';
+            $this->setFlash('warning', $msg);
+        } else {
+            $this->setFlash('success', $msg);
+        }
         $this->redirect("/spaces/{$id}/competitions/{$competitionId}");
     }
 
@@ -397,8 +406,15 @@ class CompetitionController extends Controller
         }
 
         $created = $this->session->createBatch((int) $cid, [['name' => $refereeName, 'email' => $refereeEmail]]);
-        $this->sendSessionEmails($created, $competition['name'], (int) $cid);
-        $this->setFlash('success', 'Session ajoutée.');
+        $emailResult = $this->sendSessionEmails($created, $competition['name'], (int) $cid);
+
+        $msg = 'Session ajoutée.';
+        if ($emailResult['sent'] > 0) {
+            $msg .= ' Email envoyé.';
+        } elseif (!empty($emailResult['failed'])) {
+            $msg .= ' ⚠ Échec d\'envoi de l\'email.';
+        }
+        $this->setFlash(!empty($emailResult['failed']) ? 'warning' : 'success', $msg);
         $this->redirect("/spaces/{$id}/competitions/{$cid}");
     }
 
@@ -427,8 +443,9 @@ class CompetitionController extends Controller
         $newPassword = $this->session->resetPassword((int) $sid);
 
         // Envoyer l'email si l'arbitre a un email
+        $msg = 'Mot de passe réinitialisé pour la session #' . $session['session_number'] . '. Nouveau : ' . $newPassword;
         if (!empty($session['referee_email'])) {
-            $this->sendSessionEmails([
+            $emailResult = $this->sendSessionEmails([
                 [
                     'referee_name'   => $session['referee_name'],
                     'referee_email'  => $session['referee_email'],
@@ -436,9 +453,15 @@ class CompetitionController extends Controller
                     'password'       => $newPassword,
                 ],
             ], $competition['name'], (int) $cid);
+
+            if ($emailResult['sent'] > 0) {
+                $msg .= ' Email envoyé.';
+            } elseif (!empty($emailResult['failed'])) {
+                $msg .= ' ⚠ Échec d\'envoi de l\'email.';
+            }
         }
 
-        $this->setFlash('success', 'Mot de passe réinitialisé pour la session #' . $session['session_number'] . '. Nouveau : ' . $newPassword);
+        $this->setFlash('success', $msg);
         $this->redirect("/spaces/{$id}/competitions/{$cid}");
     }
 
@@ -523,10 +546,18 @@ class CompetitionController extends Controller
     /**
      * Envoie un email de connexion à chaque arbitre ayant un email.
      */
-    private function sendSessionEmails(array $sessions, string $competitionName, int $competitionId): void
+    /**
+     * @return array{sent: int, failed: string[]}
+     */
+    private function sendSessionEmails(array $sessions, string $competitionName, int $competitionId): array
     {
         $mailer = new Mailer();
-        foreach ($sessions as $s) {
+        $sent   = 0;
+        $failed = [];
+
+        $loginUrl = rtrim(getenv('APP_URL') ?: ($_SERVER['REQUEST_SCHEME'] ?? 'https') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), '/') . '/competition/login';
+
+        foreach ($sessions as $i => $s) {
             $email = $s['referee_email'] ?? '';
             if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 continue;
@@ -539,22 +570,25 @@ class CompetitionController extends Controller
                 . "<li><strong>ID de la compétition :</strong> " . $competitionId . "</li>"
                 . "<li><strong>Numéro de session :</strong> " . (int) $s['session_number'] . "</li>"
                 . "<li><strong>Mot de passe :</strong> " . htmlspecialchars($s['password']) . "</li>"
-                . "</ul>";
-
-            $loginUrl = rtrim(getenv('APP_URL') ?: ($_SERVER['REQUEST_SCHEME'] ?? 'https') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), '/') . '/competition/login';
-
-            $body .= "<p>Connectez-vous ici pour accéder à votre interface de saisie : <a href=\"" . htmlspecialchars($loginUrl) . "\">" . htmlspecialchars($loginUrl) . "</a></p>"
+                . "</ul>"
+                . "<p>Connectez-vous ici pour accéder à votre interface de saisie : <a href=\"" . htmlspecialchars($loginUrl) . "\">" . htmlspecialchars($loginUrl) . "</a></p>"
                 . "<p>— L'équipe Scores</p>";
+
+            // Pause entre les envois pour éviter le rate-limiting SMTP
+            if ($i > 0) {
+                usleep(500000); // 500 ms
+            }
 
             try {
                 $mailer->send($email, "Scores — Vos identifiants d'arbitrage", $body);
+                $sent++;
             } catch (\RuntimeException $e) {
-                // Ne pas bloquer la création si l'email échoue
-                if (getenv('APP_DEBUG') === 'true') {
-                    error_log("Email arbitre échoué ({$email}): " . $e->getMessage());
-                }
+                error_log("Email arbitre échoué ({$email}): " . $e->getMessage());
+                $failed[] = $s['referee_name'] . ' (' . $email . ')';
             }
         }
+
+        return ['sent' => $sent, 'failed' => $failed];
     }
 
     /**
