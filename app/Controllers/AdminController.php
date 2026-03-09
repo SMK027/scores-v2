@@ -768,6 +768,13 @@ class AdminController extends Controller
                 return;
             }
 
+            $minDt = $now->modify('+45 minutes');
+            if ($dt < $minDt) {
+                $this->setFlash('danger', 'La date de suppression doit être au moins 45 minutes après l\'heure actuelle.');
+                $this->redirect('/admin/spaces/' . $id . '/schedule-deletion');
+                return;
+            }
+
             $datetimeParis = $dt->format('Y-m-d H:i:s');
         } catch (\Exception $e) {
             $this->setFlash('danger', 'Format de date invalide.');
