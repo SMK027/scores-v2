@@ -32,6 +32,26 @@
     <a href="/admin/logs" class="btn btn-outline">📋 Journal d'activité</a>
 </div>
 
+<div class="card mb-3">
+    <div class="card-body d-flex align-center gap-1">
+        <span>🕐 <strong>CRON purge auto</strong> — prochaine exécution dans</span>
+        <span id="cron-countdown" style="font-weight:bold;color:var(--primary,#4361ee);"></span>
+    </div>
+</div>
+<script>
+(function(){
+    var el = document.getElementById('cron-countdown');
+    function update(){
+        var now = new Date();
+        var remaining = 60 - now.getSeconds();
+        if(remaining === 60) remaining = 0;
+        el.textContent = remaining + 's';
+    }
+    update();
+    setInterval(update, 1000);
+})();
+</script>
+
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
     <!-- Derniers inscrits -->
     <div class="card">
