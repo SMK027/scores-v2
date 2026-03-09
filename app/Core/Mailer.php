@@ -170,4 +170,80 @@ class Mailer
             "X-Mailer: Scores-App/1.0",
         ]);
     }
+
+    /**
+     * Envoie un email à plusieurs destinataires en BCC (un seul mail SMTP).
+     *
+     * @param string[] $bccEmails Liste des adresses en BCC
+     */
+    public function sendBcc(array $bccEmails, string $subject, string $htmlBody): bool
+    {
+        $bccEmails = array_unique(array_filter($bccEmails));
+        if (empty($bccEmails)) {
+            return false;
+        }
+
+        $socket = $this->connect();
+
+        try {
+            $this->expect($socket, 220);
+            $this->command($socket, "EHLO " . gethostname(), 250);
+
+            if ($this->encryption === 'tls' && $this->port !== 465) {
+                $this->command($socket, "STARTTLS", 220);
+                stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT | STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT);
+                $this->command($socket, "EHLO " . gethostname(), 250);
+            }
+
+            if ($this->username && $this->password) {
+                $this->command($socket, "AUTH LOGIN", 334);
+                $this->command($socket, base64_encode($this->username), 334);
+                $this->command($socket, base64_encode($this->password), 235);
+            }
+
+            $this->command($socket, "MAIL FROM:<{$this->fromEmail}>", 250);
+
+            foreach ($bccEmails as $email) {
+                $this->command($socket, "RCPT TO:<{$email}>", 250);
+            }
+
+            $this->command($socket, "DATA", 354);
+
+            $headers = $this->buildBccHeaders($subject);
+            $message = $headers . "\r\n" . $htmlBody . "\r\n.";
+            $this->command($socket, $message, 250);
+
+            $this->command($socket, "QUIT", 221);
+
+            return true;
+        } catch (\RuntimeException $e) {
+            if (getenv('APP_DEBUG') === 'true') {
+                error_log("Mailer BCC error: " . $e->getMessage());
+            }
+            throw $e;
+        } finally {
+            if (is_resource($socket)) {
+                fclose($socket);
+            }
+        }
+    }
+
+    /**
+     * Construit les en-têtes pour un envoi BCC (pas de To visible).
+     */
+    private function buildBccHeaders(string $subject): string
+    {
+        $date = date('r');
+
+        return implode("\r\n", [
+            "Date: {$date}",
+            "From: {$this->fromName} <{$this->fromEmail}>",
+            "To: undisclosed-recipients:;",
+            "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=",
+            "MIME-Version: 1.0",
+            "Content-Type: text/html; charset=UTF-8",
+            "Content-Transfer-Encoding: 8bit",
+            "X-Mailer: Scores-App/1.0",
+        ]);
+    }
 }

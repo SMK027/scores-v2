@@ -14,6 +14,8 @@ use App\Models\PasswordPolicy;
 use App\Models\Fail2banConfig;
 use App\Config\Database;
 use App\Models\ActivityLog;
+use App\Models\SpaceMember;
+use App\Core\Mailer;
 
 /**
  * Contrôleur d'administration globale (superadmin, admin, moderator).
@@ -702,6 +704,22 @@ class AdminController extends Controller
             ['restrictions' => $restrictions, 'reason' => $reason]
         );
 
+        // Notifier les gestionnaires par email (BCC)
+        if (!empty($restrictions)) {
+            $restrictionLabels = [];
+            foreach ($restrictions as $key => $v) {
+                if (!empty(Space::RESTRICTION_KEYS[$key])) {
+                    $restrictionLabels[] = Space::RESTRICTION_KEYS[$key];
+                }
+            }
+            $html = '<h2>⚠️ Restrictions appliquées à votre espace « ' . htmlspecialchars($space['name']) . ' »</h2>'
+                  . '<p>L\'administration a appliqué des restrictions sur votre espace :</p>'
+                  . '<ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $restrictionLabels)) . '</li></ul>'
+                  . '<p><strong>Motif :</strong> ' . htmlspecialchars($reason) . '</p>'
+                  . '<p>Veuillez corriger les infractions aux CGU pour que ces restrictions soient levées.</p>';
+            $this->notifySpaceManagers((int) $id, 'Restrictions appliquées — ' . $space['name'], $html);
+        }
+
         $this->setFlash('success', empty($restrictions)
             ? 'Toutes les restrictions ont été levées.'
             : 'Restrictions mises à jour.'
@@ -792,6 +810,14 @@ class AdminController extends Controller
             ['scheduled_at' => $datetimeParis, 'reason' => $reason]
         );
 
+        // Notifier les gestionnaires par email (BCC)
+        $html = '<h2>💣 Suppression programmée de votre espace « ' . htmlspecialchars($space['name']) . ' »</h2>'
+              . '<p>L\'administration a programmé la suppression automatique de votre espace.</p>'
+              . '<p><strong>Date de suppression :</strong> ' . $dt->format('d/m/Y à H:i') . ' (heure de Paris)</p>'
+              . '<p><strong>Motif :</strong> ' . htmlspecialchars($reason) . '</p>'
+              . '<p>Si vous ne corrigez pas les infractions aux CGU avant cette date, l\'espace sera <strong>définitivement supprimé</strong>.</p>';
+        $this->notifySpaceManagers((int) $id, 'Suppression programmée — ' . $space['name'], $html);
+
         $this->setFlash('success', 'Suppression programmée le ' . $dt->format('d/m/Y à H:i') . ' (heure de Paris).');
         $this->redirect('/admin/spaces/' . $id . '/schedule-deletion');
     }
@@ -822,6 +848,41 @@ class AdminController extends Controller
 
         $this->setFlash('success', 'La suppression programmée a été annulée.');
         $this->redirect('/admin/spaces/' . $id . '/schedule-deletion');
+    }
+
+    /**
+     * Récupère les emails des gestionnaires (admin, manager) et du créateur d'un espace,
+     * puis envoie un email unique en BCC.
+     */
+    private function notifySpaceManagers(int $spaceId, string $subject, string $htmlBody): void
+    {
+        try {
+            $spaceMemberModel = new SpaceMember();
+            $members = $spaceMemberModel->findBySpace($spaceId);
+            $space = $this->spaceModel->find($spaceId);
+
+            $emails = [];
+            foreach ($members as $member) {
+                if (in_array($member['role'], ['admin', 'manager'], true) && !empty($member['email'])) {
+                    $emails[] = $member['email'];
+                }
+            }
+
+            // Ajouter le créateur s'il n'est pas déjà dans la liste
+            if ($space && !empty($space['created_by'])) {
+                $creator = $this->userModel->find((int) $space['created_by']);
+                if ($creator && !empty($creator['email'])) {
+                    $emails[] = $creator['email'];
+                }
+            }
+
+            $emails = array_unique(array_filter($emails));
+            if (!empty($emails)) {
+                (new Mailer())->sendBcc($emails, $subject, $htmlBody);
+            }
+        } catch (\Exception $e) {
+            error_log('Notification espace #' . $spaceId . ' : ' . $e->getMessage());
+        }
     }
 
     /**
