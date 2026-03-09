@@ -167,8 +167,9 @@ class AdminController extends Controller
         $params = [];
 
         if ($search !== '') {
-            $where[] = '(s.name LIKE :search OR u.username LIKE :search)';
-            $params['search'] = '%' . $search . '%';
+            $where[] = '(s.name LIKE :search1 OR u.username LIKE :search2)';
+            $params['search1'] = '%' . $search . '%';
+            $params['search2'] = '%' . $search . '%';
         }
 
         if ($status === 'restricted') {
