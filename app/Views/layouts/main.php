@@ -98,6 +98,43 @@
                 <?php endif; ?>
             </div>
             <?php endif; ?>
+            <?php if (!empty($currentSpace['scheduled_deletion_at'])):
+                $__delParis = new \DateTimeZone('Europe/Paris');
+                $__delDt = new \DateTimeImmutable($currentSpace['scheduled_deletion_at'], $__delParis);
+                $__delIso = $__delDt->format('c');
+            ?>
+            <div class="alert alert-danger" style="border-left:4px solid var(--danger,#dc3545);margin-bottom:1rem;">
+                <div>
+                    <strong>💣 Cet espace est programmé pour suppression le <?= $__delDt->format('d/m/Y à H:i') ?> (heure de Paris).</strong>
+                    <?php if (!empty($currentSpace['deletion_reason'])): ?>
+                        <br><span class="text-muted">Motif : <?= e($currentSpace['deletion_reason']) ?></span>
+                    <?php endif; ?>
+                    <br><span id="deletion-countdown" style="font-weight:bold;font-size:1.1em;color:var(--danger,#dc3545);"></span>
+                </div>
+            </div>
+            <script>
+            (function(){
+                var target = new Date(<?= json_encode($__delIso) ?>).getTime();
+                var el = document.getElementById('deletion-countdown');
+                function update(){
+                    var diff = target - Date.now();
+                    if(diff <= 0){ el.textContent = '⏰ Délai expiré — suppression imminente'; return; }
+                    var d = Math.floor(diff/86400000);
+                    var h = Math.floor((diff%86400000)/3600000);
+                    var m = Math.floor((diff%3600000)/60000);
+                    var s = Math.floor((diff%60000)/1000);
+                    var parts = [];
+                    if(d > 0) parts.push(d + 'j');
+                    parts.push(h + 'h');
+                    parts.push(m + 'min');
+                    parts.push(s + 's');
+                    el.textContent = '⏳ Suppression dans ' + parts.join(' ');
+                }
+                update();
+                setInterval(update, 1000);
+            })();
+            </script>
+            <?php endif; ?>
             <?= $content ?>
         </main>
     </div>

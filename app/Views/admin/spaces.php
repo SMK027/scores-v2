@@ -38,6 +38,9 @@
                                     <a href="/admin/spaces/<?= $space['id'] ?>/restrictions" class="btn btn-sm btn-outline<?= !empty($space['restrictions']) ? '-danger' : '' ?>">
                                         <?= !empty($space['restrictions']) ? '🔒 Restreint' : '🔒 Restrictions' ?>
                                     </a>
+                                    <a href="/admin/spaces/<?= $space['id'] ?>/schedule-deletion" class="btn btn-sm btn-outline<?= !empty($space['scheduled_deletion_at']) ? '-danger' : '' ?>">
+                                        <?= !empty($space['scheduled_deletion_at']) ? '💣 Suppression prévue' : '💣 Suppression' ?>
+                                    </a>
                                 </div>
                             </td>
                         </tr>

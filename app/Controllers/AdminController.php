@@ -165,7 +165,9 @@ class AdminController extends Controller
                    (SELECT COUNT(*) FROM games WHERE space_id = s.id) AS game_count
             FROM spaces s
             JOIN users u ON u.id = s.created_by
-            ORDER BY s.restrictions IS NOT NULL DESC, s.created_at DESC
+            ORDER BY s.scheduled_deletion_at IS NOT NULL DESC,
+                     s.restrictions IS NOT NULL DESC,
+                     s.created_at DESC
         ");
         $stmt->execute();
         $spaces = $stmt->fetchAll();
@@ -668,6 +670,114 @@ class AdminController extends Controller
             : 'Restrictions mises à jour.'
         );
         $this->redirect('/admin/spaces/' . $id . '/restrictions');
+    }
+
+    // ─── Auto-destruction programmée ──────────────────────────
+
+    /**
+     * Page de planification de la suppression d'un espace.
+     */
+    public function scheduleDeletion(string $id): void
+    {
+        $this->checkAdminOrSuperAdmin();
+
+        $space = $this->spaceModel->find((int) $id);
+        if (!$space) {
+            $this->setFlash('danger', 'Espace introuvable.');
+            $this->redirect('/admin/spaces');
+            return;
+        }
+
+        $this->render('admin/schedule_deletion', [
+            'title'      => 'Suppression programmée — ' . $space['name'],
+            'activeMenu' => 'admin',
+            'space'      => $space,
+        ]);
+    }
+
+    /**
+     * Enregistre la planification de suppression.
+     */
+    public function updateScheduleDeletion(string $id): void
+    {
+        $this->checkAdminOrSuperAdmin();
+        $this->validateCSRF();
+
+        $space = $this->spaceModel->find((int) $id);
+        if (!$space) {
+            $this->setFlash('danger', 'Espace introuvable.');
+            $this->redirect('/admin/spaces');
+            return;
+        }
+
+        $datetimeInput = trim($_POST['scheduled_at'] ?? '');
+        $reason = trim($_POST['deletion_reason'] ?? '');
+
+        if (empty($datetimeInput) || empty($reason)) {
+            $this->setFlash('danger', 'La date/heure et le motif sont obligatoires.');
+            $this->redirect('/admin/spaces/' . $id . '/schedule-deletion');
+            return;
+        }
+
+        // Valider et convertir en datetime Paris
+        try {
+            $paris = new \DateTimeZone('Europe/Paris');
+            $dt = new \DateTimeImmutable($datetimeInput, $paris);
+            $now = new \DateTimeImmutable('now', $paris);
+
+            if ($dt <= $now) {
+                $this->setFlash('danger', 'La date de suppression doit être dans le futur.');
+                $this->redirect('/admin/spaces/' . $id . '/schedule-deletion');
+                return;
+            }
+
+            $datetimeParis = $dt->format('Y-m-d H:i:s');
+        } catch (\Exception $e) {
+            $this->setFlash('danger', 'Format de date invalide.');
+            $this->redirect('/admin/spaces/' . $id . '/schedule-deletion');
+            return;
+        }
+
+        $this->spaceModel->scheduleDeletion((int) $id, $datetimeParis, $reason, $this->getCurrentUserId());
+
+        ActivityLog::logAdmin(
+            'space.deletion_scheduled',
+            $this->getCurrentUserId(),
+            'space',
+            (int) $id,
+            ['scheduled_at' => $datetimeParis, 'reason' => $reason]
+        );
+
+        $this->setFlash('success', 'Suppression programmée le ' . $dt->format('d/m/Y à H:i') . ' (heure de Paris).');
+        $this->redirect('/admin/spaces/' . $id . '/schedule-deletion');
+    }
+
+    /**
+     * Annule la suppression programmée d'un espace.
+     */
+    public function cancelScheduledDeletion(string $id): void
+    {
+        $this->checkAdminOrSuperAdmin();
+        $this->validateCSRF();
+
+        $space = $this->spaceModel->find((int) $id);
+        if (!$space) {
+            $this->setFlash('danger', 'Espace introuvable.');
+            $this->redirect('/admin/spaces');
+            return;
+        }
+
+        $this->spaceModel->cancelDeletion((int) $id);
+
+        ActivityLog::logAdmin(
+            'space.deletion_cancelled',
+            $this->getCurrentUserId(),
+            'space',
+            (int) $id
+        );
+
+        $this->setFlash('success', 'La suppression programmée a été annulée.');
+        $this->redirect('/admin/spaces/' . $id . '/schedule-deletion');
     }
 
     /**

@@ -249,6 +249,11 @@ $router->get('/admin/logs', AdminController::class, 'activityLogs');
 $router->get('/admin/spaces/{id}/restrictions', AdminController::class, 'spaceRestrictions');
 $router->post('/admin/spaces/{id}/restrictions', AdminController::class, 'updateSpaceRestrictions');
 
+// Auto-destruction programmée d'espaces
+$router->get('/admin/spaces/{id}/schedule-deletion', AdminController::class, 'scheduleDeletion');
+$router->post('/admin/spaces/{id}/schedule-deletion', AdminController::class, 'updateScheduleDeletion');
+$router->post('/admin/spaces/{id}/cancel-deletion', AdminController::class, 'cancelScheduledDeletion');
+
 // Dispatcher la requête
 $method = $_SERVER['REQUEST_METHOD'];
 $uri = $_SERVER['REQUEST_URI'];

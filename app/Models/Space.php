@@ -116,4 +116,67 @@ class Space extends Model
     {
         return !empty($this->getRestrictions($id));
     }
+
+    // ─── Auto-destruction programmée ──────────────────────────
+
+    /**
+     * Programme la suppression automatique d'un espace (datetime en Europe/Paris).
+     */
+    public function scheduleDeletion(int $id, string $datetimeParis, string $reason, int $adminId): bool
+    {
+        $stmt = $this->query(
+            "UPDATE {$this->table}
+             SET scheduled_deletion_at = :dt,
+                 deletion_reason = :reason,
+                 deletion_scheduled_by = :admin_id
+             WHERE id = :id",
+            [
+                'dt'       => $datetimeParis,
+                'reason'   => $reason,
+                'admin_id' => $adminId,
+                'id'       => $id,
+            ]
+        );
+        return $stmt->rowCount() > 0;
+    }
+
+    /**
+     * Annule la suppression programmée d'un espace.
+     */
+    public function cancelDeletion(int $id): bool
+    {
+        $stmt = $this->query(
+            "UPDATE {$this->table}
+             SET scheduled_deletion_at = NULL,
+                 deletion_reason = NULL,
+                 deletion_scheduled_by = NULL
+             WHERE id = :id",
+            ['id' => $id]
+        );
+        return $stmt->rowCount() > 0;
+    }
+
+    /**
+     * Vérifie si un espace est programmé pour suppression.
+     */
+    public function isScheduledForDeletion(int $id): bool
+    {
+        $space = $this->find($id);
+        return $space && !empty($space['scheduled_deletion_at']);
+    }
+
+    /**
+     * Retourne tous les espaces dont la date de suppression est dépassée.
+     */
+    public function findDueForDeletion(): array
+    {
+        $now = (new \DateTimeImmutable('now', new \DateTimeZone('Europe/Paris')))->format('Y-m-d H:i:s');
+        $stmt = $this->query(
+            "SELECT * FROM {$this->table}
+             WHERE scheduled_deletion_at IS NOT NULL
+               AND scheduled_deletion_at <= :now",
+            ['now' => $now]
+        );
+        return $stmt->fetchAll();
+    }
 }
