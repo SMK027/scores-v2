@@ -25,6 +25,39 @@
     </div>
 </div>
 
+<div class="card mb-3">
+    <div class="card-header">
+        <h3>Export / Import des données</h3>
+    </div>
+    <div class="card-body">
+        <p class="text-muted">Exportez un fichier JSON complet de l'espace avec checksum SHA-256. Lors d'un import, la checksum est vérifiée avant toute modification.</p>
+
+        <div class="d-flex gap-1 flex-wrap mb-2">
+            <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/export" style="display:inline;">
+                <?= csrf_field() ?>
+                <button type="submit" class="btn btn-outline">⬇️ Exporter l'espace</button>
+            </form>
+        </div>
+
+        <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/import" enctype="multipart/form-data">
+            <?= csrf_field() ?>
+            <div class="form-group">
+                <label for="space_import" class="form-label">Fichier d'import (.json)</label>
+                <input type="file" id="space_import" name="space_import" class="form-control" accept="application/json,.json" required>
+            </div>
+            <p class="text-danger text-small">
+                ⚠️ L'import écrase toutes les données de l'espace (types de jeu, joueurs, compétitions, parties, manches, scores, commentaires),
+                mais conserve les membres.
+            </p>
+            <div class="form-group">
+                <button type="submit" class="btn btn-warning" data-confirm="Confirmer l'import ? Toutes les données actuelles de l'espace seront remplacées (sauf membres).">
+                    ⬆️ Importer et écraser les données
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header">
         <h3 class="text-danger">Zone dangereuse</h3>
