@@ -91,6 +91,12 @@ class RoundController extends Controller
             return;
         }
 
+        if ($this->round->hasActiveRound((int) $gid)) {
+            $this->setFlash('warning', 'Terminez la manche en cours avant d\'en créer une nouvelle.');
+            $this->redirect("/spaces/{$id}/games/{$gid}");
+            return;
+        }
+
         $this->validateCSRF();
 
         $data = $this->getPostData(['notes']);

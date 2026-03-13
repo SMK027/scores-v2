@@ -137,10 +137,15 @@ $canDeleteGame = $isCompetitionGame ? $isGlobalStaff : in_array($spaceRole, ['ad
     <div class="card-header d-flex justify-between align-center">
         <h3>Manches</h3>
         <?php if (in_array($game['status'], ['in_progress', 'paused']) && $canManageGame): ?>
-            <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/create" style="display:inline;">
-                <?= csrf_field() ?>
-                <button type="submit" class="btn btn-sm btn-primary">+ Ajouter une manche</button>
-            </form>
+            <?php $hasActiveRound = !empty(array_filter($rounds, fn($r) => $r['status'] !== 'completed')); ?>
+            <?php if ($hasActiveRound): ?>
+                <button type="button" class="btn btn-sm btn-primary" disabled title="Terminez la manche en cours avant d'en créer une nouvelle.">+ Ajouter une manche</button>
+            <?php else: ?>
+                <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/create" style="display:inline;">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-sm btn-primary">+ Ajouter une manche</button>
+                </form>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
     <div class="card-body">

@@ -49,6 +49,19 @@ class Round extends Model
     }
 
     /**
+     * Vérifie si la partie a une manche non terminée (in_progress ou paused).
+     */
+    public function hasActiveRound(int $gameId): bool
+    {
+        $stmt = $this->db->prepare("
+            SELECT COUNT(*) FROM {$this->table}
+            WHERE game_id = :game_id AND status != 'completed'
+        ");
+        $stmt->execute(['game_id' => $gameId]);
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+    /**
      * Met à jour le statut d'une manche
      */
     public function updateStatus(int $id, string $status): bool
