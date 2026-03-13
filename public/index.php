@@ -260,6 +260,8 @@ $router->get('/admin/password-policy', AdminController::class, 'passwordPolicy')
 $router->post('/admin/password-policy', AdminController::class, 'updatePasswordPolicy');
 $router->get('/admin/fail2ban', AdminController::class, 'fail2ban');
 $router->post('/admin/fail2ban', AdminController::class, 'updateFail2ban');
+$router->get('/admin/leaderboard-criteria', AdminController::class, 'leaderboardCriteria');
+$router->post('/admin/leaderboard-criteria', AdminController::class, 'updateLeaderboardCriteria');
 
 // Bannissements comptes
 $router->get('/admin/bans/users', AdminController::class, 'userBans');

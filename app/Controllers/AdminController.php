@@ -12,6 +12,7 @@ use App\Models\UserBan;
 use App\Models\IpBan;
 use App\Models\PasswordPolicy;
 use App\Models\Fail2banConfig;
+use App\Models\LeaderboardConfig;
 use App\Config\Database;
 use App\Models\ActivityLog;
 use App\Models\SpaceMember;
@@ -279,6 +280,49 @@ class AdminController extends Controller
 
         $this->setFlash('success', 'Configuration Fail2ban mise à jour avec succès.');
         $this->redirect('/admin/fail2ban');
+    }
+
+    /**
+     * Affiche la configuration des criteres du leaderboard global.
+     */
+    public function leaderboardCriteria(): void
+    {
+        $this->checkAdminOrSuperAdmin();
+
+        $model = new LeaderboardConfig();
+        $config = $model->getConfig();
+
+        $this->render('admin/leaderboard_criteria', [
+            'title'      => 'Critères du leaderboard',
+            'activeMenu' => 'admin',
+            'config'     => $config,
+        ]);
+    }
+
+    /**
+     * Met a jour les criteres du leaderboard global.
+     */
+    public function updateLeaderboardCriteria(): void
+    {
+        $this->checkAdminOrSuperAdmin();
+        $this->validateCSRF();
+
+        $model = new LeaderboardConfig();
+
+        $minRounds = max(1, (int) ($_POST['min_rounds_played'] ?? 5));
+        $minSpaces = max(1, (int) ($_POST['min_spaces_played'] ?? 2));
+
+        $updates = [
+            'min_rounds_played' => (string) $minRounds,
+            'min_spaces_played' => (string) $minSpaces,
+        ];
+
+        $model->updateAll($updates);
+
+        ActivityLog::logAdmin('leaderboard_criteria.update', $this->getCurrentUserId(), null, null, $updates);
+
+        $this->setFlash('success', 'Critères du leaderboard mis à jour avec succès.');
+        $this->redirect('/admin/leaderboard-criteria');
     }
 
     /**

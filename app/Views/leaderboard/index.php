@@ -2,6 +2,17 @@
     <h1>🏆 Leaderboard global</h1>
 </div>
 
+<div class="card mb-2">
+    <div class="card-body" style="padding:0.8rem 1rem;">
+        <span class="text-muted">
+            Note: pour figurer dans ce classement, un joueur doit avoir au moins
+            <strong><?= (int) ($criteria['min_rounds_played'] ?? 5) ?></strong> manches jouees
+            et une activite sur
+            <strong><?= (int) ($criteria['min_spaces_played'] ?? 2) ?></strong> espace(s) distinct(s).
+        </span>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-body">
         <?php if (empty($leaderboard)): ?>

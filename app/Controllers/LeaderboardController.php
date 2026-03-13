@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Config\Database;
+use App\Models\LeaderboardConfig;
 
 /**
  * Classement global des utilisateurs par taux de victoire.
@@ -17,6 +18,10 @@ class LeaderboardController extends Controller
         $this->requireAuth();
 
         $pdo = Database::getInstance()->getConnection();
+        $cfgModel = new LeaderboardConfig();
+        $config = $cfgModel->getConfig();
+        $minRounds = max(1, (int) ($config['min_rounds_played'] ?? 5));
+        $minSpaces = max(1, (int) ($config['min_spaces_played'] ?? 2));
 
         // Utilisateurs liés à au moins un espace (membre ou propriétaire).
         $stmt = $pdo->prepare("
@@ -38,7 +43,7 @@ class LeaderboardController extends Controller
 
         $rows = [];
         foreach ($users as $user) {
-            $stats = $this->computeGlobalWinRateForUser((int) $user['id'], $pdo);
+            $stats = $this->computeGlobalWinRateForUser((int) $user['id'], $pdo, $minRounds, $minSpaces);
             if ($stats === null) {
                 continue;
             }
@@ -70,6 +75,10 @@ class LeaderboardController extends Controller
         $this->render('leaderboard/index', [
             'title'       => 'Leaderboard global',
             'leaderboard' => $rows,
+            'criteria'    => [
+                'min_rounds_played' => $minRounds,
+                'min_spaces_played' => $minSpaces,
+            ],
         ]);
     }
 
@@ -77,7 +86,7 @@ class LeaderboardController extends Controller
      * Même logique de calcul que le profil utilisateur:
      * manches terminées uniquement, gagnant selon win_condition, ex-aequo inclus.
      */
-    private function computeGlobalWinRateForUser(int $userId, \PDO $pdo): ?array
+    private function computeGlobalWinRateForUser(int $userId, \PDO $pdo, int $minRounds, int $minSpaces): ?array
     {
         $stmt = $pdo->prepare("
             SELECT p.id AS player_id, p.space_id
@@ -145,6 +154,7 @@ class LeaderboardController extends Controller
 
         $totalPlayed = 0;
         $totalWon = 0;
+        $playedSpaces = [];
 
         foreach ($rounds as $round) {
             $roundId = (int) $round['round_id'];
@@ -165,7 +175,10 @@ class LeaderboardController extends Controller
                     continue;
                 }
 
+                $spaceId = $playerIdToSpace[$pid];
+
                 $totalPlayed++;
+                $playedSpaces[$spaceId] = true;
                 if ((float) $s['score'] === $best) {
                     $totalWon++;
                 }
@@ -173,6 +186,11 @@ class LeaderboardController extends Controller
         }
 
         if ($totalPlayed === 0) {
+            return null;
+        }
+
+        // Eligibilite configurable du leaderboard.
+        if ($totalPlayed < $minRounds || count($playedSpaces) < $minSpaces) {
             return null;
         }
 
