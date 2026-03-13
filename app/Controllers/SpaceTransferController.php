@@ -17,6 +17,9 @@ use App\Models\CompetitionSession;
  */
 class SpaceTransferController extends Controller
 {
+    private const CHECKSUM_FAIL_LIMIT = 3;
+    private const CHECKSUM_FAIL_WINDOW_MINUTES = 60;
+
     private \PDO $pdo;
     private Space $spaceModel;
 
@@ -101,6 +104,9 @@ class SpaceTransferController extends Controller
             return;
         }
 
+        // Peut etre bloque automatiquement apres trop d'echecs checksum.
+        $this->checkSpaceRestriction($spaceId, 'imports');
+
         $space = $this->spaceModel->find($spaceId);
         if (!$space) {
             $this->setFlash('danger', 'Espace introuvable.');
@@ -152,7 +158,16 @@ class SpaceTransferController extends Controller
         unset($payloadCore['checksum']);
         $computed = $this->computeChecksum($payloadCore);
         if (!hash_equals($checksum, $computed)) {
-            $this->setFlash('danger', 'Checksum invalide: le fichier a ete altere ou est corrompu.');
+            $lockInfo = $this->registerChecksumFailureAndMaybeRestrict($spaceId, $currentUserId);
+            if (!empty($lockInfo['restricted_now'])) {
+                $this->setFlash('danger', 'Checksum invalide. Import automatiquement restreint après 3 tentatives échouées en 1 heure. Un administrateur du site doit réautoriser l\'import.');
+            } else {
+                $remaining = max(0, self::CHECKSUM_FAIL_LIMIT - (int) $lockInfo['recent_failures']);
+                $this->setFlash('danger', 'Checksum invalide: le fichier a ete altere ou est corrompu.'
+                    . ($remaining > 0
+                        ? ' Encore ' . $remaining . ' tentative(s) avant blocage automatique de l\'import.'
+                        : ''));
+            }
             $this->redirect('/spaces/' . $id . '/edit');
             return;
         }
@@ -680,6 +695,75 @@ class SpaceTransferController extends Controller
         $normalized = $this->normalizeForChecksum($payloadCore);
         $json = json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         return hash('sha256', (string) $json);
+    }
+
+    /**
+     * Enregistre un echec checksum et applique une restriction automatique
+     * si 3 echecs sont detectes sur une fenetre d'1 heure.
+     *
+     * @return array{recent_failures:int,restricted_now:bool}
+     */
+    private function registerChecksumFailureAndMaybeRestrict(int $spaceId, int $userId): array
+    {
+        ActivityLog::logSpace(
+            $spaceId,
+            'space.import.checksum_invalid',
+            $userId,
+            'space',
+            $spaceId,
+            ['window_minutes' => self::CHECKSUM_FAIL_WINDOW_MINUTES]
+        );
+
+        $stmt = $this->pdo->prepare(
+            'SELECT COUNT(*)
+             FROM activity_logs
+             WHERE scope = :scope
+               AND scope_id = :space_id
+               AND action = :action
+               AND created_at >= DATE_SUB(NOW(), INTERVAL :minutes MINUTE)'
+        );
+        $stmt->bindValue(':scope', 'space');
+        $stmt->bindValue(':space_id', $spaceId, \PDO::PARAM_INT);
+        $stmt->bindValue(':action', 'space.import.checksum_invalid');
+        $stmt->bindValue(':minutes', self::CHECKSUM_FAIL_WINDOW_MINUTES, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        $recentFailures = (int) $stmt->fetchColumn();
+        $restrictedNow = false;
+
+        if ($recentFailures >= self::CHECKSUM_FAIL_LIMIT) {
+            $currentRestrictions = $this->spaceModel->getRestrictions($spaceId);
+            if (empty($currentRestrictions['imports'])) {
+                $currentRestrictions['imports'] = true;
+
+                $space = $this->spaceModel->find($spaceId);
+                $baseReason = trim((string) ($space['restriction_reason'] ?? ''));
+                $autoReason = 'Blocage automatique de l\'import après 3 checksums invalides en 1 heure. Réactivation requise par l\'administration du site.';
+                $reason = $baseReason !== '' ? ($baseReason . ' | ' . $autoReason) : $autoReason;
+
+                $this->spaceModel->setRestrictions($spaceId, $currentRestrictions, $reason, $userId);
+
+                ActivityLog::logSpace(
+                    $spaceId,
+                    'space.import.auto_restriction',
+                    $userId,
+                    'space',
+                    $spaceId,
+                    [
+                        'recent_checksum_failures' => $recentFailures,
+                        'threshold' => self::CHECKSUM_FAIL_LIMIT,
+                        'window_minutes' => self::CHECKSUM_FAIL_WINDOW_MINUTES,
+                    ]
+                );
+
+                $restrictedNow = true;
+            }
+        }
+
+        return [
+            'recent_failures' => $recentFailures,
+            'restricted_now' => $restrictedNow,
+        ];
     }
 
     private function normalizeForChecksum(mixed $data): mixed
