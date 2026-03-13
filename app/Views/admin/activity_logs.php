@@ -103,7 +103,16 @@
                                             if (is_array($details)):
                                                 $parts = [];
                                                 foreach ($details as $k => $v) {
-                                                    $parts[] = e($k) . ': ' . e(is_bool($v) ? ($v ? 'oui' : 'non') : (string) $v);
+                                                    if (is_bool($v)) {
+                                                        $value = $v ? 'oui' : 'non';
+                                                    } elseif (is_array($v)) {
+                                                        $value = json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                                                    } elseif ($v === null) {
+                                                        $value = 'null';
+                                                    } else {
+                                                        $value = (string) $v;
+                                                    }
+                                                    $parts[] = e($k) . ': ' . e($value);
                                                 }
                                         ?>
                                             <span title="<?= e($log['details']) ?>"><?= implode(', ', $parts) ?></span>
