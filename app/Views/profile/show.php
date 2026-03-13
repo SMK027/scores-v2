@@ -47,6 +47,59 @@
                     <td><?= format_date($user['created_at']) ?></td>
                 </tr>
             </table>
+
+        <?php if (!empty($winStats)): ?>
+        <div class="card mt-3">
+            <div class="card-header"><h3>🏆 Taux de victoire global</h3></div>
+            <div class="card-body">
+                <div class="stats-grid mb-2" style="grid-template-columns:repeat(3,1fr);">
+                    <div class="stat-card">
+                        <div class="stat-value"><?= $winStats['win_rate'] ?>%</div>
+                        <div class="stat-label">Taux global</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value"><?= $winStats['rounds_won'] ?></div>
+                        <div class="stat-label">Manches gagnées</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value"><?= $winStats['rounds_played'] ?></div>
+                        <div class="stat-label">Manches jouées</div>
+                    </div>
+                </div>
+
+                <h4 class="mt-2">Détail par espace</h4>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Espace</th>
+                                <th class="text-right">Manches jouées</th>
+                                <th class="text-right">Manches gagnées</th>
+                                <th class="text-right">Taux</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($winStats['breakdown'] as $row): ?>
+                            <tr>
+                                <td><?= e($row['space_name']) ?></td>
+                                <td class="text-right"><?= $row['played'] ?></td>
+                                <td class="text-right"><?= $row['won'] ?></td>
+                                <td class="text-right">
+                                    <?php if ($row['rate'] !== null): ?>
+                                        <?= $row['rate'] ?>%
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-muted text-small mt-1">* Seules les manches terminées (<code>completed</code>) sont comptabilisées. En cas d'égalité au score, chaque joueur à égalité est compté comme gagnant.</p>
+            </div>
+        </div>
+        <?php endif; ?>
         </div>
     </div>
 </div>

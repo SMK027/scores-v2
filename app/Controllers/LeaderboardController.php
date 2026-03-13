@@ -1,0 +1,185 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers;
+
+use App\Core\Controller;
+use App\Config\Database;
+
+/**
+ * Classement global des utilisateurs par taux de victoire.
+ */
+class LeaderboardController extends Controller
+{
+    public function index(): void
+    {
+        $this->requireAuth();
+
+        $pdo = Database::getInstance()->getConnection();
+
+        // Utilisateurs liés à au moins un espace (membre ou propriétaire).
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT u.id, u.username, u.avatar
+            FROM users u
+            WHERE EXISTS (
+                SELECT 1
+                FROM space_members sm
+                WHERE sm.user_id = u.id
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM spaces s
+                WHERE s.created_by = u.id
+            )
+        ");
+        $stmt->execute();
+        $users = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $rows = [];
+        foreach ($users as $user) {
+            $stats = $this->computeGlobalWinRateForUser((int) $user['id'], $pdo);
+            if ($stats === null) {
+                continue;
+            }
+
+            $rows[] = [
+                'user_id'       => (int) $user['id'],
+                'username'      => $user['username'],
+                'avatar'        => $user['avatar'] ?? null,
+                'rounds_played' => $stats['rounds_played'],
+                'rounds_won'    => $stats['rounds_won'],
+                'win_rate'      => $stats['win_rate'],
+            ];
+        }
+
+        // Tri: taux desc, manches gagnées desc, manches jouées desc, username asc
+        usort($rows, function (array $a, array $b): int {
+            if ($b['win_rate'] !== $a['win_rate']) {
+                return $b['win_rate'] <=> $a['win_rate'];
+            }
+            if ($b['rounds_won'] !== $a['rounds_won']) {
+                return $b['rounds_won'] <=> $a['rounds_won'];
+            }
+            if ($b['rounds_played'] !== $a['rounds_played']) {
+                return $b['rounds_played'] <=> $a['rounds_played'];
+            }
+            return strcmp((string) $a['username'], (string) $b['username']);
+        });
+
+        $this->render('leaderboard/index', [
+            'title'       => 'Leaderboard global',
+            'leaderboard' => $rows,
+        ]);
+    }
+
+    /**
+     * Même logique de calcul que le profil utilisateur:
+     * manches terminées uniquement, gagnant selon win_condition, ex-aequo inclus.
+     */
+    private function computeGlobalWinRateForUser(int $userId, \PDO $pdo): ?array
+    {
+        $stmt = $pdo->prepare("
+            SELECT p.id AS player_id, p.space_id
+            FROM players p
+            JOIN spaces s ON s.id = p.space_id
+            WHERE p.user_id = :player_user_id
+              AND (
+                  EXISTS (
+                      SELECT 1
+                      FROM space_members sm
+                      WHERE sm.space_id = p.space_id
+                        AND sm.user_id = :member_user_id
+                  )
+                  OR s.created_by = :owner_user_id
+              )
+        ");
+        $stmt->execute([
+            'player_user_id' => $userId,
+            'member_user_id' => $userId,
+            'owner_user_id'  => $userId,
+        ]);
+        $playerRows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (empty($playerRows)) {
+            return null;
+        }
+
+        $playerIdToSpace = [];
+        foreach ($playerRows as $row) {
+            $playerIdToSpace[(int) $row['player_id']] = (int) $row['space_id'];
+        }
+        $playerIds = array_keys($playerIdToSpace);
+
+        $ph = implode(',', array_fill(0, count($playerIds), '?'));
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT r.id AS round_id, gt.win_condition
+            FROM round_scores rs
+            JOIN rounds r ON r.id = rs.round_id AND r.status = 'completed'
+            JOIN games g ON g.id = r.game_id
+            JOIN game_types gt ON gt.id = g.game_type_id
+            WHERE rs.player_id IN ($ph)
+        ");
+        $stmt->execute($playerIds);
+        $rounds = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (empty($rounds)) {
+            return null;
+        }
+
+        $roundIds = array_column($rounds, 'round_id');
+        $rph = implode(',', array_fill(0, count($roundIds), '?'));
+
+        $stmt = $pdo->prepare("
+            SELECT round_id, player_id, score
+            FROM round_scores
+            WHERE round_id IN ($rph)
+        ");
+        $stmt->execute($roundIds);
+        $allScores = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $scoresByRound = [];
+        foreach ($allScores as $s) {
+            $scoresByRound[(int) $s['round_id']][] = $s;
+        }
+
+        $totalPlayed = 0;
+        $totalWon = 0;
+
+        foreach ($rounds as $round) {
+            $roundId = (int) $round['round_id'];
+            $winCondition = $round['win_condition'];
+            $scores = $scoresByRound[$roundId] ?? [];
+            if (empty($scores)) {
+                continue;
+            }
+
+            $vals = array_map(fn($s) => (float) $s['score'], $scores);
+            $best = ($winCondition === 'lowest_score' || $winCondition === 'ranking')
+                ? min($vals)
+                : max($vals);
+
+            foreach ($scores as $s) {
+                $pid = (int) $s['player_id'];
+                if (!isset($playerIdToSpace[$pid])) {
+                    continue;
+                }
+
+                $totalPlayed++;
+                if ((float) $s['score'] === $best) {
+                    $totalWon++;
+                }
+            }
+        }
+
+        if ($totalPlayed === 0) {
+            return null;
+        }
+
+        return [
+            'rounds_played' => $totalPlayed,
+            'rounds_won'    => $totalWon,
+            'win_rate'      => round($totalWon * 100.0 / $totalPlayed, 2),
+        ];
+    }
+}

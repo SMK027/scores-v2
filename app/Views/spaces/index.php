@@ -68,6 +68,14 @@
                             <span class="badge badge-primary"><?= space_role_label($space['user_role']) ?></span>
                             <span class="text-muted text-small">👥 <?= $space['member_count'] ?> membre(s)</span>
                         </div>
+                        <?php if (!empty($space['restrictions']) && is_array(json_decode($space['restrictions'], true)) && array_filter(json_decode($space['restrictions'], true))): ?>
+                        <div class="mt-1" style="padding:0.4rem 0.6rem;border-radius:var(--border-radius);background:rgba(255,140,0,0.1);border:1px solid rgba(255,140,0,0.35);">
+                            <span style="font-size:0.85em;color:#b36200;font-weight:600;">⚠️ Espace restreint</span>
+                            <?php if (!empty($space['restriction_reason'])): ?>
+                                <br><span class="text-muted text-small"><?= e($space['restriction_reason']) ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
                         <?php if (!empty($space['scheduled_deletion_at'])):
                             $__sDt = new DateTimeImmutable($space['scheduled_deletion_at'], new DateTimeZone('Europe/Paris'));
                         ?>

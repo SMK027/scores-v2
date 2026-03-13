@@ -28,6 +28,7 @@ use App\Controllers\SearchController;
 use App\Controllers\AdminController;
 use App\Controllers\CompetitionController;
 use App\Controllers\CompetitionSessionController;
+use App\Controllers\LeaderboardController;
 use App\Controllers\Api\AuthApiController;
 use App\Controllers\Api\SpaceApiController;
 use App\Controllers\Api\GameApiController;
@@ -139,6 +140,7 @@ $router->post('/reset-password/{token}', AuthController::class, 'resetPassword')
 $router->get('/profile', ProfileController::class, 'show');
 $router->get('/profile/edit', ProfileController::class, 'editForm');
 $router->post('/profile/edit', ProfileController::class, 'update');
+$router->get('/leaderboard', LeaderboardController::class, 'index');
 
 // ============================================================
 // Espaces

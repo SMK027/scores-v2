@@ -9,6 +9,7 @@ use App\Core\Session;
 use App\Models\User;
 use App\Models\PasswordPolicy;
 use App\Models\ActivityLog;
+use App\Config\Database;
 
 /**
  * Contrôleur de profil utilisateur.
@@ -29,15 +30,19 @@ class ProfileController extends Controller
     {
         $this->requireAuth();
 
-        $user = $this->userModel->find($this->getCurrentUserId());
+        $userId = $this->getCurrentUserId();
+        $user   = $this->userModel->find($userId);
         if (!$user) {
             $this->setFlash('danger', 'Utilisateur introuvable.');
             $this->redirect('/');
         }
 
+        $pdo = Database::getInstance()->getConnection();
+
         $this->render('profile/show', [
-            'title' => 'Mon profil',
-            'user'  => $user,
+            'title'    => 'Mon profil',
+            'user'     => $user,
+            'winStats' => $this->computeGlobalWinRate($userId, $pdo),
         ]);
     }
 
@@ -210,5 +215,137 @@ class ProfileController extends Controller
 
         $this->setFlash('success', 'Profil mis à jour avec succès.');
         $this->redirect('/profile');
+    }
+
+    /**
+     * Calcule le taux de victoire global d'un utilisateur, tous espaces confondus.
+     * Une manche est comptée comme gagnée si le joueur a le meilleur score
+     * selon la win_condition du type de jeu (ex-aequo inclus).
+     * Seules les manches avec status = 'completed' sont prises en compte.
+     */
+    private function computeGlobalWinRate(int $userId, \PDO $pdo): ?array
+    {
+        // 1. Joueurs liés à l'utilisateur dans ses espaces
+        $stmt = $pdo->prepare("
+            SELECT p.id AS player_id, p.space_id, s.name AS space_name
+            FROM players p
+            JOIN spaces s ON s.id = p.space_id
+            JOIN space_members sm ON sm.space_id = p.space_id AND sm.user_id = :member_user_id
+            WHERE p.user_id = :player_user_id
+        ");
+        $stmt->execute([
+            'member_user_id' => $userId,
+            'player_user_id' => $userId,
+        ]);
+        $playerRows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (empty($playerRows)) {
+            return null;
+    }
+
+        $playerIdToSpace = [];
+        $spaceNames = [];
+        foreach ($playerRows as $row) {
+            $playerIdToSpace[(int) $row['player_id']] = (int) $row['space_id'];
+            $spaceNames[(int) $row['space_id']] = $row['space_name'];
+        }
+        $playerIds = array_keys($playerIdToSpace);
+
+        // 2. Manches terminées où ces joueurs ont un score
+        $ph = implode(',', array_fill(0, count($playerIds), '?'));
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT r.id AS round_id, gt.win_condition
+            FROM round_scores rs
+            JOIN rounds r ON r.id = rs.round_id AND r.status = 'completed'
+            JOIN games g ON g.id = r.game_id
+            JOIN game_types gt ON gt.id = g.game_type_id
+            WHERE rs.player_id IN ($ph)
+        ");
+        $stmt->execute($playerIds);
+        $rounds = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (empty($rounds)) {
+            return null;
+        }
+
+        $roundIds = array_column($rounds, 'round_id');
+
+        // 3. Tous les scores de ces manches en une seule requête
+        $rph = implode(',', array_fill(0, count($roundIds), '?'));
+        $stmt = $pdo->prepare("
+            SELECT round_id, player_id, score
+            FROM round_scores
+            WHERE round_id IN ($rph)
+        ");
+        $stmt->execute($roundIds);
+        $allScores = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $scoresByRound = [];
+        foreach ($allScores as $s) {
+            $scoresByRound[(int) $s['round_id']][] = $s;
+        }
+
+        // 4. Comptabilisation par manche
+        $spaceStats  = [];
+        $totalPlayed = 0;
+        $totalWon    = 0;
+
+        foreach ($rounds as $round) {
+            $roundId      = (int) $round['round_id'];
+            $winCondition = $round['win_condition'];
+            $scores       = $scoresByRound[$roundId] ?? [];
+
+            if (empty($scores)) {
+                continue;
+            }
+
+            $vals = array_map(fn($s) => (float) $s['score'], $scores);
+            $best = ($winCondition === 'lowest_score' || $winCondition === 'ranking')
+                ? min($vals)
+                : max($vals);
+
+            foreach ($scores as $s) {
+                $pid = (int) $s['player_id'];
+                if (!isset($playerIdToSpace[$pid])) {
+                    continue;
+                }
+                $sid = $playerIdToSpace[$pid];
+
+                $spaceStats[$sid] = $spaceStats[$sid] ?? ['played' => 0, 'won' => 0];
+                $spaceStats[$sid]['played']++;
+                $totalPlayed++;
+
+                if ((float) $s['score'] === $best) {
+                    $spaceStats[$sid]['won']++;
+                    $totalWon++;
+                }
+            }
+        }
+
+        if ($totalPlayed === 0) {
+            return null;
+        }
+
+        // 5. Détail par espace (espaces sans manche inclus)
+        $breakdown = [];
+        foreach ($spaceNames as $sid => $name) {
+            $st = $spaceStats[$sid] ?? ['played' => 0, 'won' => 0];
+            $breakdown[] = [
+                'space_name' => $name,
+                'played'     => $st['played'],
+                'won'        => $st['won'],
+                'rate'       => $st['played'] > 0
+                    ? round($st['won'] * 100.0 / $st['played'], 1)
+                    : null,
+            ];
+        }
+        usort($breakdown, fn($a, $b) => $b['played'] <=> $a['played']);
+
+        return [
+            'rounds_played' => $totalPlayed,
+            'rounds_won'    => $totalWon,
+            'win_rate'      => round($totalWon * 100.0 / $totalPlayed, 2),
+            'breakdown'     => $breakdown,
+        ];
     }
 }
