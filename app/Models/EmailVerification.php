@@ -73,6 +73,21 @@ class EmailVerification extends Model
     }
 
     /**
+     * Compte le nombre de codes générés pour un utilisateur au cours des dernières N heures.
+     * Inclut tous les codes (utilisés ou non) afin de mesurer le volume d'envois réels.
+     */
+    public function countRecentCodes(int $userId, int $hours = 24): int
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM {$this->table}
+             WHERE user_id = :uid
+               AND created_at >= NOW() - INTERVAL :hours HOUR"
+        );
+        $stmt->execute(['uid' => $userId, 'hours' => $hours]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
      * Supprime les tokens expirés ou déjà utilisés (nettoyage).
      */
     public function purgeExpired(): int

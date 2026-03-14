@@ -127,6 +127,11 @@ class AuthController extends Controller
         // Vérifier si le compte est en attente de vérification email (nouveau compte uniquement)
         if ($user['email_verification_required'] && !$user['email_verified_at']) {
             $verifyModel = new EmailVerification();
+            Session::set('pending_verification_user_id', (int) $user['id']);
+            if ($verifyModel->countRecentCodes((int) $user['id']) >= 3) {
+                $this->setFlash('warning', "Votre adresse email n'est pas encore vérifiée. Vous avez atteint la limite de 3 envois par jour. Réessayez demain ou vérifiez votre boîte de réception (y compris les spams).");
+                $this->redirect('/verify-email');
+            }
             $code = $verifyModel->generateCode((int) $user['id'], $user['email']);
             try {
                 $mailer = new Mailer();
@@ -140,7 +145,6 @@ class AuthController extends Controller
                     error_log('Email verification send error: ' . $e->getMessage());
                 }
             }
-            Session::set('pending_verification_user_id', (int) $user['id']);
             $this->setFlash('info', "Votre adresse email n'est pas encore vérifiée. Un code vous a été envoyé.");
             $this->redirect('/verify-email');
         }
@@ -627,6 +631,12 @@ HTML;
         }
 
         $verifyModel = new EmailVerification();
+
+        if ($verifyModel->countRecentCodes((int) $user['id']) >= 3) {
+            $this->setFlash('danger', 'Vous avez atteint la limite de 3 envois de code par jour. Réessayez demain ou vérifiez votre boîte de réception (y compris les spams).');
+            $this->redirect('/verify-email');
+        }
+
         $code = $verifyModel->generateCode((int) $user['id'], $user['email']);
 
         try {
@@ -687,6 +697,12 @@ HTML;
         }
 
         $verifyModel = new EmailVerification();
+
+        if ($verifyModel->countRecentCodes($userId) >= 3) {
+            $this->setFlash('danger', 'Vous avez atteint la limite de 3 envois de code par jour. Réessayez demain ou vérifiez votre boîte de réception (y compris les spams).');
+            $this->redirect('/account/verify-email');
+        }
+
         $code = $verifyModel->generateCode($userId, $user['email']);
 
         try {
