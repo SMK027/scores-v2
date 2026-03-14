@@ -53,7 +53,7 @@
                                 <?php else: ?>
                                     <span class="navbar-avatar navbar-avatar-placeholder" style="width:24px;height:24px;font-size:0.75rem;vertical-align:middle;margin-right:0.4rem;"><?= strtoupper(substr($row['username'], 0, 1)) ?></span>
                                 <?php endif; ?>
-                                <?= e($row['username']) ?>
+                                <a href="/profile/<?= urlencode($row['username']) ?>"><?= e($row['username']) ?></a>
                             </td>
                             <td class="text-right"><?= number_format((float) $row['win_rate'], 2, '.', '') ?>%</td>
                             <td class="text-right"><?= (int) $row['rounds_won'] ?></td>

@@ -348,4 +348,24 @@ class ProfileController extends Controller
             'breakdown'     => $breakdown,
         ];
     }
+
+    /**
+     * Affiche le profil public d'un utilisateur (accessible à tous).
+     */
+    public function showPublic(string $username): void
+    {
+        $user = $this->userModel->findByUsername($username);
+        if (!$user) {
+            $this->setFlash('danger', 'Utilisateur introuvable.');
+            $this->redirect('/leaderboard');
+        }
+
+        $pdo = Database::getInstance()->getConnection();
+
+        $this->render('profile/show_public', [
+            'title'    => 'Profil de ' . $user['username'],
+            'user'     => $user,
+            'winStats' => $this->computeGlobalWinRate((int) $user['id'], $pdo),
+        ]);
+    }
 }
