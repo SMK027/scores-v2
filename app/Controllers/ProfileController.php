@@ -47,6 +47,76 @@ class ProfileController extends Controller
     }
 
     /**
+     * Affiche le calendrier de l'utilisateur connecté avec historique filtrable.
+     */
+    public function calendar(): void
+    {
+        $this->requireAuth();
+
+        $userId = $this->getCurrentUserId();
+        $pdo = Database::getInstance()->getConnection();
+
+        $filters = [
+            'space_id'     => isset($_GET['space_id']) && ctype_digit((string) $_GET['space_id']) ? (int) $_GET['space_id'] : null,
+            'status'       => $_GET['status'] ?? '',
+            'game_type_id' => isset($_GET['game_type_id']) && ctype_digit((string) $_GET['game_type_id']) ? (int) $_GET['game_type_id'] : null,
+            'period'       => $_GET['period'] ?? '30d',
+            'from'         => $_GET['from'] ?? '',
+            'to'           => $_GET['to'] ?? '',
+            'month'        => $_GET['month'] ?? date('Y-m'),
+        ];
+
+        $allowedStatuses = ['', 'pending', 'in_progress', 'paused', 'completed'];
+        if (!in_array($filters['status'], $allowedStatuses, true)) {
+            $filters['status'] = '';
+        }
+
+        $allowedPeriods = ['7d', '30d', '90d', '365d', 'custom', 'all'];
+        if (!in_array($filters['period'], $allowedPeriods, true)) {
+            $filters['period'] = '30d';
+        }
+
+        if (!preg_match('/^\d{4}-\d{2}$/', (string) $filters['month'])) {
+            $filters['month'] = date('Y-m');
+        }
+
+        if (!$this->validateDateYmd($filters['from'])) {
+            $filters['from'] = '';
+        }
+        if (!$this->validateDateYmd($filters['to'])) {
+            $filters['to'] = '';
+        }
+
+        $spaces = $this->getUserSpaces($userId, $pdo);
+        $spaceIds = array_map(static fn(array $s): int => (int) $s['id'], $spaces);
+
+        if ($filters['space_id'] !== null && !in_array($filters['space_id'], $spaceIds, true)) {
+            $filters['space_id'] = null;
+        }
+
+        $gameTypes = $this->getAvailableGameTypes($userId, $pdo, $filters['space_id']);
+        $gameTypeIds = array_map(static fn(array $gt): int => (int) $gt['id'], $gameTypes);
+        if ($filters['game_type_id'] !== null && !in_array($filters['game_type_id'], $gameTypeIds, true)) {
+            $filters['game_type_id'] = null;
+        }
+
+        $page = isset($_GET['page']) && ctype_digit((string) $_GET['page']) ? max((int) $_GET['page'], 1) : 1;
+        $perPage = 15;
+        $history = $this->getUserGameHistory($userId, $pdo, $filters, $page, $perPage);
+        $calendarDays = $this->getMonthActivity($userId, $pdo, $filters);
+
+        $this->render('profile/calendar', [
+            'title'         => 'Mon calendrier',
+            'filters'       => $filters,
+            'spaces'        => $spaces,
+            'gameTypes'     => $gameTypes,
+            'history'       => $history,
+            'calendarDays'  => $calendarDays,
+            'activeMenu'    => 'profile-calendar',
+        ]);
+    }
+
+    /**
      * Formulaire de modification du profil.
      */
     public function editForm(): void
@@ -350,6 +420,253 @@ class ProfileController extends Controller
             'win_rate'      => round($totalWon * 100.0 / $totalPlayed, 2),
             'breakdown'     => $breakdown,
         ];
+    }
+
+    /**
+     * Retourne la liste des espaces du user connecté.
+     */
+    private function getUserSpaces(int $userId, \PDO $pdo): array
+    {
+        $stmt = $pdo->prepare(
+            'SELECT s.id, s.name
+             FROM spaces s
+             INNER JOIN space_members sm ON sm.space_id = s.id
+             WHERE sm.user_id = :user_id
+             ORDER BY s.name ASC'
+        );
+        $stmt->execute(['user_id' => $userId]);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Retourne les types de jeux disponibles pour le user (et éventuellement un espace).
+     */
+    private function getAvailableGameTypes(int $userId, \PDO $pdo, ?int $spaceId): array
+    {
+        $sql = 'SELECT gt.id, gt.name, gt.space_id, s.name AS space_name
+                FROM game_types gt
+                INNER JOIN spaces s ON s.id = gt.space_id
+                INNER JOIN space_members sm ON sm.space_id = s.id
+                WHERE sm.user_id = :user_id';
+        $params = ['user_id' => $userId];
+
+        if ($spaceId !== null) {
+            $sql .= ' AND gt.space_id = :space_id';
+            $params['space_id'] = $spaceId;
+        }
+
+        $sql .= ' ORDER BY s.name ASC, gt.name ASC';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Historique paginé des parties du joueur connecté.
+     */
+    private function getUserGameHistory(int $userId, \PDO $pdo, array $filters, int $page, int $perPage): array
+    {
+        $offset = ($page - 1) * $perPage;
+
+        $where = [
+            'sm.user_id = :user_id_member',
+            'p_me.user_id = :user_id_player',
+        ];
+        $params = [
+            'user_id_member' => $userId,
+            'user_id_player' => $userId,
+        ];
+
+        if ($filters['space_id'] !== null) {
+            $where[] = 'g.space_id = :space_id';
+            $params['space_id'] = $filters['space_id'];
+        }
+        if (!empty($filters['status'])) {
+            $where[] = 'g.status = :status';
+            $params['status'] = $filters['status'];
+        }
+        if ($filters['game_type_id'] !== null) {
+            $where[] = 'g.game_type_id = :game_type_id';
+            $params['game_type_id'] = $filters['game_type_id'];
+        }
+
+        $this->applyPeriodFilter($where, $params, $filters);
+
+        $whereSql = implode(' AND ', $where);
+
+        $countSql = "SELECT COUNT(DISTINCT g.id)
+                     FROM games g
+                     INNER JOIN spaces s ON s.id = g.space_id
+                     INNER JOIN space_members sm ON sm.space_id = s.id
+                     INNER JOIN game_types gt ON gt.id = g.game_type_id
+                     INNER JOIN game_players gp_me ON gp_me.game_id = g.id
+                     INNER JOIN players p_me ON p_me.id = gp_me.player_id
+                     WHERE {$whereSql}";
+
+        $countStmt = $pdo->prepare($countSql);
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+
+        $dataSql = "SELECT
+                        g.id,
+                        g.space_id,
+                        g.status,
+                        g.created_at,
+                        g.started_at,
+                        g.ended_at,
+                        s.name AS space_name,
+                        gt.name AS game_type_name,
+                        u.username AS creator_name,
+                        gp_me.total_score AS my_total_score,
+                        gp_me.rank AS my_rank,
+                        gp_me.is_winner AS my_is_winner,
+                        p_me.name AS my_player_name,
+                        (SELECT COUNT(*) FROM game_players gp_cnt WHERE gp_cnt.game_id = g.id) AS player_count,
+                        (SELECT GROUP_CONCAT(pw.name SEPARATOR ', ')
+                         FROM game_players gpw
+                         INNER JOIN players pw ON pw.id = gpw.player_id
+                         WHERE gpw.game_id = g.id AND gpw.is_winner = 1) AS winner_names
+                    FROM games g
+                    INNER JOIN spaces s ON s.id = g.space_id
+                    INNER JOIN space_members sm ON sm.space_id = s.id
+                    INNER JOIN game_types gt ON gt.id = g.game_type_id
+                    LEFT JOIN users u ON u.id = g.created_by
+                    INNER JOIN game_players gp_me ON gp_me.game_id = g.id
+                    INNER JOIN players p_me ON p_me.id = gp_me.player_id
+                    WHERE {$whereSql}
+                    GROUP BY g.id
+                    ORDER BY COALESCE(g.started_at, g.created_at) DESC, g.id DESC
+                    LIMIT :limit OFFSET :offset";
+
+        $dataStmt = $pdo->prepare($dataSql);
+        foreach ($params as $key => $value) {
+            $dataStmt->bindValue(':' . $key, $value, is_int($value) ? \PDO::PARAM_INT : \PDO::PARAM_STR);
+        }
+        $dataStmt->bindValue(':limit', $perPage, \PDO::PARAM_INT);
+        $dataStmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+        $dataStmt->execute();
+        $rows = $dataStmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        return [
+            'data'     => $rows,
+            'total'    => $total,
+            'page'     => $page,
+            'perPage'  => $perPage,
+            'lastPage' => max(1, (int) ceil($total / $perPage)),
+        ];
+    }
+
+    /**
+     * Données agrégées par jour pour la vue calendrier mensuelle.
+     */
+    private function getMonthActivity(int $userId, \PDO $pdo, array $filters): array
+    {
+        $where = [
+            'sm.user_id = :user_id_member',
+            'p_me.user_id = :user_id_player',
+        ];
+        $params = [
+            'user_id_member' => $userId,
+            'user_id_player' => $userId,
+        ];
+
+        if ($filters['space_id'] !== null) {
+            $where[] = 'g.space_id = :space_id';
+            $params['space_id'] = $filters['space_id'];
+        }
+        if (!empty($filters['status'])) {
+            $where[] = 'g.status = :status';
+            $params['status'] = $filters['status'];
+        }
+        if ($filters['game_type_id'] !== null) {
+            $where[] = 'g.game_type_id = :game_type_id';
+            $params['game_type_id'] = $filters['game_type_id'];
+        }
+
+        // Mois affiché sur la grille calendrier.
+        $monthStart = $filters['month'] . '-01 00:00:00';
+        $monthEnd = date('Y-m-t 23:59:59', strtotime($monthStart));
+        $where[] = 'COALESCE(g.started_at, g.created_at) BETWEEN :month_start AND :month_end';
+        $params['month_start'] = $monthStart;
+        $params['month_end'] = $monthEnd;
+
+        $whereSql = implode(' AND ', $where);
+
+        $sql = "SELECT
+                    DATE(COALESCE(g.started_at, g.created_at)) AS day,
+                    COUNT(DISTINCT g.id) AS game_count,
+                    COUNT(DISTINCT CASE WHEN gp_me.is_winner = 1 THEN g.id END) AS win_count
+                FROM games g
+                INNER JOIN spaces s ON s.id = g.space_id
+                INNER JOIN space_members sm ON sm.space_id = s.id
+                INNER JOIN game_players gp_me ON gp_me.game_id = g.id
+                INNER JOIN players p_me ON p_me.id = gp_me.player_id
+                WHERE {$whereSql}
+                GROUP BY DATE(COALESCE(g.started_at, g.created_at))
+                ORDER BY day ASC";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $mapped = [];
+        foreach ($rows as $row) {
+            $mapped[$row['day']] = [
+                'game_count' => (int) $row['game_count'],
+                'win_count'  => (int) $row['win_count'],
+            ];
+        }
+
+        return $mapped;
+    }
+
+    /**
+     * Applique le filtre temporel à la requête d'historique.
+     */
+    private function applyPeriodFilter(array &$where, array &$params, array $filters): void
+    {
+        $period = $filters['period'] ?? '30d';
+
+        if ($period === 'custom') {
+            if (!empty($filters['from'])) {
+                $where[] = 'DATE(COALESCE(g.started_at, g.created_at)) >= :date_from';
+                $params['date_from'] = $filters['from'];
+            }
+            if (!empty($filters['to'])) {
+                $where[] = 'DATE(COALESCE(g.started_at, g.created_at)) <= :date_to';
+                $params['date_to'] = $filters['to'];
+            }
+            return;
+        }
+
+        if ($period === 'all') {
+            return;
+        }
+
+        $daysByPeriod = [
+            '7d' => 7,
+            '30d' => 30,
+            '90d' => 90,
+            '365d' => 365,
+        ];
+
+        if (isset($daysByPeriod[$period])) {
+            $periodFrom = date('Y-m-d H:i:s', strtotime('-' . $daysByPeriod[$period] . ' days'));
+            $where[] = 'COALESCE(g.started_at, g.created_at) >= :period_from';
+            $params['period_from'] = $periodFrom;
+        }
+    }
+
+    /**
+     * Validation simple du format date (YYYY-MM-DD).
+     */
+    private function validateDateYmd(string $value): bool
+    {
+        if ($value === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return false;
+        }
+        $dt = \DateTime::createFromFormat('Y-m-d', $value);
+        return $dt !== false && $dt->format('Y-m-d') === $value;
     }
 
     /**

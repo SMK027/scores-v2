@@ -22,6 +22,7 @@
                     ?>
                     <a href="/spaces" class="navbar-link">Mes espaces<?php if ($__pendingInvCount > 0): ?> <span class="badge badge-danger" style="font-size:0.7em;vertical-align:middle;"><?= $__pendingInvCount ?></span><?php endif; ?></a>
                     <a href="/leaderboard" class="navbar-link">Leaderboard</a>
+                    <a href="/profile/calendar" class="navbar-link">Mon calendrier</a>
                     <?php if (\App\Core\Middleware::isGlobalStaff()): ?>
                         <a href="/admin" class="navbar-link">Administration</a>
                     <?php endif; ?>

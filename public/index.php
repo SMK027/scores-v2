@@ -147,6 +147,7 @@ $router->post('/account/verify-email/confirm', AuthController::class, 'confirmVe
 // Profil utilisateur
 // ============================================================
 $router->get('/profile', ProfileController::class, 'show');
+$router->get('/profile/calendar', ProfileController::class, 'calendar');
 $router->get('/profile/edit', ProfileController::class, 'editForm');
 $router->post('/profile/edit', ProfileController::class, 'update');
 $router->get('/profile/{username}', ProfileController::class, 'showPublic');
