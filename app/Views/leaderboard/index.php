@@ -50,6 +50,8 @@
                             <td class="font-bold">
                                 <?php if (!empty($row['avatar'])): ?>
                                     <img src="<?= e($row['avatar']) ?>" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:0.4rem;">
+                                <?php else: ?>
+                                    <span class="navbar-avatar navbar-avatar-placeholder" style="width:24px;height:24px;font-size:0.75rem;vertical-align:middle;margin-right:0.4rem;"><?= strtoupper(substr($row['username'], 0, 1)) ?></span>
                                 <?php endif; ?>
                                 <?= e($row['username']) ?>
                             </td>
