@@ -154,6 +154,9 @@
     <footer class="footer">
         <div class="container">
             <p>&copy; <?= date('Y') ?> Scores - Application de gestion de parties de jeux</p>
+            <p style="margin-top: 0.4rem;">
+                <a href="/legal" style="color: var(--gray); text-decoration: underline;">Conditions Générales d'Utilisation</a>
+            </p>
         </div>
     </footer>
 

@@ -189,6 +189,7 @@ $router = new Router();
 // Routes publiques
 // ============================================================
 $router->get('/', HomeController::class, 'index');
+$router->get('/legal', HomeController::class, 'legal');
 $router->get('/login', AuthController::class, 'loginForm');
 $router->post('/login', AuthController::class, 'login');
 $router->get('/register', AuthController::class, 'registerForm');

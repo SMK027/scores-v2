@@ -24,4 +24,11 @@ class HomeController extends Controller
             'title' => 'Accueil',
         ]);
     }
+
+    public function legal(): void
+    {
+        $this->render('home/legal', [
+            'title' => 'Conditions Générales d\'Utilisation',
+        ]);
+    }
 }
