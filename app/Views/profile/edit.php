@@ -49,9 +49,9 @@
                 <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;">
                     <input type="checkbox" name="show_win_rate_public" value="1"
                            <?= !empty($user['show_win_rate_public']) ? 'checked' : '' ?>>
-                    Afficher mes statistiques de victoire sur mon profil public
+                    Afficher le détail de mes statistiques par espace
                 </label>
-                <span class="form-hint">Si décoché, votre taux de victoire et le détail par espace seront masqués pour les autres utilisateurs.</span>
+                <span class="form-hint">Si décoché, votre taux de victoire global restera visible mais le détail par espace (noms des espaces et taux individuels) sera masqué sur votre profil public.</span>
             </div>
 
             <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--gray-light);">

@@ -31,7 +31,7 @@
             </div>
         <?php endif; ?>
 
-        <?php if (!empty($winStats) && !empty($user['show_win_rate_public'])): ?>
+        <?php if (!empty($winStats)): ?>
         <div class="card mt-3">
             <div class="card-header"><h3>🏆 Taux de victoire global</h3></div>
             <div class="card-body">
@@ -51,6 +51,7 @@
                 </div>
 
                 <h4 class="mt-2">Détail par espace</h4>
+                                <?php if (!empty($user['show_win_rate_public'])): ?>
                 <div class="table-responsive">
                     <table class="table table-sm">
                         <thead>
@@ -80,10 +81,11 @@
                     </table>
                 </div>
                 <p class="text-muted text-small mt-1">* Seules les manches terminées (<code>completed</code>) sont comptabilisées. En cas d'égalité au score, chaque joueur à égalité est compté comme gagnant.</p>
+                            <?php else: ?>
+                            <p class="text-muted text-small mt-1">Le détail par espace est masqué par cet utilisateur.</p>
+                            <?php endif; ?>
             </div>
         </div>
-        <?php elseif (empty($user['show_win_rate_public'])): ?>
-        <p class="text-muted mt-2">Cet utilisateur a choisi de ne pas afficher ses statistiques.</p>
         <?php else: ?>
         <p class="text-muted mt-2">Aucune statistique disponible pour cet utilisateur.</p>
         <?php endif; ?>
