@@ -76,7 +76,7 @@ class User extends Model
      */
     public function updateProfile(int $id, array $data): bool
     {
-        $allowed = ['username', 'email', 'bio', 'avatar'];
+        $allowed = ['username', 'email', 'bio', 'avatar', 'show_win_rate_public'];
         $filtered = array_intersect_key($data, array_flip($allowed));
         if (empty($filtered)) {
             return false;

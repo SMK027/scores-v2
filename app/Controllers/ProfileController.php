@@ -74,6 +74,8 @@ class ProfileController extends Controller
 
         $userId = $this->getCurrentUserId();
         $data = $this->getPostData(['username', 'email', 'bio', 'current_password', 'new_password', 'new_password_confirm']);
+        // Checkbox : présente = 1, absente = 0
+        $data['show_win_rate_public'] = isset($_POST['show_win_rate_public']) ? 1 : 0;
 
         $errors = [];
 
@@ -188,9 +190,10 @@ class ProfileController extends Controller
 
         // Mise à jour du profil
         $updateData = [
-            'username' => $data['username'],
-            'email'    => $data['email'],
-            'bio'      => $data['bio'],
+            'username'             => $data['username'],
+            'email'                => $data['email'],
+            'bio'                  => $data['bio'],
+            'show_win_rate_public' => $data['show_win_rate_public'],
         ];
 
         if ($avatarPath) {

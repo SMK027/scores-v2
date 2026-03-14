@@ -44,6 +44,18 @@
 
             <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--gray-light);">
 
+            <h3>Confidentialité</h3>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;">
+                    <input type="checkbox" name="show_win_rate_public" value="1"
+                           <?= !empty($user['show_win_rate_public']) ? 'checked' : '' ?>>
+                    Afficher mes statistiques de victoire sur mon profil public
+                </label>
+                <span class="form-hint">Si décoché, votre taux de victoire et le détail par espace seront masqués pour les autres utilisateurs.</span>
+            </div>
+
+            <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--gray-light);">
+
             <h3>Changer le mot de passe</h3>
             <p class="text-muted text-small mb-2">Laissez vide si vous ne souhaitez pas changer votre mot de passe.</p>
 
