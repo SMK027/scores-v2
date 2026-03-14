@@ -23,6 +23,12 @@
                     </div>
                 </div>
                 <div class="form-group">
+                    <label class="form-check">
+                        <input type="checkbox" name="remember_me" value="1">
+                        <span>Se souvenir de moi pendant 7 jours</span>
+                    </label>
+                </div>
+                <div class="form-group">
                     <button type="submit" class="btn btn-primary btn-block">Se connecter</button>
                 </div>
             </form>

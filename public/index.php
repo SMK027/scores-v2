@@ -15,6 +15,7 @@ date_default_timezone_set('Europe/Paris');
 
 use App\Core\Router;
 use App\Core\Session;
+use App\Core\CSRF;
 use App\Controllers\HomeController;
 use App\Controllers\AuthController;
 use App\Controllers\ProfileController;
@@ -40,6 +41,9 @@ use App\Controllers\Api\StatApiController;
 use App\Controllers\Api\SearchApiController;
 use App\Models\IpBan;
 use App\Models\UserBan;
+use App\Models\RememberToken;
+use App\Models\User;
+use App\Models\ActivityLog;
 
 // ============================================================
 // CORS pour l'API mobile
@@ -60,11 +64,71 @@ if (str_starts_with(parse_url($requestUri, PHP_URL_PATH) ?? '', '/api/')) {
 // Démarrer la session (pas nécessaire pour les routes API pures, mais requis pour le Middleware)
 Session::start();
 
+$clientIp = get_client_ip();
+$isApiRequest = str_starts_with(parse_url($requestUri, PHP_URL_PATH) ?? '', '/api/');
+
+// ============================================================
+// Auto-connexion via cookie "Se souvenir de moi" (web uniquement)
+// ============================================================
+if (!$isApiRequest && !Session::get('user_id')) {
+    $rememberCookie = $_COOKIE['remember_me'] ?? '';
+
+    if ($rememberCookie !== '') {
+        $parts = explode(':', $rememberCookie, 2);
+        if (count($parts) === 2 && $parts[0] !== '' && $parts[1] !== '') {
+            $selector = $parts[0];
+            $validator = $parts[1];
+
+            $rememberModel = new RememberToken();
+            $rememberModel->purgeExpired();
+
+            $tokenRow = $rememberModel->findBySelector($selector);
+            if ($tokenRow && strtotime((string) $tokenRow['expires_at']) > time()) {
+                $valid = hash_equals((string) $tokenRow['token_hash'], hash('sha256', $validator));
+                if ($valid) {
+                    $userModel = new User();
+                    $user = $userModel->find((int) $tokenRow['user_id']);
+                    if ($user) {
+                        Session::regenerate();
+                        Session::set('user_id', (int) $user['id']);
+                        Session::set('username', $user['username']);
+                        Session::set('global_role', $user['global_role']);
+                        Session::set('avatar', $user['avatar'] ?? '');
+                        CSRF::regenerate();
+                        $rememberModel->touch((int) $tokenRow['id']);
+                        ActivityLog::logAuth('login.remember', (int) $user['id']);
+                    } else {
+                        $rememberModel->deleteBySelector($selector);
+                    }
+                } else {
+                    $rememberModel->deleteBySelector($selector);
+                }
+            } else {
+                if ($tokenRow) {
+                    $rememberModel->deleteBySelector($selector);
+                }
+            }
+        }
+
+        // Toujours nettoyer le cookie local si aucune session valide n'a été restaurée.
+        if (!Session::get('user_id')) {
+            $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                || (($_SERVER['SERVER_PORT'] ?? '') === '443');
+
+            setcookie('remember_me', '', [
+                'expires' => time() - 3600,
+                'path' => '/',
+                'secure' => $isSecure,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+        }
+    }
+}
+
 // ============================================================
 // Vérification globale de bannissement IP (sauf API — gérée par JWT)
 // ============================================================
-$clientIp = get_client_ip();
-$isApiRequest = str_starts_with(parse_url($requestUri, PHP_URL_PATH) ?? '', '/api/');
 
 if (!$isApiRequest) {
     $ipBanModel = new IpBan();

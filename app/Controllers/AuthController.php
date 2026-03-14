@@ -18,6 +18,7 @@ use App\Models\LoginAttempt;
 use App\Models\LoginLock;
 use App\Models\Fail2banConfig;
 use App\Models\ActivityLog;
+use App\Models\RememberToken;
 
 /**
  * Contrôleur d'authentification.
@@ -25,6 +26,9 @@ use App\Models\ActivityLog;
  */
 class AuthController extends Controller
 {
+    private const REMEMBER_COOKIE = 'remember_me';
+    private const REMEMBER_DAYS = 7;
+
     private User $userModel;
 
     public function __construct()
@@ -163,6 +167,14 @@ class AuthController extends Controller
         Session::set('username', $user['username']);
         Session::set('global_role', $user['global_role']);
         Session::set('avatar', $user['avatar'] ?? '');
+
+        // Gérer l'option "Se souvenir de moi" (cookie persistant 7 jours)
+        // On révoque d'abord le cookie/token courant sur ce navigateur pour éviter l'accumulation.
+        $this->revokeCurrentRememberMeToken();
+        $rememberMe = isset($_POST['remember_me']) && $_POST['remember_me'] === '1';
+        if ($rememberMe) {
+            $this->issueRememberMeToken((int) $user['id']);
+        }
 
         // Régénérer le token CSRF
         CSRF::regenerate();
@@ -349,6 +361,8 @@ class AuthController extends Controller
     {
         $userId = $this->getCurrentUserId();
         ActivityLog::logAuth('logout', $userId);
+
+        $this->revokeCurrentRememberMeToken();
 
         Session::destroy();
         // Redémarrer une session propre pour le flash
@@ -759,6 +773,83 @@ HTML;
 
         $this->setFlash('success', 'Votre adresse email a été vérifiée avec succès. ✓');
         $this->redirect('/profile');
+    }
+
+    /**
+     * Emet un cookie persistant "Se souvenir de moi" valable 7 jours.
+     */
+    private function issueRememberMeToken(int $userId): void
+    {
+        $tokenModel = new RememberToken();
+        $tokenModel->purgeExpired();
+
+        $selector = bin2hex(random_bytes(12));
+        $validator = bin2hex(random_bytes(32));
+        $tokenHash = hash('sha256', $validator);
+        $expiresAt = (new \DateTimeImmutable('now'))->modify('+' . self::REMEMBER_DAYS . ' days');
+
+        $tokenModel->createToken(
+            $userId,
+            $selector,
+            $tokenHash,
+            $expiresAt->format('Y-m-d H:i:s'),
+            get_client_ip(),
+            $_SERVER['HTTP_USER_AGENT'] ?? null
+        );
+
+        $cookieValue = $selector . ':' . $validator;
+        $this->setRememberMeCookie($cookieValue, $expiresAt->getTimestamp());
+    }
+
+    /**
+     * Supprime le token courant et nettoie le cookie remember_me.
+     */
+    private function revokeCurrentRememberMeToken(): void
+    {
+        $cookieValue = $_COOKIE[self::REMEMBER_COOKIE] ?? '';
+        if ($cookieValue !== '') {
+            $parts = explode(':', $cookieValue, 2);
+            if (count($parts) === 2 && $parts[0] !== '') {
+                $tokenModel = new RememberToken();
+                $tokenModel->deleteBySelector($parts[0]);
+            }
+        }
+
+        $this->clearRememberMeCookie();
+    }
+
+    /**
+     * Dépose le cookie remember_me avec les attributs de sécurité.
+     */
+    private function setRememberMeCookie(string $value, int $expiresAt): void
+    {
+        $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (($_SERVER['SERVER_PORT'] ?? '') === '443');
+
+        setcookie(self::REMEMBER_COOKIE, $value, [
+            'expires'  => $expiresAt,
+            'path'     => '/',
+            'secure'   => $isSecure,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+    }
+
+    /**
+     * Efface le cookie remember_me côté navigateur.
+     */
+    private function clearRememberMeCookie(): void
+    {
+        $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (($_SERVER['SERVER_PORT'] ?? '') === '443');
+
+        setcookie(self::REMEMBER_COOKIE, '', [
+            'expires'  => time() - 3600,
+            'path'     => '/',
+            'secure'   => $isSecure,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
     }
 
     /**
