@@ -9,6 +9,7 @@ use App\Core\Session;
 use App\Core\CSRF;
 use App\Core\Mailer;
 use App\Models\User;
+use App\Models\EmailVerification;
 use App\Models\PasswordPolicy;
 use App\Models\PasswordReset;
 use App\Models\UserBan;
@@ -121,6 +122,27 @@ class AuthController extends Controller
             }
             $this->setFlash('danger', $msg);
             $this->redirect('/login');
+        }
+
+        // Vérifier si le compte est en attente de vérification email (nouveau compte uniquement)
+        if ($user['email_verification_required'] && !$user['email_verified_at']) {
+            $verifyModel = new EmailVerification();
+            $code = $verifyModel->generateCode((int) $user['id'], $user['email']);
+            try {
+                $mailer = new Mailer();
+                $mailer->send(
+                    $user['email'],
+                    'Vérifiez votre adresse email – Scores',
+                    $this->buildVerificationEmail($user['username'], $code)
+                );
+            } catch (\RuntimeException $e) {
+                if (getenv('APP_DEBUG') === 'true') {
+                    error_log('Email verification send error: ' . $e->getMessage());
+                }
+            }
+            Session::set('pending_verification_user_id', (int) $user['id']);
+            $this->setFlash('info', "Votre adresse email n'est pas encore vérifiée. Un code vous a été envoyé.");
+            $this->redirect('/verify-email');
         }
 
         // Connexion réussie : effacer les tentatives et verrous pour cette IP/compte
@@ -288,22 +310,32 @@ class AuthController extends Controller
             $this->redirect('/register');
         }
 
-        // Créer l'utilisateur
+        // Créer l'utilisateur (email_verification_required = 1 automatiquement)
         $userId = $this->userModel->register($data['username'], $data['email'], $data['password']);
 
-        // Connecter automatiquement
-        $user = $this->userModel->find($userId);
-        Session::regenerate();
-        Session::set('user_id', $user['id']);
-        Session::set('username', $user['username']);
-        Session::set('global_role', $user['global_role']);
-        Session::set('avatar', $user['avatar'] ?? '');
-        CSRF::regenerate();
+        // Générer un code de vérification et l'envoyer par email
+        $verifyModel = new EmailVerification();
+        $code = $verifyModel->generateCode($userId, $data['email']);
+        try {
+            $mailer = new Mailer();
+            $mailer->send(
+                $data['email'],
+                'Vérifiez votre adresse email – Scores',
+                $this->buildVerificationEmail($data['username'], $code)
+            );
+        } catch (\RuntimeException $e) {
+            if (getenv('APP_DEBUG') === 'true') {
+                error_log('Email verification send error: ' . $e->getMessage());
+            }
+        }
+
+        // Stocker l'ID en session pour la page de vérification (sans connecter l'utilisateur)
+        Session::set('pending_verification_user_id', $userId);
 
         ActivityLog::logAuth('register', $userId);
 
-        $this->setFlash('success', 'Inscription réussie ! Bienvenue, ' . $user['username'] . ' !');
-        $this->redirect('/spaces');
+        $this->setFlash('info', 'Compte créé ! Consultez votre boîte email et saisissez le code à 6 chiffres pour activer votre compte.');
+        $this->redirect('/verify-email');
     }
 
     /**
@@ -485,6 +517,258 @@ class AuthController extends Controller
         <p style="color: #666; font-size: 14px;">Si vous n'êtes pas à l'origine de cette demande, ignorez simplement cet email.</p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
         <p style="color: #999; font-size: 12px;">Si le bouton ne fonctionne pas, copiez-collez ce lien :<br><a href="{$resetLink}" style="color: #4361ee; word-break: break-all;">{$resetLink}</a></p>
+    </div>
+</body>
+</html>
+HTML;
+    }
+
+    // =========================================================
+    // Vérification d'adresse email — nouveaux comptes (non connectés)
+    // =========================================================
+
+    /**
+     * Affiche la page de saisie du code de vérification (utilisateur non connecté).
+     */
+    public function verifyEmailForm(): void
+    {
+        if (is_authenticated()) {
+            $this->redirect('/spaces');
+        }
+
+        $pendingUserId = Session::get('pending_verification_user_id');
+        if (!$pendingUserId) {
+            $this->redirect('/login');
+        }
+
+        $user = $this->userModel->find((int) $pendingUserId);
+        if (!$user || !$user['email_verification_required'] || $user['email_verified_at']) {
+            Session::remove('pending_verification_user_id');
+            $this->redirect('/login');
+        }
+
+        $this->render('auth/verify_email', [
+            'title' => 'Vérifier votre adresse email',
+            'email' => $user['email'],
+        ]);
+    }
+
+    /**
+     * Traite la saisie du code de vérification (utilisateur non connecté).
+     */
+    public function verifyEmail(): void
+    {
+        $this->validateCSRF();
+
+        if (is_authenticated()) {
+            $this->redirect('/spaces');
+        }
+
+        $pendingUserId = Session::get('pending_verification_user_id');
+        if (!$pendingUserId) {
+            $this->redirect('/login');
+        }
+
+        $data = $this->getPostData(['code']);
+        $code = preg_replace('/\s+/', '', $data['code']); // supprimer les espaces éventuels
+
+        if (empty($code)) {
+            $this->setFlash('danger', 'Veuillez saisir le code reçu par email.');
+            $this->redirect('/verify-email');
+        }
+
+        $verifyModel = new EmailVerification();
+        $token = $verifyModel->findValidCode((int) $pendingUserId, $code);
+
+        if (!$token) {
+            $this->setFlash('danger', 'Code invalide ou expiré. Vérifiez le code reçu ou demandez-en un nouveau.');
+            $this->redirect('/verify-email');
+        }
+
+        // Marquer le token comme utilisé et valider l'email
+        $verifyModel->markUsed((int) $token['id']);
+        $this->userModel->markEmailVerified((int) $pendingUserId);
+        Session::remove('pending_verification_user_id');
+
+        // Connecter l'utilisateur
+        $user = $this->userModel->find((int) $pendingUserId);
+        Session::regenerate();
+        Session::set('user_id', $user['id']);
+        Session::set('username', $user['username']);
+        Session::set('global_role', $user['global_role']);
+        Session::set('avatar', $user['avatar'] ?? '');
+        CSRF::regenerate();
+
+        ActivityLog::logAuth('email.verified', (int) $user['id']);
+
+        $this->setFlash('success', 'Adresse email vérifiée. Bienvenue, ' . $user['username'] . ' !');
+        $this->redirect('/spaces');
+    }
+
+    /**
+     * Renvoie un nouveau code de vérification (utilisateur non connecté).
+     */
+    public function resendVerification(): void
+    {
+        $this->validateCSRF();
+
+        if (is_authenticated()) {
+            $this->redirect('/spaces');
+        }
+
+        $pendingUserId = Session::get('pending_verification_user_id');
+        if (!$pendingUserId) {
+            $this->redirect('/login');
+        }
+
+        $user = $this->userModel->find((int) $pendingUserId);
+        if (!$user) {
+            $this->redirect('/login');
+        }
+
+        $verifyModel = new EmailVerification();
+        $code = $verifyModel->generateCode((int) $user['id'], $user['email']);
+
+        try {
+            $mailer = new Mailer();
+            $mailer->send(
+                $user['email'],
+                'Vérifiez votre adresse email – Scores',
+                $this->buildVerificationEmail($user['username'], $code)
+            );
+            $this->setFlash('success', 'Un nouveau code a été envoyé à ' . $user['email'] . '.');
+        } catch (\RuntimeException $e) {
+            $this->setFlash('danger', "Erreur lors de l'envoi de l'email. Veuillez réessayer dans quelques instants.");
+        }
+
+        $this->redirect('/verify-email');
+    }
+
+    // =========================================================
+    // Vérification d'adresse email — comptes existants (connectés)
+    // =========================================================
+
+    /**
+     * Affiche la page de vérification email pour un utilisateur authentifié.
+     * Étape 1 si aucun code envoyé, étape 2 si le code a été envoyé.
+     */
+    public function requestVerifyEmailForm(): void
+    {
+        $this->requireAuth();
+        $userId = $this->getCurrentUserId();
+        $user = $this->userModel->find($userId);
+
+        if ($user['email_verified_at']) {
+            $this->setFlash('info', 'Votre adresse email est déjà vérifiée.');
+            $this->redirect('/profile');
+        }
+
+        $step = Session::get('email_verify_step') ?? 'request';
+
+        $this->render('account/verify_email', [
+            'title' => 'Vérifier mon adresse email',
+            'email' => $user['email'],
+            'step'  => $step,
+        ]);
+    }
+
+    /**
+     * Envoie le code de vérification à l'utilisateur authentifié.
+     */
+    public function requestVerifyEmail(): void
+    {
+        $this->validateCSRF();
+        $this->requireAuth();
+        $userId = $this->getCurrentUserId();
+        $user = $this->userModel->find($userId);
+
+        if ($user['email_verified_at']) {
+            $this->redirect('/profile');
+        }
+
+        $verifyModel = new EmailVerification();
+        $code = $verifyModel->generateCode($userId, $user['email']);
+
+        try {
+            $mailer = new Mailer();
+            $mailer->send(
+                $user['email'],
+                'Vérifiez votre adresse email – Scores',
+                $this->buildVerificationEmail($user['username'], $code)
+            );
+            Session::set('email_verify_step', 'verify');
+            $this->setFlash('info', 'Un code de vérification a été envoyé à ' . $user['email'] . '.');
+        } catch (\RuntimeException $e) {
+            $this->setFlash('danger', "Erreur lors de l'envoi de l'email. Réessayez plus tard.");
+        }
+
+        $this->redirect('/account/verify-email');
+    }
+
+    /**
+     * Valide le code de vérification saisi par l'utilisateur authentifié.
+     */
+    public function confirmVerifyEmail(): void
+    {
+        $this->validateCSRF();
+        $this->requireAuth();
+        $userId = $this->getCurrentUserId();
+        $user = $this->userModel->find($userId);
+
+        if ($user['email_verified_at']) {
+            $this->redirect('/profile');
+        }
+
+        $data = $this->getPostData(['code']);
+        $code = preg_replace('/\s+/', '', $data['code']);
+
+        if (empty($code)) {
+            $this->setFlash('danger', 'Veuillez saisir le code reçu par email.');
+            $this->redirect('/account/verify-email');
+        }
+
+        $verifyModel = new EmailVerification();
+        $token = $verifyModel->findValidCode($userId, $code);
+
+        if (!$token) {
+            $this->setFlash('danger', 'Code invalide ou expiré. Demandez un nouveau code.');
+            $this->redirect('/account/verify-email');
+        }
+
+        $verifyModel->markUsed((int) $token['id']);
+        $this->userModel->markEmailVerified($userId);
+        Session::remove('email_verify_step');
+
+        ActivityLog::logAuth('email.verified', $userId);
+
+        $this->setFlash('success', 'Votre adresse email a été vérifiée avec succès. ✓');
+        $this->redirect('/profile');
+    }
+
+    /**
+     * Construit le contenu HTML de l'email de vérification.
+     */
+    private function buildVerificationEmail(string $username, string $code): string
+    {
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+    <div style="background: linear-gradient(135deg, #4361ee, #3a0ca3); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px;">🎲 Scores</h1>
+        <p style="margin: 8px 0 0; opacity: 0.9;">Vérification de votre adresse email</p>
+    </div>
+    <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 12px 12px;">
+        <p>Bonjour <strong>{$username}</strong>,</p>
+        <p>Voici votre code de vérification à usage unique, valable <strong>15 minutes</strong> :</p>
+        <div style="text-align: center; margin: 30px 0;">
+            <div style="display: inline-block; background: #f0f4ff; border: 2px solid #4361ee; border-radius: 12px; padding: 20px 40px;">
+                <span style="font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #4361ee; font-family: monospace;">{$code}</span>
+            </div>
+        </div>
+        <p style="color: #666; font-size: 14px;">Saisissez ce code sur la page de vérification pour activer votre compte.</p>
+        <p style="color: #666; font-size: 14px;">Si vous n'êtes pas à l'origine de cette demande, ignorez simplement cet email.</p>
     </div>
 </body>
 </html>

@@ -15,15 +15,25 @@ class User extends Model
 
     /**
      * Crée un nouvel utilisateur avec mot de passe hashé.
+     * La vérification email est requise pour les nouveaux comptes.
      */
     public function register(string $username, string $email, string $password): int
     {
         return $this->create([
-            'username'      => $username,
-            'email'         => $email,
-            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-            'global_role'   => 'user',
+            'username'                    => $username,
+            'email'                       => $email,
+            'password_hash'               => password_hash($password, PASSWORD_DEFAULT),
+            'global_role'                 => 'user',
+            'email_verification_required' => 1,
         ]);
+    }
+
+    /**
+     * Marque l'adresse email d'un utilisateur comme vérifiée.
+     */
+    public function markEmailVerified(int $id): bool
+    {
+        return $this->update($id, ['email_verified_at' => date('Y-m-d H:i:s')]);
     }
 
     /**

@@ -134,6 +134,14 @@ $router->get('/forgot-password', AuthController::class, 'forgotPasswordForm');
 $router->post('/forgot-password', AuthController::class, 'forgotPassword');
 $router->get('/reset-password/{token}', AuthController::class, 'resetPasswordForm');
 $router->post('/reset-password/{token}', AuthController::class, 'resetPassword');
+// Vérification email — nouveaux comptes (non connectés)
+$router->get('/verify-email', AuthController::class, 'verifyEmailForm');
+$router->post('/verify-email', AuthController::class, 'verifyEmail');
+$router->post('/verify-email/resend', AuthController::class, 'resendVerification');
+// Vérification email — comptes existants (connectés)
+$router->get('/account/verify-email', AuthController::class, 'requestVerifyEmailForm');
+$router->post('/account/verify-email/request', AuthController::class, 'requestVerifyEmail');
+$router->post('/account/verify-email/confirm', AuthController::class, 'confirmVerifyEmail');
 
 // ============================================================
 // Profil utilisateur

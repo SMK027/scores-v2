@@ -32,7 +32,15 @@
             <table class="table">
                 <tr>
                     <td class="font-bold">Email</td>
-                    <td><?= e($user['email']) ?></td>
+                    <td>
+                        <?= e($user['email']) ?>
+                        <?php if ($user['email_verified_at']): ?>
+                            <span class="badge badge-success" title="Vérifié le <?= format_date($user['email_verified_at']) ?>" style="margin-left:0.4rem;">✓ Vérifié</span>
+                        <?php else: ?>
+                            <span class="badge" style="background:#f59e0b;color:#fff;margin-left:0.4rem;">Non vérifié</span>
+                            <a href="/account/verify-email" class="text-small" style="margin-left:0.4rem;">Vérifier</a>
+                        <?php endif; ?>
+                    </td>
                 </tr>
                 <tr>
                     <td class="font-bold">Nom d'utilisateur</td>
