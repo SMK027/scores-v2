@@ -14,6 +14,57 @@ class GamePlayer extends Model
     protected string $table = 'game_players';
 
     /**
+     * Vérifie qu'aucun joueur lié à un compte restreint compétition
+     * n'est ajouté à une partie de compétition.
+     *
+     * @throws \DomainException
+     */
+    private function assertCompetitionEligiblePlayers(int $gameId, array $playerIds): void
+    {
+        if (empty($playerIds)) {
+            return;
+        }
+
+        $gameStmt = $this->query(
+            "SELECT competition_id FROM games WHERE id = :game_id LIMIT 1",
+            ['game_id' => $gameId]
+        );
+        $game = $gameStmt->fetch();
+        if (!$game || empty($game['competition_id'])) {
+            return;
+        }
+
+        $normalizedIds = array_values(array_unique(array_map('intval', $playerIds)));
+        if (empty($normalizedIds)) {
+            return;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($normalizedIds), '?'));
+        $stmt = $this->db->prepare(
+            "SELECT p.id, p.name, p.user_id
+             FROM players p
+             WHERE p.id IN ({$placeholders})"
+        );
+        $stmt->execute($normalizedIds);
+        $players = $stmt->fetchAll();
+
+        $userModel = new User();
+        $blockedNames = [];
+        foreach ($players as $player) {
+            $userId = (int) ($player['user_id'] ?? 0);
+            if ($userId > 0 && $userModel->isRestricted($userId, 'competitions_participation')) {
+                $blockedNames[] = (string) $player['name'];
+            }
+        }
+
+        if (!empty($blockedNames)) {
+            throw new \DomainException(
+                'Impossible de rattacher a une partie de competition: ' . implode(', ', $blockedNames) . '.'
+            );
+        }
+    }
+
+    /**
      * Récupère les joueurs d'une partie avec leurs scores.
      */
     public function findByGame(int $gameId): array
@@ -42,6 +93,8 @@ class GamePlayer extends Model
      */
     public function addPlayers(int $gameId, array $playerIds): void
     {
+        $this->assertCompetitionEligiblePlayers($gameId, $playerIds);
+
         foreach ($playerIds as $playerId) {
             $this->create([
                 'game_id'   => $gameId,

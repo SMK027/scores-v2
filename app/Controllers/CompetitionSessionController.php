@@ -37,6 +37,37 @@ class CompetitionSessionController extends Controller
     private RoundPause $roundPause;
     private \PDO $pdo;
 
+    /**
+     * Retourne les IDs de joueurs (dans un espace) liés à des comptes
+     * restreints pour la participation aux compétitions.
+     */
+    private function getRestrictedCompetitionPlayerIds(int $spaceId): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT p.id, p.user_id
+            FROM players p
+            WHERE p.space_id = :space_id
+              AND p.user_id IS NOT NULL
+        ");
+        $stmt->execute(['space_id' => $spaceId]);
+        $rows = $stmt->fetchAll();
+
+        if (empty($rows)) {
+            return [];
+        }
+
+        $userModel = new User();
+        $restricted = [];
+        foreach ($rows as $row) {
+            $uid = (int) ($row['user_id'] ?? 0);
+            if ($uid > 0 && $userModel->isRestricted($uid, 'competitions_participation')) {
+                $restricted[] = (int) $row['id'];
+            }
+        }
+
+        return $restricted;
+    }
+
     public function __construct()
     {
         $this->sessionModel = new CompetitionSession();
@@ -241,6 +272,7 @@ class CompetitionSessionController extends Controller
 
         // Joueurs de l'espace
         $players = $this->player->findBy(['space_id' => $data['space_id']], 'name');
+        $restrictedPlayerIds = $this->getRestrictedCompetitionPlayerIds((int) $data['space_id']);
 
         $this->renderMinimal('competitions/session_dashboard', [
             'title'     => 'Session #' . $data['session_number'],
@@ -248,6 +280,7 @@ class CompetitionSessionController extends Controller
             'games'     => $games,
             'gameTypes' => $gameTypes,
             'players'   => $players,
+            'restrictedCompetitionPlayerIds' => $restrictedPlayerIds,
         ]);
     }
 
@@ -269,7 +302,8 @@ class CompetitionSessionController extends Controller
         }
 
         $gameTypeId = (int) ($_POST['game_type_id'] ?? 0);
-        $playerIds  = $_POST['player_ids'] ?? [];
+        $rawPlayerIds = $_POST['player_ids'] ?? [];
+        $playerIds = array_values(array_unique(array_map('intval', (array) $rawPlayerIds)));
         $notes      = trim($_POST['notes'] ?? '');
 
         if ($gameTypeId <= 0 || empty($playerIds)) {
@@ -302,6 +336,36 @@ class CompetitionSessionController extends Controller
             return;
         }
 
+        // Vérifier que tous les joueurs sélectionnés existent dans l'espace courant.
+        $playerPlaceholders = implode(',', array_fill(0, count($playerIds), '?'));
+        $playerCheckSql = "
+            SELECT p.id, p.name, p.user_id
+            FROM players p
+            WHERE p.space_id = ?
+              AND p.id IN ({$playerPlaceholders})
+        ";
+        $playerCheckStmt = $this->pdo->prepare($playerCheckSql);
+        $playerCheckStmt->execute(array_merge([(int) $data['space_id']], $playerIds));
+        $selectedPlayers = $playerCheckStmt->fetchAll();
+        if (count($selectedPlayers) !== count($playerIds)) {
+            $this->setFlash('danger', 'Sélection de joueurs invalide pour cette compétition.');
+            $this->redirect('/competition/dashboard');
+            return;
+        }
+
+        // Bloquer les joueurs liés à des comptes restreints pour les compétitions.
+        $restrictedIds = $this->getRestrictedCompetitionPlayerIds((int) $data['space_id']);
+        if (!empty($restrictedIds)) {
+            $blocked = array_flip($restrictedIds);
+            $restrictedSelected = array_values(array_filter($selectedPlayers, static fn(array $p): bool => !empty($blocked[(int) $p['id']])));
+            if (!empty($restrictedSelected)) {
+                $names = array_map(static fn(array $p): string => (string) $p['name'], $restrictedSelected);
+                $this->setFlash('danger', 'Impossible de rattacher à une partie de compétition: ' . implode(', ', $names) . '.');
+                $this->redirect('/competition/dashboard');
+                return;
+            }
+        }
+
         $gameId = $this->game->create([
             'space_id'       => $data['space_id'],
             'competition_id' => $data['competition_id'],
@@ -313,7 +377,15 @@ class CompetitionSessionController extends Controller
             'created_by'     => $this->getCurrentUserId() ?? 1, // fallback si pas connecté en user
         ]);
 
-        $this->gamePlayer->addPlayers($gameId, $playerIds);
+        try {
+            $this->gamePlayer->addPlayers($gameId, $playerIds);
+        } catch (\DomainException $e) {
+            // Nettoyer la partie créée si les joueurs sont refusés.
+            $this->game->delete((int) $gameId);
+            $this->setFlash('danger', $e->getMessage());
+            $this->redirect('/competition/dashboard');
+            return;
+        }
 
         ActivityLog::logCompetition($data['competition_id'], 'session.game_create', null, 'game', $gameId, $data['session_id'], ['referee' => $data['referee_name']]);
 

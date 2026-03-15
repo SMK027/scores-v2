@@ -26,6 +26,11 @@
             <div class="form-group">
                 <label class="form-label">Joueurs *</label>
                 <p id="player-count-info" class="text-muted text-small">Sélectionnez au moins 2 joueurs.</p>
+                <?php if (!empty($restrictedCompetitionPlayerIds)): ?>
+                    <p class="text-warning text-small" style="margin:0.25rem 0 0.5rem;">
+                        Les joueurs marques "Banni competitions" restent visibles pour identification mais ne peuvent pas etre selectionnes.
+                    </p>
+                <?php endif; ?>
                 <div id="selected-players" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;"></div>
                 <div class="autocomplete-wrapper" style="position:relative;">
                     <input type="text" id="player_search" class="form-control" placeholder="Rechercher un joueur..." autocomplete="off">
@@ -109,7 +114,8 @@ const gameTypes = <?= json_encode(array_map(fn($gt) => [
 
 const allPlayers = <?= json_encode(array_map(fn($p) => [
     'id' => $p['id'],
-    'name' => $p['name']
+    'name' => $p['name'],
+    'competition_restricted' => in_array((int) $p['id'], array_map('intval', $restrictedCompetitionPlayerIds ?? []), true)
 ], $players)) ?>;
 
 // ==== Game type autocomplete ====
@@ -196,14 +202,19 @@ function renderPlayerList(items) {
         playerListContainer.innerHTML = '<div style="padding:0.75rem;color:var(--gray);">Aucun joueur trouvé.</div>';
     } else {
         playerListContainer.innerHTML = available.map(p => `
-            <div class="autocomplete-item" style="padding:0.75rem;border-bottom:1px solid var(--gray-light);cursor:pointer;" data-id="${p.id}">
-                ${p.name}
+            <div class="autocomplete-item ${p.competition_restricted ? 'is-disabled' : ''}" style="padding:0.75rem;border-bottom:1px solid var(--gray-light);cursor:${p.competition_restricted ? 'not-allowed' : 'pointer'};opacity:${p.competition_restricted ? '0.65' : '1'};display:flex;justify-content:space-between;align-items:center;gap:0.5rem;" data-id="${p.id}">
+                <span>${p.name}</span>
+                ${p.competition_restricted ? '<span class="badge badge-warning">Banni competitions</span>' : ''}
             </div>
         `).join('');
     }
 
     document.querySelectorAll('#player_list .autocomplete-item').forEach(item => {
         item.addEventListener('click', () => {
+            const player = allPlayers.find(p => p.id == item.dataset.id);
+            if (!player || player.competition_restricted) {
+                return;
+            }
             selectedPlayerIds.add(parseInt(item.dataset.id));
             renderSelectedPlayers();
             playerSearchInput.value = '';
