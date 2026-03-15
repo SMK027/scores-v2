@@ -11,6 +11,7 @@ use App\Models\Space;
 use App\Models\SpaceMember;
 use App\Models\SpaceInvite;
 use App\Models\SpaceInvitation;
+use App\Models\Competition;
 use App\Models\User;
 
 /**
@@ -22,6 +23,7 @@ class SpaceController extends Controller
     private SpaceMember $memberModel;
     private SpaceInvite $inviteModel;
     private SpaceInvitation $invitationModel;
+    private Competition $competitionModel;
 
     public function __construct()
     {
@@ -29,6 +31,7 @@ class SpaceController extends Controller
         $this->memberModel = new SpaceMember();
         $this->inviteModel = new SpaceInvite();
         $this->invitationModel = new SpaceInvitation();
+        $this->competitionModel = new Competition();
     }
 
     /**
@@ -132,6 +135,7 @@ class SpaceController extends Controller
 
         // Récupérer les dernières parties
         $stmt = (new \App\Models\Game())->getRecentBySpace((int) $id, 5);
+        $nextCompetition = $this->competitionModel->findNextBySpace((int) $id);
 
         $this->render('spaces/show', [
             'title'        => $space['name'],
@@ -139,6 +143,7 @@ class SpaceController extends Controller
             'spaceRole'    => $member['role'],
             'activeMenu'   => 'dashboard',
             'recentGames'  => $stmt,
+            'nextCompetition' => $nextCompetition,
         ]);
     }
 

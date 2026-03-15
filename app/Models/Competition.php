@@ -31,6 +31,27 @@ class Competition extends Model
     }
 
     /**
+     * Prochaine competition planifiee d'un espace.
+     */
+    public function findNextBySpace(int $spaceId): ?array
+    {
+        $stmt = $this->db->prepare("
+            SELECT c.*, u.username AS creator_name,
+                   (SELECT COUNT(*) FROM competition_sessions cs WHERE cs.competition_id = c.id) AS session_count
+            FROM {$this->table} c
+            LEFT JOIN users u ON u.id = c.created_by
+            WHERE c.space_id = :space_id
+              AND c.status = 'planned'
+              AND c.starts_at >= NOW()
+            ORDER BY c.starts_at ASC
+            LIMIT 1
+        ");
+        $stmt->execute(['space_id' => $spaceId]);
+        $result = $stmt->fetch();
+        return $result ?: null;
+    }
+
+    /**
      * Détail d'une compétition avec infos complémentaires.
      */
     public function findWithDetails(int $id): ?array

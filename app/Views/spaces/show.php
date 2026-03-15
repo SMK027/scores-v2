@@ -36,6 +36,40 @@
     </div>
 </div>
 
+<!-- Prochaine competition -->
+<div class="card mb-3">
+    <div class="card-header">
+        <h3>🏆 Prochaine competition</h3>
+    </div>
+    <div class="card-body">
+        <?php if (!empty($nextCompetition)): ?>
+            <div class="d-flex justify-between align-center flex-wrap" style="gap:0.75rem;">
+                <div>
+                    <p class="font-bold" style="margin:0;">
+                        <?= e($nextCompetition['name']) ?>
+                        <span class="badge badge-warning" style="margin-left:0.35rem;">Planifiee</span>
+                    </p>
+                    <p class="text-muted text-small" style="margin:0.35rem 0 0;">
+                        Debut: <?= date('d/m/Y H:i', strtotime($nextCompetition['starts_at'])) ?>
+                        <?php if (!empty($nextCompetition['ends_at'])): ?>
+                            • Fin: <?= date('d/m/Y H:i', strtotime($nextCompetition['ends_at'])) ?>
+                        <?php endif; ?>
+                        • Sessions: <?= (int) ($nextCompetition['session_count'] ?? 0) ?>
+                    </p>
+                </div>
+                <a href="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $nextCompetition['id'] ?>" class="btn btn-primary btn-sm">
+                    Acceder rapidement
+                </a>
+            </div>
+        <?php else: ?>
+            <div class="d-flex justify-between align-center flex-wrap" style="gap:0.75rem;">
+                <p class="text-muted" style="margin:0;">Aucune prochaine competition configuree pour le moment.</p>
+                <a href="/spaces/<?= $currentSpace['id'] ?>/competitions" class="btn btn-outline btn-sm">Voir les competitions</a>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
 <!-- Dernières parties -->
 <div class="card">
     <div class="card-header">
