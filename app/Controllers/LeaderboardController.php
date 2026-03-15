@@ -23,6 +23,42 @@ class LeaderboardController extends Controller
         $minRounds = max(1, (int) ($config['min_rounds_played'] ?? 5));
         $minSpaces = max(1, (int) ($config['min_spaces_played'] ?? 2));
 
+        // --- Filtrage par période ---
+        $validPeriods = ['7d', '30d', '3m', '6m', '1y', 'custom', 'all'];
+        $period = $_GET['period'] ?? 'all';
+        if (!in_array($period, $validPeriods, true)) {
+            $period = 'all';
+        }
+
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('Europe/Paris'));
+        $dateFrom = null;
+        $dateTo   = null;
+        $customFrom = '';
+        $customTo   = '';
+
+        if ($period === 'custom') {
+            $rawFrom = $_GET['from'] ?? '';
+            $rawTo   = $_GET['to']   ?? '';
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawFrom)) {
+                $dateFrom   = $rawFrom . ' 00:00:00';
+                $customFrom = $rawFrom;
+            }
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawTo)) {
+                $dateTo   = $rawTo . ' 23:59:59';
+                $customTo = $rawTo;
+            }
+        } elseif ($period !== 'all') {
+            $dateFrom = match ($period) {
+                '7d'  => $now->modify('-7 days')->format('Y-m-d H:i:s'),
+                '30d' => $now->modify('-30 days')->format('Y-m-d H:i:s'),
+                '3m'  => $now->modify('-3 months')->format('Y-m-d H:i:s'),
+                '6m'  => $now->modify('-6 months')->format('Y-m-d H:i:s'),
+                '1y'  => $now->modify('-1 year')->format('Y-m-d H:i:s'),
+                default => null,
+            };
+            $dateTo = $now->format('Y-m-d H:i:s');
+        }
+
         // Utilisateurs liés à au moins un espace (membre ou propriétaire).
         $stmt = $pdo->prepare("
             SELECT DISTINCT u.id, u.username, u.avatar
@@ -43,7 +79,7 @@ class LeaderboardController extends Controller
 
         $rows = [];
         foreach ($users as $user) {
-            $stats = $this->computeGlobalWinRateForUser((int) $user['id'], $pdo, $minRounds, $minSpaces);
+            $stats = $this->computeGlobalWinRateForUser((int) $user['id'], $pdo, $minRounds, $minSpaces, $dateFrom, $dateTo);
             if ($stats === null) {
                 continue;
             }
@@ -79,6 +115,9 @@ class LeaderboardController extends Controller
                 'min_rounds_played' => $minRounds,
                 'min_spaces_played' => $minSpaces,
             ],
+            'period'     => $period,
+            'customFrom' => $customFrom,
+            'customTo'   => $customTo,
         ]);
     }
 
@@ -86,7 +125,7 @@ class LeaderboardController extends Controller
      * Même logique de calcul que le profil utilisateur:
      * manches terminées uniquement, gagnant selon win_condition, ex-aequo inclus.
      */
-    private function computeGlobalWinRateForUser(int $userId, \PDO $pdo, int $minRounds, int $minSpaces): ?array
+    private function computeGlobalWinRateForUser(int $userId, \PDO $pdo, int $minRounds, int $minSpaces, ?string $dateFrom = null, ?string $dateTo = null): ?array
     {
         $stmt = $pdo->prepare("
             SELECT p.id AS player_id, p.space_id
@@ -121,6 +160,16 @@ class LeaderboardController extends Controller
         $playerIds = array_keys($playerIdToSpace);
 
         $ph = implode(',', array_fill(0, count($playerIds), '?'));
+        $dateConditions = '';
+        $dateParams     = [];
+        if ($dateFrom !== null) {
+            $dateConditions .= ' AND r.ended_at >= ?';
+            $dateParams[]    = $dateFrom;
+        }
+        if ($dateTo !== null) {
+            $dateConditions .= ' AND r.ended_at <= ?';
+            $dateParams[]    = $dateTo;
+        }
         $stmt = $pdo->prepare("
             SELECT DISTINCT r.id AS round_id, gt.win_condition
             FROM round_scores rs
@@ -128,8 +177,9 @@ class LeaderboardController extends Controller
             JOIN games g ON g.id = r.game_id
             JOIN game_types gt ON gt.id = g.game_type_id
             WHERE rs.player_id IN ($ph)
+            $dateConditions
         ");
-        $stmt->execute($playerIds);
+        $stmt->execute([...$playerIds, ...$dateParams]);
         $rounds = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         if (empty($rounds)) {
