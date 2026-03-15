@@ -10,6 +10,11 @@
            class="btn btn-sm <?= ($currentSort ?? '') === 'role' ? 'btn-primary' : 'btn-outline' ?>">Rôle</a>
         <a href="/spaces/create" class="btn btn-primary btn-sm" style="margin-left:auto;">+ Créer un espace</a>
     </div>
+    <div class="mt-1">
+        <input type="search" id="spaces-search" placeholder="Rechercher un espace…"
+               class="form-control" style="max-width:320px;"
+               aria-label="Rechercher un espace">
+    </div>
 </div>
 
 <?php if (!empty($pendingInvitations)): ?>
@@ -64,10 +69,11 @@
         <a href="/spaces/create" class="btn btn-primary">Créer mon premier espace</a>
     </div>
 <?php else: ?>
-    <div class="card-grid">
+    <div class="card-grid" id="spaces-grid">
         <?php foreach ($spaces as $space): ?>
             <?php $accentColor = !empty($space['color']) ? $space['color'] : null; ?>
-            <a href="/spaces/<?= $space['id'] ?>" class="card-link">
+            <a href="/spaces/<?= $space['id'] ?>" class="card-link"
+               data-space-name="<?= strtolower(e($space['name'])) ?>">
                 <div class="card" style="<?= $accentColor ? 'border-top: 3px solid ' . e($accentColor) . '; --space-accent:' . e($accentColor) . ';' : '' ?>">
                     <?php if ($accentColor): ?>
                     <div style="height:4px;background:<?= e($accentColor) ?>;border-radius:var(--border-radius) var(--border-radius) 0 0;margin:-1px -1px 0;"></div>
@@ -104,6 +110,27 @@
             </a>
         <?php endforeach; ?>
     </div>
+    <p id="spaces-no-result" class="text-muted text-center" style="display:none;">Aucun espace ne correspond à votre recherche.</p>
+    <script>
+    (function(){
+        var searchInput = document.getElementById('spaces-search');
+        var grid = document.getElementById('spaces-grid');
+        var noResult = document.getElementById('spaces-no-result');
+        if(searchInput && grid){
+            searchInput.addEventListener('input', function(){
+                var q = this.value.toLowerCase().trim();
+                var cards = grid.querySelectorAll('a.card-link');
+                var visible = 0;
+                cards.forEach(function(card){
+                    var match = !q || card.dataset.spaceName.includes(q);
+                    card.style.display = match ? '' : 'none';
+                    if(match) visible++;
+                });
+                if(noResult) noResult.style.display = visible === 0 ? '' : 'none';
+            });
+        }
+    })();
+    </script>
     <script>
     (function(){
         var els = document.querySelectorAll('.space-countdown');
