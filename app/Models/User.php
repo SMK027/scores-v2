@@ -187,19 +187,40 @@ class User extends Model
     }
 
     /**
-     * Liste tous les utilisateurs avec pagination.
+     * Liste tous les utilisateurs avec pagination et filtres.
      */
-    public function paginate(int $page = 1, int $perPage = 20, string $search = ''): array
+    public function paginate(int $page = 1, int $perPage = 20, array $filters = []): array
     {
         $offset = ($page - 1) * $perPage;
         $params = [];
+        $whereParts = [];
 
-        $where = '';
-        if ($search) {
-            $where = "WHERE username LIKE :search OR email LIKE :search2";
-            $params['search'] = "%{$search}%";
-            $params['search2'] = "%{$search}%";
+        $username = trim((string) ($filters['username'] ?? ''));
+        $email = trim((string) ($filters['email'] ?? ''));
+        $role = trim((string) ($filters['global_role'] ?? ''));
+        $createdDate = trim((string) ($filters['created_date'] ?? ''));
+
+        if ($username !== '') {
+            $whereParts[] = 'username LIKE :username';
+            $params['username'] = '%' . $username . '%';
         }
+
+        if ($email !== '') {
+            $whereParts[] = 'email LIKE :email';
+            $params['email'] = '%' . $email . '%';
+        }
+
+        if ($role !== '' && in_array($role, ['user', 'moderator', 'admin', 'superadmin'], true)) {
+            $whereParts[] = 'global_role = :global_role';
+            $params['global_role'] = $role;
+        }
+
+        if ($createdDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $createdDate) === 1) {
+            $whereParts[] = 'DATE(created_at) = :created_date';
+            $params['created_date'] = $createdDate;
+        }
+
+        $where = empty($whereParts) ? '' : 'WHERE ' . implode(' AND ', $whereParts);
 
         // Nombre total
         $countStmt = $this->query("SELECT COUNT(*) FROM {$this->table} {$where}", $params);
@@ -223,6 +244,12 @@ class User extends Model
             'page'     => $page,
             'perPage'  => $perPage,
             'lastPage' => (int) ceil($total / $perPage),
+            'filters'  => [
+                'username' => $username,
+                'email' => $email,
+                'global_role' => $role,
+                'created_date' => $createdDate,
+            ],
         ];
     }
 }

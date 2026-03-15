@@ -3,6 +3,35 @@
     <a href="/admin" class="btn btn-outline">← Retour</a>
 </div>
 
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="GET" action="/admin/users" class="d-flex gap-1 flex-wrap align-center">
+            <input type="text" name="username" class="form-control" placeholder="Filtrer par pseudo"
+                   value="<?= e($filters['username'] ?? '') ?>" style="max-width:220px;">
+
+            <input type="text" name="email" class="form-control" placeholder="Filtrer par email"
+                   value="<?= e($filters['email'] ?? '') ?>" style="max-width:240px;">
+
+            <input type="date" name="created_date" class="form-control"
+                   value="<?= e($filters['created_date'] ?? '') ?>" style="max-width:190px;">
+
+            <select name="global_role" class="form-control" style="max-width:180px;">
+                <option value="">Tous les rôles</option>
+                <option value="user" <?= ($filters['global_role'] ?? '') === 'user' ? 'selected' : '' ?>>Utilisateur</option>
+                <option value="moderator" <?= ($filters['global_role'] ?? '') === 'moderator' ? 'selected' : '' ?>>Modérateur</option>
+                <option value="admin" <?= ($filters['global_role'] ?? '') === 'admin' ? 'selected' : '' ?>>Admin</option>
+                <option value="superadmin" <?= ($filters['global_role'] ?? '') === 'superadmin' ? 'selected' : '' ?>>Superadmin</option>
+            </select>
+
+            <button type="submit" class="btn btn-primary">Filtrer</button>
+
+            <?php if (!empty($filters['username']) || !empty($filters['email']) || !empty($filters['created_date']) || !empty($filters['global_role'])): ?>
+                <a href="/admin/users" class="btn btn-outline">Réinitialiser</a>
+            <?php endif; ?>
+        </form>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-body">
         <div class="table-responsive">
@@ -71,12 +100,21 @@
 
 <!-- Pagination -->
 <?php if ($pagination['lastPage'] > 1): ?>
+    <?php
+        $__paginationQuery = [
+            'username' => $filters['username'] ?? '',
+            'email' => $filters['email'] ?? '',
+            'created_date' => $filters['created_date'] ?? '',
+            'global_role' => $filters['global_role'] ?? '',
+        ];
+        $__paginationQuery = array_filter($__paginationQuery, static fn($v): bool => $v !== null && $v !== '');
+    ?>
     <div class="pagination">
         <?php for ($i = 1; $i <= $pagination['lastPage']; $i++): ?>
             <?php if ($i === $pagination['page']): ?>
                 <span class="active"><?= $i ?></span>
             <?php else: ?>
-                <a href="/admin/users?page=<?= $i ?>"><?= $i ?></a>
+                <a href="/admin/users?<?= e(http_build_query(array_merge($__paginationQuery, ['page' => $i]))) ?>"><?= $i ?></a>
             <?php endif; ?>
         <?php endfor; ?>
     </div>

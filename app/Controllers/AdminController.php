@@ -98,13 +98,21 @@ class AdminController extends Controller
         $page = max(1, (int) ($_GET['page'] ?? 1));
         $perPage = 20;
 
-        $users = $this->userModel->paginate($page, $perPage);
+        $filters = [
+            'username' => trim((string) ($_GET['username'] ?? '')),
+            'email' => trim((string) ($_GET['email'] ?? '')),
+            'global_role' => trim((string) ($_GET['global_role'] ?? '')),
+            'created_date' => trim((string) ($_GET['created_date'] ?? '')),
+        ];
+
+        $users = $this->userModel->paginate($page, $perPage, $filters);
 
         $this->render('admin/users', [
             'title'      => 'Gestion des utilisateurs',
             'activeMenu' => 'admin',
             'users'      => $users['data'],
             'pagination' => $users,
+            'filters'    => $users['filters'] ?? $filters,
         ]);
     }
 
