@@ -12,6 +12,31 @@ use App\Core\Model;
 class User extends Model
 {
     protected string $table = 'users';
+    private ?bool $hasEmailNormalizedColumn = null;
+
+    /**
+     * Normalise un email pour les contrôles d'unicité.
+     * - Lowercase global
+     * - Gmail/Googlemail: suppression des points et du +alias sur la partie locale
+     */
+    public static function normalizeEmail(string $email): string
+    {
+        $email = trim(strtolower($email));
+
+        if (!str_contains($email, '@')) {
+            return $email;
+        }
+
+        [$local, $domain] = explode('@', $email, 2);
+
+        if (in_array($domain, ['gmail.com', 'googlemail.com'], true)) {
+            $local = explode('+', $local, 2)[0];
+            $local = str_replace('.', '', $local);
+            $domain = 'gmail.com';
+        }
+
+        return $local . '@' . $domain;
+    }
 
     /**
      * Clés de restriction possibles au niveau compte utilisateur.
@@ -31,13 +56,21 @@ class User extends Model
      */
     public function register(string $username, string $email, string $password): int
     {
-        return $this->create([
+        $email = trim($email);
+
+        $payload = [
             'username'                    => $username,
             'email'                       => $email,
             'password_hash'               => password_hash($password, PASSWORD_DEFAULT),
             'global_role'                 => 'user',
             'email_verification_required' => 1,
-        ]);
+        ];
+
+        if ($this->supportsEmailNormalizedColumn()) {
+            $payload['email_normalized'] = self::normalizeEmail($email);
+        }
+
+        return $this->create($payload);
     }
 
     /**
@@ -53,7 +86,7 @@ class User extends Model
      */
     public function authenticate(string $email, string $password): ?array
     {
-        $user = $this->findOneBy(['email' => $email]);
+        $user = $this->findByEmail($email);
         if (!$user) {
             return null;
         }
@@ -80,7 +113,47 @@ class User extends Model
      */
     public function findByEmail(string $email): ?array
     {
-        return $this->findOneBy(['email' => $email]);
+        $email = trim($email);
+        $normalized = self::normalizeEmail($email);
+
+        if (!$this->supportsEmailNormalizedColumn()) {
+            $stmt = $this->query(
+                "SELECT *
+                 FROM {$this->table}
+                 WHERE (
+                     CASE
+                         WHEN LOWER(SUBSTRING_INDEX(email, '@', -1)) IN ('gmail.com', 'googlemail.com')
+                             THEN CONCAT(
+                                 REPLACE(SUBSTRING_INDEX(SUBSTRING_INDEX(LOWER(email), '@', 1), '+', 1), '.', ''),
+                                 '@gmail.com'
+                             )
+                         ELSE LOWER(email)
+                     END
+                 ) = :normalized
+                 ORDER BY id ASC
+                 LIMIT 1",
+                ['normalized' => $normalized]
+            );
+
+            $user = $stmt->fetch();
+            return $user ?: null;
+        }
+
+        $stmt = $this->query(
+            "SELECT *
+             FROM {$this->table}
+             WHERE email_normalized = :normalized
+                OR (email_normalized IS NULL AND email = :email)
+             ORDER BY id ASC
+             LIMIT 1",
+            [
+                'normalized' => $normalized,
+                'email' => $email,
+            ]
+        );
+
+        $user = $stmt->fetch();
+        return $user ?: null;
     }
 
     /**
@@ -93,7 +166,30 @@ class User extends Model
         if (empty($filtered)) {
             return false;
         }
+
+        if (isset($filtered['email'])) {
+            $filtered['email'] = trim((string) $filtered['email']);
+            if ($this->supportsEmailNormalizedColumn()) {
+                $filtered['email_normalized'] = self::normalizeEmail($filtered['email']);
+            }
+        }
+
         return $this->update($id, $filtered);
+    }
+
+    /**
+     * Indique si la colonne email_normalized est disponible en base.
+     */
+    private function supportsEmailNormalizedColumn(): bool
+    {
+        if ($this->hasEmailNormalizedColumn !== null) {
+            return $this->hasEmailNormalizedColumn;
+        }
+
+        $stmt = $this->query("SHOW COLUMNS FROM {$this->table} LIKE 'email_normalized'");
+        $this->hasEmailNormalizedColumn = (bool) $stmt->fetch();
+
+        return $this->hasEmailNormalizedColumn;
     }
 
     /**

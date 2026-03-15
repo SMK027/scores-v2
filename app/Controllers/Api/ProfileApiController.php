@@ -79,10 +79,13 @@ class ProfileApiController extends ApiController
             $email = trim($data['email']);
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $errors[] = 'Adresse email invalide.';
-            } elseif ($email !== $user['email'] && $this->userModel->findByEmail($email)) {
-                $errors[] = 'Cette adresse email est déjà utilisée.';
             } else {
-                $updateData['email'] = $email;
+                $existing = $this->userModel->findByEmail($email);
+                if ($existing && (int) $existing['id'] !== (int) $user['id']) {
+                    $errors[] = 'Cette adresse email est déjà utilisée.';
+                } else {
+                    $updateData['email'] = $email;
+                }
             }
         }
 
