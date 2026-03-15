@@ -163,7 +163,7 @@ class SpaceTransferController extends Controller
                 $this->setFlash('danger', 'Checksum invalide. Import automatiquement restreint après 3 tentatives échouées en 1 heure. Un administrateur du site doit réautoriser l\'import.');
             } else {
                 $remaining = max(0, self::CHECKSUM_FAIL_LIMIT - (int) $lockInfo['recent_failures']);
-                $this->setFlash('danger', 'Checksum invalide: le fichier a ete altere ou est corrompu.'
+                $this->setFlash('danger', 'Checksum invalide : le fichier a été altéré ou est corrompu.'
                     . ($remaining > 0
                         ? ' Encore ' . $remaining . ' tentative(s) avant blocage automatique de l\'import.'
                         : ''));
@@ -174,7 +174,7 @@ class SpaceTransferController extends Controller
 
         $data = $decoded['data'] ?? null;
         if (!is_array($data)) {
-            $this->setFlash('danger', 'Donnees d\'export manquantes.');
+            $this->setFlash('danger', 'Données d\'export manquantes.');
             $this->redirect('/spaces/' . $id . '/edit');
             return;
         }

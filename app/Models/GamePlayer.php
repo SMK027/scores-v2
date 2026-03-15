@@ -59,7 +59,7 @@ class GamePlayer extends Model
 
         if (!empty($blockedNames)) {
             throw new \DomainException(
-                'Impossible de rattacher a une partie de competition: ' . implode(', ', $blockedNames) . '.'
+                'Impossible de rattacher à une partie de compétition : ' . implode(', ', $blockedNames) . '.'
             );
         }
     }

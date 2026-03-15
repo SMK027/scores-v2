@@ -37,7 +37,7 @@
                                 <td class="text-right">
                                     <div class="d-flex gap-1 justify-end" style="display:inline-flex;flex-wrap:wrap;">
                                         <?php if (in_array($user['global_role'], ['admin', 'superadmin'], true)): ?>
-                                            <span class="text-muted text-small">Compte protège</span>
+                                            <span class="text-muted text-small">Compte protégé</span>
                                         <?php else: ?>
                                             <a href="/admin/users/<?= $user['id'] ?>/restrictions" class="btn btn-sm btn-outline<?= !empty($user['restrictions']) ? '-danger' : '' ?>">
                                                 <?= !empty($user['restrictions']) ? '🔒 Restreint' : '🔒 Restrictions' ?>
