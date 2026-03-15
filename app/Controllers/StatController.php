@@ -67,7 +67,7 @@ class StatController extends Controller
         // Activité récente (parties par mois)
         $monthlyActivity = $this->getMonthlyActivity($spaceId, 12);
 
-        // Joueur le plus actif (nombre de parties jouées)
+        // Joueur le plus actif (nombre de manches jouées)
         $mostActivePlayer = $this->getMostActivePlayer($spaceId);
 
         $this->render('stats/index', [
@@ -114,83 +114,7 @@ class StatController extends Controller
      */
     private function getTopPlayers(int $spaceId, int $limit): array
     {
-        // Récupérer toutes les manches terminées de l'espace (parties en cours incluses)
-        $stmt = $this->pdo->prepare("
-            SELECT r.id AS round_id, g.id AS game_id, gt.win_condition
-            FROM rounds r
-            JOIN games g ON g.id = r.game_id
-            JOIN game_types gt ON gt.id = g.game_type_id
-            WHERE g.space_id = :space_id
-              AND r.status = 'completed'
-        ");
-        $stmt->execute(['space_id' => $spaceId]);
-        $rounds = $stmt->fetchAll();
-
-        // Pour chaque manche, récupérer les scores et déterminer le(s) gagnant(s)
-        $roundsPlayed = [];  // player_id => count
-        $roundsWon = [];     // player_id => count
-
-        foreach ($rounds as $round) {
-            $winCondition = $round['win_condition'];
-
-            $scoreStmt = $this->pdo->prepare("
-                SELECT rs.player_id, rs.score
-                FROM round_scores rs
-                WHERE rs.round_id = :round_id
-            ");
-            $scoreStmt->execute(['round_id' => $round['round_id']]);
-            $scores = $scoreStmt->fetchAll();
-
-            if (empty($scores)) continue;
-
-            // Compter la manche comme jouée pour chaque joueur
-            foreach ($scores as $s) {
-                $pid = (int) $s['player_id'];
-                $roundsPlayed[$pid] = ($roundsPlayed[$pid] ?? 0) + 1;
-            }
-
-            // Déterminer le meilleur score selon la condition de victoire
-            $scoreValues = array_column($scores, 'score');
-            if ($winCondition === 'ranking' || $winCondition === 'lowest_score') {
-                $bestScore = min($scoreValues);
-            } else {
-                $bestScore = max($scoreValues);
-            }
-
-            // Tous les joueurs avec le meilleur score gagnent la manche
-            foreach ($scores as $s) {
-                if ((float) $s['score'] === (float) $bestScore) {
-                    $pid = (int) $s['player_id'];
-                    $roundsWon[$pid] = ($roundsWon[$pid] ?? 0) + 1;
-                }
-            }
-        }
-
-        // Récupérer les noms des joueurs de l'espace
-        $playerStmt = $this->pdo->prepare("
-            SELECT p.id, p.name
-            FROM players p
-            WHERE p.space_id = :space_id
-        ");
-        $playerStmt->execute(['space_id' => $spaceId]);
-        $players = $playerStmt->fetchAll();
-
-        $result = [];
-        foreach ($players as $player) {
-            $pid = (int) $player['id'];
-            $played = $roundsPlayed[$pid] ?? 0;
-            $won = $roundsWon[$pid] ?? 0;
-
-            if ($played === 0) continue;
-
-            $result[] = [
-                'id'            => $pid,
-                'name'          => $player['name'],
-                'rounds_played' => $played,
-                'rounds_won'    => $won,
-                'win_rate'      => round($won * 100.0 / $played, 1),
-            ];
-        }
+        $result = $this->buildRoundPerformance($spaceId);
 
         // Trier par manches gagnées DESC, puis taux DESC
         usort($result, function ($a, $b) {
@@ -300,40 +224,111 @@ class StatController extends Controller
     }
 
     /**
-     * Joueur le plus actif de l'espace (nombre de parties jouées).
+     * Joueur le plus actif de l'espace (nombre de manches jouées).
      */
     private function getMostActivePlayer(int $spaceId): ?array
     {
-        $stmt = $this->pdo->prepare("
-            SELECT
-                p.id,
-                p.name,
-                COUNT(DISTINCT gp.game_id) AS games_played,
-                SUM(CASE WHEN gp.is_winner = 1 THEN 1 ELSE 0 END) AS wins
-            FROM players p
-            LEFT JOIN game_players gp ON gp.player_id = p.id
-            LEFT JOIN games g ON g.id = gp.game_id
-            WHERE p.space_id = :space_id
-            GROUP BY p.id, p.name
-            ORDER BY games_played DESC, wins DESC, p.name ASC
-            LIMIT 1
-        ");
-        $stmt->execute(['space_id' => $spaceId]);
-        $row = $stmt->fetch();
-
-        if (!$row || (int) ($row['games_played'] ?? 0) === 0) {
+        $players = $this->buildRoundPerformance($spaceId);
+        if (empty($players)) {
             return null;
         }
 
-        $gamesPlayed = (int) $row['games_played'];
-        $wins = (int) ($row['wins'] ?? 0);
+        usort($players, function ($a, $b) {
+            if ($b['rounds_played'] !== $a['rounds_played']) {
+                return $b['rounds_played'] <=> $a['rounds_played'];
+            }
+            if ($b['win_rate'] !== $a['win_rate']) {
+                return $b['win_rate'] <=> $a['win_rate'];
+            }
+            if ($b['rounds_won'] !== $a['rounds_won']) {
+                return $b['rounds_won'] <=> $a['rounds_won'];
+            }
+            return strcmp((string) $a['name'], (string) $b['name']);
+        });
 
-        return [
-            'id' => (int) $row['id'],
-            'name' => $row['name'],
-            'games_played' => $gamesPlayed,
-            'wins' => $wins,
-            'win_rate' => $gamesPlayed > 0 ? round(($wins * 100) / $gamesPlayed, 1) : 0.0,
-        ];
+        return $players[0] ?? null;
+    }
+
+    /**
+     * Construit les performances de joueurs basées sur les manches:
+     * - manches jouées
+     * - manches gagnées
+     * - taux = gagnées / jouées
+     */
+    private function buildRoundPerformance(int $spaceId): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT r.id AS round_id, gt.win_condition
+            FROM rounds r
+            JOIN games g ON g.id = r.game_id
+            JOIN game_types gt ON gt.id = g.game_type_id
+            WHERE g.space_id = :space_id
+              AND r.status = 'completed'
+        ");
+        $stmt->execute(['space_id' => $spaceId]);
+        $rounds = $stmt->fetchAll();
+
+        $roundsPlayed = [];
+        $roundsWon = [];
+
+        foreach ($rounds as $round) {
+            $scoreStmt = $this->pdo->prepare("
+                SELECT rs.player_id, rs.score
+                FROM round_scores rs
+                WHERE rs.round_id = :round_id
+            ");
+            $scoreStmt->execute(['round_id' => $round['round_id']]);
+            $scores = $scoreStmt->fetchAll();
+
+            if (empty($scores)) {
+                continue;
+            }
+
+            foreach ($scores as $scoreRow) {
+                $pid = (int) $scoreRow['player_id'];
+                $roundsPlayed[$pid] = ($roundsPlayed[$pid] ?? 0) + 1;
+            }
+
+            $scoreValues = array_column($scores, 'score');
+            $winCondition = (string) $round['win_condition'];
+            $bestScore = ($winCondition === 'ranking' || $winCondition === 'lowest_score')
+                ? min($scoreValues)
+                : max($scoreValues);
+
+            foreach ($scores as $scoreRow) {
+                if ((float) $scoreRow['score'] === (float) $bestScore) {
+                    $pid = (int) $scoreRow['player_id'];
+                    $roundsWon[$pid] = ($roundsWon[$pid] ?? 0) + 1;
+                }
+            }
+        }
+
+        $playerStmt = $this->pdo->prepare("
+            SELECT p.id, p.name
+            FROM players p
+            WHERE p.space_id = :space_id
+        ");
+        $playerStmt->execute(['space_id' => $spaceId]);
+        $players = $playerStmt->fetchAll();
+
+        $result = [];
+        foreach ($players as $player) {
+            $pid = (int) $player['id'];
+            $played = $roundsPlayed[$pid] ?? 0;
+            if ($played === 0) {
+                continue;
+            }
+
+            $won = $roundsWon[$pid] ?? 0;
+            $result[] = [
+                'id' => $pid,
+                'name' => $player['name'],
+                'rounds_played' => $played,
+                'rounds_won' => $won,
+                'win_rate' => round(($won * 100.0) / $played, 1),
+            ];
+        }
+
+        return $result;
     }
 }

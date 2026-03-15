@@ -1,3 +1,4 @@
+<div class="stats-page">
 <div class="page-header">
     <h1>📊 Statistiques</h1>
 </div>
@@ -37,27 +38,25 @@
         <?php if (empty($mostActivePlayer)): ?>
             <p class="text-muted text-center">Aucune activité joueur pour le moment.</p>
         <?php else: ?>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
-                <div>
-                    <p class="font-bold" style="font-size:1.2rem;margin:0;">
-                        🥇 <?= e($mostActivePlayer['name']) ?>
-                    </p>
-                    <p class="text-muted" style="margin:0.35rem 0 0;">
-                        <?= (int) $mostActivePlayer['games_played'] ?> partie(s) jouée(s),
-                        <?= (int) $mostActivePlayer['wins'] ?> victoire(s)
-                        (<?= number_format((float) $mostActivePlayer['win_rate'], 1) ?>%)
+            <div class="most-active-panel">
+                <div class="most-active-main">
+                    <p class="most-active-name">🥇 <?= e($mostActivePlayer['name']) ?></p>
+                    <p class="most-active-subtitle">
+                        Classement base sur les manches jouees dans cet espace.
+                        Taux = manches gagnees / manches jouees.
                     </p>
                 </div>
-                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                    <span class="badge badge-primary">Parties: <?= (int) $mostActivePlayer['games_played'] ?></span>
-                    <span class="badge badge-success">Victoires: <?= (int) $mostActivePlayer['wins'] ?></span>
+                <div class="most-active-metrics">
+                    <span class="badge badge-primary">Manches jouees: <?= (int) $mostActivePlayer['rounds_played'] ?></span>
+                    <span class="badge badge-success">Manches gagnees: <?= (int) $mostActivePlayer['rounds_won'] ?></span>
+                    <span class="badge badge-info">Taux: <?= number_format((float) $mostActivePlayer['win_rate'], 1) ?>%</span>
                 </div>
             </div>
         <?php endif; ?>
     </div>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+<div class="stats-duo-grid">
 
     <!-- Top joueurs -->
     <div class="card">
@@ -201,10 +200,10 @@
 <div class="card mb-3">
     <div class="card-header"><h3>📈 Evolution des parties jouees</h3></div>
     <div class="card-body">
-        <div style="position:relative;height:260px;">
+        <div class="stats-evolution-chart-wrap">
             <svg id="gamesEvolutionChart" viewBox="0 0 800 260" preserveAspectRatio="none" style="width:100%;height:100%;display:block;"></svg>
         </div>
-        <div class="text-muted text-small mt-1" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+        <div class="text-muted text-small mt-1 stats-chart-meta">
             <span>Periode: <?= e($activityLabels[0] ?? '-') ?> -> <?= e($activityLabels[count($activityLabels) - 1] ?? '-') ?></span>
             <span>Total: <?= array_sum($activityValues) ?> partie(s)</span>
         </div>
@@ -268,3 +267,4 @@
 })();
 </script>
 <?php endif; ?>
+</div>

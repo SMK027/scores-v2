@@ -774,6 +774,62 @@ select.form-control {
 }
 
 /* -----------------------------------------------------------
+   Statistiques espace
+   ----------------------------------------------------------- */
+.stats-page .card {
+    overflow: hidden;
+}
+
+.stats-duo-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+}
+
+.most-active-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.most-active-main {
+    flex: 1 1 280px;
+}
+
+.most-active-name {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+}
+
+.most-active-subtitle {
+    margin: 0.5rem 0 0;
+    color: var(--gray);
+    max-width: 720px;
+    line-height: 1.45;
+}
+
+.most-active-metrics {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.stats-evolution-chart-wrap {
+    position: relative;
+    height: 340px;
+}
+
+.stats-chart-meta {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* -----------------------------------------------------------
    Grille de cartes
    ----------------------------------------------------------- */
 .card-grid {
@@ -1385,6 +1441,14 @@ select.form-control {
     .calendar-filters {
         grid-template-columns: repeat(2, minmax(160px, 1fr));
     }
+
+    .stats-duo-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-evolution-chart-wrap {
+        height: 300px;
+    }
 }
 
 /* -----------------------------------------------------------
@@ -1494,6 +1558,18 @@ select.form-control {
     .calendar-history-cards {
         display: grid;
     }
+
+    .most-active-name {
+        font-size: 1.2rem;
+    }
+
+    .most-active-subtitle {
+        font-size: 0.9rem;
+    }
+
+    .stats-evolution-chart-wrap {
+        height: 260px;
+    }
 }
 
 /* -----------------------------------------------------------
@@ -1534,5 +1610,9 @@ select.form-control {
 
     .calendar-day-stats .badge {
         width: fit-content;
+    }
+
+    .stats-evolution-chart-wrap {
+        height: 230px;
     }
 }
