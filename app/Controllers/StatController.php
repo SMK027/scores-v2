@@ -65,7 +65,10 @@ class StatController extends Controller
         $statsByGameType = $this->getStatsByGameType($spaceId);
 
         // Activité récente (parties par mois)
-        $monthlyActivity = $this->getMonthlyActivity($spaceId, 6);
+        $monthlyActivity = $this->getMonthlyActivity($spaceId, 12);
+
+        // Joueur le plus actif (nombre de parties jouées)
+        $mostActivePlayer = $this->getMostActivePlayer($spaceId);
 
         $this->render('stats/index', [
             'title'           => 'Statistiques',
@@ -77,6 +80,7 @@ class StatController extends Controller
             'recentGames'     => $recentGames,
             'statsByGameType' => $statsByGameType,
             'monthlyActivity' => $monthlyActivity,
+            'mostActivePlayer'=> $mostActivePlayer,
         ]);
     }
 
@@ -255,17 +259,81 @@ class StatController extends Controller
     {
         $stmt = $this->pdo->prepare("
             SELECT
-                DATE_FORMAT(created_at, '%Y-%m') AS month,
+                DATE_FORMAT(COALESCE(started_at, created_at), '%Y-%m') AS month,
                 COUNT(*) AS game_count
             FROM games
             WHERE space_id = :space_id
-              AND created_at >= DATE_SUB(NOW(), INTERVAL :months MONTH)
-            GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+              AND COALESCE(started_at, created_at) >= DATE_SUB(NOW(), INTERVAL :months MONTH)
+            GROUP BY DATE_FORMAT(COALESCE(started_at, created_at), '%Y-%m')
             ORDER BY month ASC
         ");
         $stmt->bindValue('space_id', $spaceId, \PDO::PARAM_INT);
         $stmt->bindValue('months', $months, \PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetchAll();
+        $raw = $stmt->fetchAll();
+
+        $countsByMonth = [];
+        foreach ($raw as $row) {
+            $countsByMonth[$row['month']] = (int) $row['game_count'];
+        }
+
+        // Compléter les mois sans activité pour un graphe continu.
+        $monthLabels = [
+            '01' => 'Jan', '02' => 'Fev', '03' => 'Mar', '04' => 'Avr',
+            '05' => 'Mai', '06' => 'Jun', '07' => 'Jul', '08' => 'Aou',
+            '09' => 'Sep', '10' => 'Oct', '11' => 'Nov', '12' => 'Dec',
+        ];
+
+        $series = [];
+        $start = new \DateTimeImmutable('first day of -' . max($months - 1, 0) . ' month');
+        for ($i = 0; $i < $months; $i++) {
+            $dt = $start->modify('+' . $i . ' month');
+            $key = $dt->format('Y-m');
+            $series[] = [
+                'month'      => $key,
+                'label'      => ($monthLabels[$dt->format('m')] ?? $dt->format('m')) . ' ' . $dt->format('y'),
+                'game_count' => $countsByMonth[$key] ?? 0,
+            ];
+        }
+
+        return $series;
+    }
+
+    /**
+     * Joueur le plus actif de l'espace (nombre de parties jouées).
+     */
+    private function getMostActivePlayer(int $spaceId): ?array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT
+                p.id,
+                p.name,
+                COUNT(DISTINCT gp.game_id) AS games_played,
+                SUM(CASE WHEN gp.is_winner = 1 THEN 1 ELSE 0 END) AS wins
+            FROM players p
+            LEFT JOIN game_players gp ON gp.player_id = p.id
+            LEFT JOIN games g ON g.id = gp.game_id
+            WHERE p.space_id = :space_id
+            GROUP BY p.id, p.name
+            ORDER BY games_played DESC, wins DESC, p.name ASC
+            LIMIT 1
+        ");
+        $stmt->execute(['space_id' => $spaceId]);
+        $row = $stmt->fetch();
+
+        if (!$row || (int) ($row['games_played'] ?? 0) === 0) {
+            return null;
+        }
+
+        $gamesPlayed = (int) $row['games_played'];
+        $wins = (int) ($row['wins'] ?? 0);
+
+        return [
+            'id' => (int) $row['id'],
+            'name' => $row['name'],
+            'games_played' => $gamesPlayed,
+            'wins' => $wins,
+            'win_rate' => $gamesPlayed > 0 ? round(($wins * 100) / $gamesPlayed, 1) : 0.0,
+        ];
     }
 }

@@ -30,6 +30,33 @@
     </div>
 </div>
 
+<!-- Joueur le plus actif -->
+<div class="card mb-3">
+    <div class="card-header"><h3>🔥 Joueur le plus actif</h3></div>
+    <div class="card-body">
+        <?php if (empty($mostActivePlayer)): ?>
+            <p class="text-muted text-center">Aucune activité joueur pour le moment.</p>
+        <?php else: ?>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+                <div>
+                    <p class="font-bold" style="font-size:1.2rem;margin:0;">
+                        🥇 <?= e($mostActivePlayer['name']) ?>
+                    </p>
+                    <p class="text-muted" style="margin:0.35rem 0 0;">
+                        <?= (int) $mostActivePlayer['games_played'] ?> partie(s) jouée(s),
+                        <?= (int) $mostActivePlayer['wins'] ?> victoire(s)
+                        (<?= number_format((float) $mostActivePlayer['win_rate'], 1) ?>%)
+                    </p>
+                </div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                    <span class="badge badge-primary">Parties: <?= (int) $mostActivePlayer['games_played'] ?></span>
+                    <span class="badge badge-success">Victoires: <?= (int) $mostActivePlayer['wins'] ?></span>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
 
     <!-- Top joueurs -->
@@ -165,33 +192,79 @@
     </div>
 </div>
 
-<!-- Activité mensuelle -->
+<!-- Evolution du nombre de parties -->
 <?php if (!empty($monthlyActivity)): ?>
+<?php
+    $activityLabels = array_map(static fn($m) => $m['label'] ?? $m['month'], $monthlyActivity);
+    $activityValues = array_map(static fn($m) => (int) ($m['game_count'] ?? 0), $monthlyActivity);
+?>
 <div class="card mb-3">
-    <div class="card-header"><h3>📅 Activité mensuelle</h3></div>
+    <div class="card-header"><h3>📈 Evolution des parties jouees</h3></div>
     <div class="card-body">
-        <div class="activity-chart" style="display:flex;align-items:flex-end;gap:0.5rem;height:200px;padding:1rem 0;">
-            <?php
-                $maxCount = max(array_column($monthlyActivity, 'game_count'));
-                $monthNames = [
-                    '01' => 'Jan', '02' => 'Fév', '03' => 'Mar', '04' => 'Avr',
-                    '05' => 'Mai', '06' => 'Jun', '07' => 'Jul', '08' => 'Aoû',
-                    '09' => 'Sep', '10' => 'Oct', '11' => 'Nov', '12' => 'Déc'
-                ];
-            ?>
-            <?php foreach ($monthlyActivity as $month): ?>
-                <?php
-                    $height = $maxCount > 0 ? ($month['game_count'] / $maxCount * 100) : 0;
-                    $parts = explode('-', $month['month']);
-                    $label = ($monthNames[$parts[1]] ?? $parts[1]) . ' ' . substr($parts[0], 2);
-                ?>
-                <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;">
-                    <span class="text-small font-bold"><?= $month['game_count'] ?></span>
-                    <div style="width:100%;max-width:60px;height:<?= max($height, 5) ?>%;background:var(--primary);border-radius:var(--radius) var(--radius) 0 0;min-height:4px;"></div>
-                    <span class="text-small text-muted mt-1" style="font-size:0.7rem;"><?= $label ?></span>
-                </div>
-            <?php endforeach; ?>
+        <div style="position:relative;height:260px;">
+            <svg id="gamesEvolutionChart" viewBox="0 0 800 260" preserveAspectRatio="none" style="width:100%;height:100%;display:block;"></svg>
+        </div>
+        <div class="text-muted text-small mt-1" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+            <span>Periode: <?= e($activityLabels[0] ?? '-') ?> -> <?= e($activityLabels[count($activityLabels) - 1] ?? '-') ?></span>
+            <span>Total: <?= array_sum($activityValues) ?> partie(s)</span>
         </div>
     </div>
 </div>
+<script>
+(function(){
+    var svg = document.getElementById('gamesEvolutionChart');
+    if (!svg) return;
+
+    var labels = <?= json_encode($activityLabels, JSON_UNESCAPED_UNICODE) ?>;
+    var values = <?= json_encode($activityValues, JSON_UNESCAPED_UNICODE) ?>;
+    if (!values.length) return;
+
+    var w = 800, h = 260;
+    var pad = { top: 18, right: 18, bottom: 34, left: 36 };
+    var innerW = w - pad.left - pad.right;
+    var innerH = h - pad.top - pad.bottom;
+    var max = Math.max.apply(null, values.concat([1]));
+
+    function x(i) {
+        if (values.length === 1) return pad.left + innerW / 2;
+        return pad.left + (i * innerW / (values.length - 1));
+    }
+    function y(v) {
+        return pad.top + innerH - (v / max) * innerH;
+    }
+
+    var points = values.map(function(v, i) { return [x(i), y(v)]; });
+    var lineD = 'M ' + points.map(function(p){ return p[0].toFixed(2) + ' ' + p[1].toFixed(2); }).join(' L ');
+    var areaD = lineD + ' L ' + x(values.length - 1).toFixed(2) + ' ' + (pad.top + innerH).toFixed(2)
+        + ' L ' + x(0).toFixed(2) + ' ' + (pad.top + innerH).toFixed(2) + ' Z';
+
+    var axisColor = '#cbd5e1';
+    var lineColor = '#2563eb';
+    var fillColor = 'rgba(37,99,235,0.15)';
+
+    var html = '';
+    html += '<line x1="' + pad.left + '" y1="' + (pad.top + innerH) + '" x2="' + (pad.left + innerW) + '" y2="' + (pad.top + innerH) + '" stroke="' + axisColor + '" />';
+    html += '<line x1="' + pad.left + '" y1="' + pad.top + '" x2="' + pad.left + '" y2="' + (pad.top + innerH) + '" stroke="' + axisColor + '" />';
+    html += '<path d="' + areaD + '" fill="' + fillColor + '" />';
+    html += '<path d="' + lineD + '" fill="none" stroke="' + lineColor + '" stroke-width="3" stroke-linecap="round" />';
+
+    points.forEach(function(p, i){
+        var title = (labels[i] || ('M' + (i + 1))) + ': ' + values[i] + ' partie(s)';
+        html += '<circle cx="' + p[0].toFixed(2) + '" cy="' + p[1].toFixed(2) + '" r="4" fill="' + lineColor + '"><title>' + title + '</title></circle>';
+    });
+
+    var ticks = Math.min(values.length, 6);
+    for (var t = 0; t < ticks; t++) {
+        var idx = Math.round(t * (values.length - 1) / Math.max(ticks - 1, 1));
+        var lx = x(idx);
+        var lbl = labels[idx] || '';
+        html += '<text x="' + lx.toFixed(2) + '" y="' + (h - 10) + '" text-anchor="middle" font-size="11" fill="#64748b">' + lbl + '</text>';
+    }
+
+    html += '<text x="' + (pad.left - 8) + '" y="' + (y(max) + 4).toFixed(2) + '" text-anchor="end" font-size="11" fill="#64748b">' + max + '</text>';
+    html += '<text x="' + (pad.left - 8) + '" y="' + (y(0) + 4).toFixed(2) + '" text-anchor="end" font-size="11" fill="#64748b">0</text>';
+
+    svg.innerHTML = html;
+})();
+</script>
 <?php endif; ?>
