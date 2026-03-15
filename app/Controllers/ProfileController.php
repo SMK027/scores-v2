@@ -106,14 +106,147 @@ class ProfileController extends Controller
         $calendarDays = $this->getMonthActivity($userId, $pdo, $filters);
 
         $this->render('profile/calendar', [
-            'title'         => 'Mon calendrier',
-            'filters'       => $filters,
-            'spaces'        => $spaces,
-            'gameTypes'     => $gameTypes,
-            'history'       => $history,
-            'calendarDays'  => $calendarDays,
-            'activeMenu'    => 'profile-calendar',
+            'title'      => 'Mon calendrier',
+            'filters'    => $filters,
+            'spaces'     => $spaces,
+            'gameTypes'  => $gameTypes,
+            'history'    => $history,
+            'activeMenu' => 'profile-calendar',
         ]);
+    }
+
+    /**
+     * Point d'entrée JSON pour FullCalendar — renvoie les parties de l'utilisateur
+     * dans la plage de dates demandée par le widget.
+     */
+    public function calendarEvents(): void
+    {
+        $this->requireAuth();
+
+        $userId = $this->getCurrentUserId();
+        $pdo    = Database::getInstance()->getConnection();
+
+        // FullCalendar envoie start/end en ISO8601 (ex: 2026-03-01T00:00:00)
+        $rawStart = $_GET['start'] ?? '';
+        $rawEnd   = $_GET['end']   ?? '';
+
+        $dateStart = preg_match('/^\d{4}-\d{2}-\d{2}/', $rawStart)
+            ? substr($rawStart, 0, 10) . ' 00:00:00' : null;
+        $dateEnd   = preg_match('/^\d{4}-\d{2}-\d{2}/', $rawEnd)
+            ? substr($rawEnd, 0, 10) . ' 23:59:59' : null;
+
+        // Filtres optionnels transmis depuis le formulaire de la page
+        $spaceId = isset($_GET['space_id']) && ctype_digit((string) $_GET['space_id']) && (int) $_GET['space_id'] > 0
+            ? (int) $_GET['space_id'] : null;
+        $status  = in_array($_GET['status'] ?? '', ['', 'pending', 'in_progress', 'paused', 'completed'], true)
+            ? ($_GET['status'] ?? '') : '';
+        $gameTypeId = isset($_GET['game_type_id']) && ctype_digit((string) $_GET['game_type_id']) && (int) $_GET['game_type_id'] > 0
+            ? (int) $_GET['game_type_id'] : null;
+
+        // Vérification que l'espace demandé appartient bien à l'utilisateur
+        if ($spaceId !== null) {
+            $userSpaceIds = array_column($this->getUserSpaces($userId, $pdo), 'id');
+            if (!in_array($spaceId, $userSpaceIds, true)) {
+                $spaceId = null;
+            }
+        }
+
+        $where  = ['sm.user_id = :uid_member', 'p_me.user_id = :uid_player'];
+        $params = ['uid_member' => $userId, 'uid_player' => $userId];
+
+        if ($spaceId !== null) {
+            $where[]           = 'g.space_id = :space_id';
+            $params['space_id'] = $spaceId;
+        }
+        if (!empty($status)) {
+            $where[]         = 'g.status = :status';
+            $params['status'] = $status;
+        }
+        if ($gameTypeId !== null) {
+            $where[]               = 'g.game_type_id = :game_type_id';
+            $params['game_type_id'] = $gameTypeId;
+        }
+        if ($dateStart !== null) {
+            $where[]              = 'COALESCE(g.started_at, g.created_at) >= :date_start';
+            $params['date_start'] = $dateStart;
+        }
+        if ($dateEnd !== null) {
+            $where[]            = 'COALESCE(g.started_at, g.created_at) <= :date_end';
+            $params['date_end'] = $dateEnd;
+        }
+
+        $whereSql = implode(' AND ', $where);
+        $sql = "SELECT
+                    g.id, g.space_id, g.status,
+                    g.started_at, g.ended_at, g.created_at,
+                    s.name   AS space_name,
+                    gt.name  AS game_type_name,
+                    gp_me.is_winner AS my_is_winner,
+                    gp_me.rank      AS my_rank,
+                    (SELECT COUNT(*) FROM game_players gp_c WHERE gp_c.game_id = g.id) AS player_count
+                FROM games g
+                INNER JOIN spaces s          ON s.id  = g.space_id
+                INNER JOIN space_members sm  ON sm.space_id = s.id
+                INNER JOIN game_types gt     ON gt.id = g.game_type_id
+                INNER JOIN game_players gp_me ON gp_me.game_id = g.id
+                INNER JOIN players p_me      ON p_me.id = gp_me.player_id
+                WHERE {$whereSql}
+                GROUP BY g.id
+                ORDER BY COALESCE(g.started_at, g.created_at) ASC
+                LIMIT 1000";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $statusLabels = [
+            'completed'   => 'Terminée',
+            'in_progress' => 'En cours',
+            'paused'      => 'En pause',
+            'pending'     => 'En attente',
+        ];
+
+        $events = [];
+        foreach ($rows as $g) {
+            $startDt  = $g['started_at'] ?: $g['created_at'];
+            $endDt    = $g['ended_at']   ?: null;
+            $isWinner = (int) ($g['my_is_winner'] ?? 0) === 1;
+
+            $title = $g['game_type_name'];
+            if ($g['status'] === 'completed') {
+                $title .= $isWinner ? ' 🏆' : ' ✗';
+            } elseif ($g['status'] !== 'pending') {
+                $title .= ' ⏳';
+            }
+
+            $cssClass = match ($g['status']) {
+                'completed'   => $isWinner ? 'fc-ev-win' : 'fc-ev-loss',
+                'in_progress' => 'fc-ev-ongoing',
+                'paused'      => 'fc-ev-paused',
+                default       => 'fc-ev-pending',
+            };
+
+            $events[] = [
+                'id'         => (string) $g['id'],
+                'title'      => $title,
+                'start'      => $startDt,
+                'end'        => $endDt,
+                'url'        => '/spaces/' . $g['space_id'] . '/games/' . $g['id'],
+                'classNames' => [$cssClass],
+                'extendedProps' => [
+                    'space'        => $g['space_name'],
+                    'game_type'    => $g['game_type_name'],
+                    'status'       => $statusLabels[$g['status']] ?? $g['status'],
+                    'is_winner'    => $isWinner,
+                    'player_count' => (int) $g['player_count'],
+                    'rank'         => $g['my_rank'],
+                ],
+            ];
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($events, JSON_UNESCAPED_UNICODE);
+        exit;
     }
 
     /**
