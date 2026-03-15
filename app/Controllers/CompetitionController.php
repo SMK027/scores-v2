@@ -44,6 +44,7 @@ class CompetitionController extends Controller
     private function requireStaff(): void
     {
         $this->requireGlobalRole(['moderator', 'admin', 'superadmin']);
+        $this->checkUserRestriction('competitions_participation', null, '/spaces');
     }
 
     /**
@@ -52,6 +53,7 @@ class CompetitionController extends Controller
     public function index(string $id): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('competitions_participation', null, '/spaces/' . $id);
         $space = $this->spaceModel->find((int) $id);
         if (!$space) {
             $this->setFlash('danger', 'Espace introuvable.');
@@ -180,6 +182,7 @@ class CompetitionController extends Controller
     public function show(string $id, string $cid): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('competitions_participation', null, '/spaces/' . $id);
 
         $space = $this->spaceModel->find((int) $id);
         if (!$space) {

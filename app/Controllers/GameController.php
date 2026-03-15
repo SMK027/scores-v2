@@ -96,6 +96,7 @@ class GameController extends Controller
     public function createForm(string $id): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
+        $this->checkUserRestriction('games_manage', null, '/spaces/' . $id . '/games');
         $this->checkSpaceRestriction((int) $id, 'games');
 
         $gameTypes = $this->gameTypeModel->findBySpace((int) $id);
@@ -127,6 +128,7 @@ class GameController extends Controller
     public function create(string $id): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
+        $this->checkUserRestriction('games_manage', null, '/spaces/' . $id . '/games');
         $this->checkSpaceRestriction((int) $id, 'games');
         $this->validateCSRF();
 
@@ -260,6 +262,7 @@ class GameController extends Controller
     public function editForm(string $id, string $gid): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
+        $this->checkUserRestriction('games_manage', null, '/spaces/' . $id . '/games/' . $gid);
         $this->checkSpaceRestriction((int) $id, 'games');
 
         $game = $this->gameModel->findWithDetails((int) $gid);
@@ -296,6 +299,7 @@ class GameController extends Controller
     public function update(string $id, string $gid): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
+        $this->checkUserRestriction('games_manage', null, '/spaces/' . $id . '/games/' . $gid);
         $this->checkSpaceRestriction((int) $id, 'games');
         $this->validateCSRF();
 
@@ -326,6 +330,7 @@ class GameController extends Controller
     public function delete(string $id, string $gid): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager']);
+        $this->checkUserRestriction('games_manage', null, '/spaces/' . $id . '/games/' . $gid);
         $this->checkSpaceRestriction((int) $id, 'games');
         $this->validateCSRF();
 
@@ -349,6 +354,7 @@ class GameController extends Controller
     public function updateStatus(string $id, string $gid): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
+        $this->checkUserRestriction('games_manage', null, '/spaces/' . $id . '/games/' . $gid);
         $this->validateCSRF();
 
         $game = $this->gameModel->find((int) $gid);
@@ -390,6 +396,7 @@ class GameController extends Controller
     public function addComment(string $id, string $gid): void
     {
         $ctx = $this->checkAccess($id);
+        $this->checkUserRestriction('comments_manage', null, '/spaces/' . $id . '/games/' . $gid);
         $this->validateCSRF();
 
         $content = trim($_POST['content'] ?? '');
@@ -417,6 +424,7 @@ class GameController extends Controller
     public function deleteComment(string $id, string $gid, string $cid): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('comments_manage', null, '/spaces/' . $id . '/games/' . $gid);
         $this->validateCSRF();
 
         $commentModel = new Comment();

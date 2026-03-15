@@ -9,6 +9,7 @@ use App\Core\Session;
 use App\Core\CSRF;
 use App\Models\CompetitionSession;
 use App\Models\Competition;
+use App\Models\User;
 use App\Models\Game;
 use App\Models\GamePlayer;
 use App\Models\GameType;
@@ -130,6 +131,22 @@ class CompetitionSessionController extends Controller
             $this->setFlash('danger', 'Tous les champs sont requis.');
             $this->redirect('/competition/login');
             return;
+        }
+
+        $connectedUserId = Session::get('user_id');
+        if (!empty($connectedUserId)) {
+            $userModel = new User();
+            if ($userModel->isRestricted((int) $connectedUserId, 'competitions_participation')) {
+                $user = $userModel->find((int) $connectedUserId);
+                $reason = trim((string) ($user['restriction_reason'] ?? ''));
+                $message = 'Votre compte ne peut pas participer aux compétitions pour le moment.';
+                if ($reason !== '') {
+                    $message .= ' Motif: ' . $reason;
+                }
+                $this->setFlash('danger', $message);
+                $this->redirect('/competition/login');
+                return;
+            }
         }
 
         // Vérifier si la session existe et si elle est verrouillée

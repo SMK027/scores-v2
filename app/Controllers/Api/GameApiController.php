@@ -127,6 +127,7 @@ class GameApiController extends ApiController
     public function create(string $id): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('games_manage');
         $this->checkSpaceAccess((int) $id, ['admin', 'manager', 'member']);
         $this->checkSpaceRestriction((int) $id, 'games');
 
@@ -184,6 +185,7 @@ class GameApiController extends ApiController
     public function update(string $id, string $gid): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('games_manage');
         $this->checkSpaceAccess((int) $id, ['admin', 'manager', 'member']);
         $this->checkSpaceRestriction((int) $id, 'games');
 
@@ -209,6 +211,7 @@ class GameApiController extends ApiController
     public function delete(string $id, string $gid): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('games_manage');
         $this->checkSpaceAccess((int) $id, ['admin', 'manager']);
         $this->checkSpaceRestriction((int) $id, 'games');
 
@@ -233,6 +236,7 @@ class GameApiController extends ApiController
     public function updateStatus(string $id, string $gid): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('games_manage');
         $this->checkSpaceAccess((int) $id, ['admin', 'manager', 'member']);
 
         $game = $this->gameModel->find((int) $gid);
@@ -275,6 +279,7 @@ class GameApiController extends ApiController
     public function addComment(string $id, string $gid): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('comments_manage');
         $this->checkSpaceAccess((int) $id);
 
         $data = $this->getJsonBody();
@@ -302,6 +307,7 @@ class GameApiController extends ApiController
     public function deleteComment(string $id, string $gid, string $cid): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('comments_manage');
 
         $commentModel = new Comment();
         $comment = $commentModel->find((int) $cid);

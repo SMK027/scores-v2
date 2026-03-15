@@ -74,6 +74,7 @@ class SpaceController extends Controller
     public function createForm(): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('space_create', null, '/spaces');
         $this->render('spaces/create', ['title' => 'Créer un espace']);
     }
 
@@ -83,6 +84,7 @@ class SpaceController extends Controller
     public function create(): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('space_create', null, '/spaces');
         $this->validateCSRF();
 
         $data = $this->getPostData(['name', 'description']);
@@ -316,6 +318,12 @@ class SpaceController extends Controller
             $this->redirect('/spaces/' . $id . '/members');
         }
 
+        if ($userModel->isRestricted((int) $user['id'], 'space_join')) {
+            $this->setFlash('danger', 'Cet utilisateur ne peut pas être ajouté à un espace pour le moment.');
+            $this->redirect('/spaces/' . $id . '/members');
+            return;
+        }
+
         if ($this->memberModel->isMember((int) $id, $user['id'])) {
             $this->setFlash('warning', 'Cet utilisateur est déjà membre de l\'espace.');
             $this->redirect('/spaces/' . $id . '/members');
@@ -342,6 +350,7 @@ class SpaceController extends Controller
     public function acceptInvitation(string $invId): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('space_join', null, '/spaces');
         $this->validateCSRF();
 
         $invitation = $this->invitationModel->find((int) $invId);
@@ -498,6 +507,7 @@ class SpaceController extends Controller
     public function join(string $token): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('space_join', null, '/spaces');
 
         $invite = $this->inviteModel->findValidByToken($token);
         if (!$invite) {

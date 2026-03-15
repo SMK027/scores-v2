@@ -83,6 +83,7 @@ class SpaceApiController extends ApiController
     public function create(): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('space_create');
         $data = $this->getJsonBody();
 
         $name = trim($data['name'] ?? '');
@@ -221,6 +222,10 @@ class SpaceApiController extends ApiController
             $this->error('Utilisateur introuvable.');
         }
 
+        if ($userModel->isRestricted((int) $user['id'], 'space_join')) {
+            $this->error('Cet utilisateur ne peut pas être ajouté à un espace pour le moment.', 403);
+        }
+
         if ($this->memberModel->isMember((int) $id, $user['id'])) {
             $this->error('Cet utilisateur est déjà membre.');
         }
@@ -284,6 +289,7 @@ class SpaceApiController extends ApiController
     public function acceptInvitation(string $invId): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('space_join');
 
         $invitation = $this->invitationModel->find((int) $invId);
         if (!$invitation || $invitation['invited_user_id'] != $this->userId || $invitation['status'] !== 'pending') {
@@ -323,6 +329,7 @@ class SpaceApiController extends ApiController
     public function join(string $token): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('space_join');
 
         $invite = $this->inviteModel->findValidByToken($token);
         if (!$invite) {

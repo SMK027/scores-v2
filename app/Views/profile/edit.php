@@ -21,6 +21,12 @@
                 <input type="file" id="avatarInput" name="avatar" class="form-control"
                        accept="image/jpeg,image/png,image/gif,image/webp">
                 <span class="form-hint">JPG, PNG, GIF ou WebP. Max 5 Mo.</span>
+                <?php if (!empty($user['avatar'])): ?>
+                    <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;margin-top:0.5rem;">
+                        <input type="checkbox" name="remove_avatar" value="1">
+                        Supprimer ma photo de profil actuelle
+                    </label>
+                <?php endif; ?>
             </div>
 
             <div class="form-row">

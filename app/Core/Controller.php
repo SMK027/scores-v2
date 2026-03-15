@@ -154,4 +154,33 @@ abstract class Controller
             $this->redirect('/spaces/' . $spaceId);
         }
     }
+
+    /**
+     * Vérifie si une fonctionnalité est restreinte pour un utilisateur.
+     * Si oui, affiche un message et redirige.
+     */
+    protected function checkUserRestriction(string $key, ?int $userId = null, ?string $redirectUrl = null): void
+    {
+        $targetUserId = $userId ?? $this->getCurrentUserId();
+        if (!$targetUserId) {
+            return;
+        }
+
+        $userModel = new \App\Models\User();
+        if ($userModel->isRestricted($targetUserId, $key)) {
+            $user = $userModel->find($targetUserId);
+            $reason = trim((string) ($user['restriction_reason'] ?? ''));
+            $message = 'Cette action est temporairement restreinte sur votre compte.';
+            if ($reason !== '') {
+                $message .= ' Motif: ' . $reason;
+            }
+
+            if ($this->isAjax()) {
+                $this->jsonResponse(['success' => false, 'message' => $message], 403);
+            }
+
+            $this->setFlash('danger', $message);
+            $this->redirect($redirectUrl ?? '/');
+        }
+    }
 }

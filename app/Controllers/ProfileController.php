@@ -281,6 +281,7 @@ class ProfileController extends Controller
         $data['show_win_rate_public'] = isset($_POST['show_win_rate_public']) ? 1 : 0;
 
         $errors = [];
+        $removeAvatar = isset($_POST['remove_avatar']) && $_POST['remove_avatar'] === '1';
 
         // Validation username
         if (empty($data['username'])) {
@@ -308,7 +309,13 @@ class ProfileController extends Controller
 
         // Gestion de l'avatar
         $avatarPath = null;
-        if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
+        if ($removeAvatar || (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK)) {
+            $this->checkUserRestriction('profile_photo_manage', null, '/profile/edit');
+        }
+
+        if ($removeAvatar) {
+            $avatarPath = '__REMOVE__';
+        } elseif (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
             $file = $_FILES['avatar'];
             $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
             $maxSize = 5 * 1024 * 1024; // 5 Mo
@@ -399,7 +406,9 @@ class ProfileController extends Controller
             'show_win_rate_public' => $data['show_win_rate_public'],
         ];
 
-        if ($avatarPath) {
+        if ($avatarPath === '__REMOVE__') {
+            $updateData['avatar'] = null;
+        } elseif ($avatarPath) {
             $updateData['avatar'] = $avatarPath;
         }
 
@@ -415,7 +424,9 @@ class ProfileController extends Controller
 
         // Mettre à jour la session
         Session::set('username', $data['username']);
-        if ($avatarPath) {
+        if ($avatarPath === '__REMOVE__') {
+            Session::set('avatar', '');
+        } elseif ($avatarPath) {
             Session::set('avatar', $avatarPath);
         }
 

@@ -14,7 +14,7 @@
                         <th>Email</th>
                         <th>Rôle global</th>
                         <th>Inscrit le</th>
-                        <?php if (current_global_role() === 'superadmin'): ?>
+                        <?php if (in_array(current_global_role(), ['admin', 'superadmin'], true)): ?>
                             <th class="text-right">Actions</th>
                         <?php endif; ?>
                     </tr>
@@ -33,22 +33,28 @@
                                 </span>
                             </td>
                             <td class="text-muted text-small"><?= format_date($user['created_at']) ?></td>
-                            <?php if (current_global_role() === 'superadmin'): ?>
+                            <?php if (in_array(current_global_role(), ['admin', 'superadmin'], true)): ?>
                                 <td class="text-right">
-                                    <?php if ($user['id'] != current_user_id()): ?>
-                                        <form method="POST" action="/admin/users/<?= $user['id'] ?>/role" class="d-flex gap-1 justify-end" style="display:inline-flex;">
-                                            <?= csrf_field() ?>
-                                            <select name="global_role" class="form-control form-control-sm" style="width:auto;">
-                                                <option value="user" <?= $user['global_role'] === 'user' ? 'selected' : '' ?>>Utilisateur</option>
-                                                <option value="moderator" <?= $user['global_role'] === 'moderator' ? 'selected' : '' ?>>Modérateur</option>
-                                                <option value="admin" <?= $user['global_role'] === 'admin' ? 'selected' : '' ?>>Admin</option>
-                                                <option value="superadmin" <?= $user['global_role'] === 'superadmin' ? 'selected' : '' ?>>Superadmin</option>
-                                            </select>
-                                            <button type="submit" class="btn btn-sm btn-primary" data-confirm="Modifier le rôle de <?= e($user['username']) ?> ?">OK</button>
-                                        </form>
-                                    <?php else: ?>
-                                        <span class="text-muted text-small">Vous</span>
-                                    <?php endif; ?>
+                                    <div class="d-flex gap-1 justify-end" style="display:inline-flex;flex-wrap:wrap;">
+                                        <a href="/admin/users/<?= $user['id'] ?>/restrictions" class="btn btn-sm btn-outline<?= !empty($user['restrictions']) ? '-danger' : '' ?>">
+                                            <?= !empty($user['restrictions']) ? '🔒 Restreint' : '🔒 Restrictions' ?>
+                                        </a>
+
+                                        <?php if (current_global_role() === 'superadmin' && $user['id'] != current_user_id()): ?>
+                                            <form method="POST" action="/admin/users/<?= $user['id'] ?>/role" class="d-flex gap-1 justify-end" style="display:inline-flex;">
+                                                <?= csrf_field() ?>
+                                                <select name="global_role" class="form-control form-control-sm" style="width:auto;">
+                                                    <option value="user" <?= $user['global_role'] === 'user' ? 'selected' : '' ?>>Utilisateur</option>
+                                                    <option value="moderator" <?= $user['global_role'] === 'moderator' ? 'selected' : '' ?>>Modérateur</option>
+                                                    <option value="admin" <?= $user['global_role'] === 'admin' ? 'selected' : '' ?>>Admin</option>
+                                                    <option value="superadmin" <?= $user['global_role'] === 'superadmin' ? 'selected' : '' ?>>Superadmin</option>
+                                                </select>
+                                                <button type="submit" class="btn btn-sm btn-primary" data-confirm="Modifier le rôle de <?= e($user['username']) ?> ?">OK</button>
+                                            </form>
+                                        <?php elseif ($user['id'] == current_user_id()): ?>
+                                            <span class="text-muted text-small">Vous</span>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                             <?php endif; ?>
                         </tr>

@@ -156,6 +156,83 @@ class AdminController extends Controller
     }
 
     /**
+     * Formulaire de gestion des restrictions d'un utilisateur.
+     */
+    public function userRestrictions(string $uid): void
+    {
+        $this->checkAdminOrSuperAdmin();
+
+        $user = $this->userModel->find((int) $uid);
+        if (!$user) {
+            $this->setFlash('danger', 'Utilisateur introuvable.');
+            $this->redirect('/admin/users');
+            return;
+        }
+
+        $restrictions = $this->userModel->getRestrictions((int) $uid);
+
+        $this->render('admin/user_restrictions', [
+            'title'           => 'Restrictions compte — ' . $user['username'],
+            'activeMenu'      => 'admin',
+            'targetUser'      => $user,
+            'restrictions'    => $restrictions,
+            'restrictionKeys' => User::RESTRICTION_KEYS,
+        ]);
+    }
+
+    /**
+     * Enregistre les restrictions d'un utilisateur.
+     */
+    public function updateUserRestrictions(string $uid): void
+    {
+        $this->checkAdminOrSuperAdmin();
+        $this->validateCSRF();
+
+        $user = $this->userModel->find((int) $uid);
+        if (!$user) {
+            $this->setFlash('danger', 'Utilisateur introuvable.');
+            $this->redirect('/admin/users');
+            return;
+        }
+
+        if ((int) $user['id'] === (int) $this->getCurrentUserId()) {
+            $this->setFlash('danger', 'Vous ne pouvez pas vous auto-restreindre.');
+            $this->redirect('/admin/users/' . $uid . '/restrictions');
+            return;
+        }
+
+        $restrictions = [];
+        foreach (array_keys(User::RESTRICTION_KEYS) as $key) {
+            if (!empty($_POST['restrict_' . $key])) {
+                $restrictions[$key] = true;
+            }
+        }
+
+        $reason = trim($_POST['reason'] ?? '');
+        if (!empty($restrictions) && empty($reason)) {
+            $this->setFlash('danger', 'Un motif est requis pour appliquer des restrictions.');
+            $this->redirect('/admin/users/' . $uid . '/restrictions');
+            return;
+        }
+
+        $this->userModel->setRestrictions((int) $uid, $restrictions, $reason, $this->getCurrentUserId());
+
+        ActivityLog::logAdmin(
+            empty($restrictions) ? 'user.restrictions_removed' : 'user.restrictions_updated',
+            $this->getCurrentUserId(),
+            'user',
+            (int) $uid,
+            ['username' => $user['username'], 'restrictions' => $restrictions, 'reason' => $reason]
+        );
+
+        $this->setFlash('success', empty($restrictions)
+            ? 'Toutes les restrictions compte ont été levées.'
+            : 'Restrictions compte mises à jour.'
+        );
+        $this->redirect('/admin/users/' . $uid . '/restrictions');
+    }
+
+    /**
      * Liste des espaces.
      */
     public function spaces(): void

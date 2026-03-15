@@ -127,4 +127,26 @@ abstract class ApiController
             $this->error('Cette fonctionnalité est temporairement restreinte.', 403);
         }
     }
+
+    /**
+     * Vérifie si une fonctionnalité est restreinte pour un utilisateur.
+     */
+    protected function checkUserRestriction(string $key, ?int $userId = null): void
+    {
+        $targetUserId = $userId ?? $this->userId;
+        if (!$targetUserId) {
+            return;
+        }
+
+        $userModel = new \App\Models\User();
+        if ($userModel->isRestricted((int) $targetUserId, $key)) {
+            $user = $userModel->find((int) $targetUserId);
+            $reason = trim((string) ($user['restriction_reason'] ?? ''));
+            $message = 'Cette action est temporairement restreinte sur votre compte.';
+            if ($reason !== '') {
+                $message .= ' Motif: ' . $reason;
+            }
+            $this->error($message, 403);
+        }
+    }
 }

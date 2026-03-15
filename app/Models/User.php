@@ -14,6 +14,18 @@ class User extends Model
     protected string $table = 'users';
 
     /**
+     * Clés de restriction possibles au niveau compte utilisateur.
+     */
+    public const RESTRICTION_KEYS = [
+        'space_create'               => 'Création d\'espaces',
+        'space_join'                 => 'Ajout dans des espaces existants',
+        'games_manage'               => 'Création/modification/suppression de parties',
+        'competitions_participation' => 'Participation aux compétitions',
+        'profile_photo_manage'       => 'Création/modification/suppression de photo de profil',
+        'comments_manage'            => 'Création/modification/suppression de commentaires',
+    ];
+
+    /**
      * Crée un nouvel utilisateur avec mot de passe hashé.
      * La vérification email est requise pour les nouveaux comptes.
      */
@@ -107,6 +119,44 @@ class User extends Model
     }
 
     /**
+     * Retourne les restrictions actives d'un utilisateur.
+     */
+    public function getRestrictions(int $id): array
+    {
+        $user = $this->find($id);
+        if (!$user || empty($user['restrictions'])) {
+            return [];
+        }
+        $data = json_decode((string) $user['restrictions'], true);
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * Vérifie si une fonctionnalité est restreinte pour un utilisateur.
+     */
+    public function isRestricted(int $userId, string $key): bool
+    {
+        $restrictions = $this->getRestrictions($userId);
+        return !empty($restrictions[$key]);
+    }
+
+    /**
+     * Met à jour les restrictions d'un utilisateur.
+     */
+    public function setRestrictions(int $id, array $restrictions, ?string $reason, int $adminId): bool
+    {
+        $active = array_filter($restrictions);
+        $json = empty($active) ? null : json_encode($active, JSON_UNESCAPED_UNICODE);
+
+        return $this->update($id, [
+            'restrictions' => $json,
+            'restriction_reason' => empty($active) ? null : $reason,
+            'restricted_by' => empty($active) ? null : $adminId,
+            'restricted_at' => empty($active) ? null : date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /**
      * Recherche d'utilisateurs par nom ou email (pour autocomplétion).
      * Exclut les rôles protégés sauf si $includStaff vaut true.
      */
@@ -159,7 +209,10 @@ class User extends Model
         $params['limit'] = $perPage;
         $params['offset'] = $offset;
         $stmt = $this->query(
-            "SELECT id, username, email, avatar, global_role, created_at FROM {$this->table} {$where} ORDER BY created_at DESC LIMIT :limit OFFSET :offset",
+            "SELECT id, username, email, avatar, global_role, restrictions, restricted_at, created_at
+             FROM {$this->table} {$where}
+             ORDER BY created_at DESC
+             LIMIT :limit OFFSET :offset",
             $params
         );
         $users = $stmt->fetchAll();
