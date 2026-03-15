@@ -23,6 +23,15 @@ SET `email_normalized` = CONCAT(
 )
 WHERE LOWER(SUBSTRING_INDEX(`email`, '@', -1)) IN ('gmail.com', 'googlemail.com');
 
+-- Suppression automatique des doublons canonisés:
+-- on conserve l'utilisateur le plus ancien (id minimal) pour chaque email_normalized.
+DELETE u1
+FROM `users` u1
+INNER JOIN `users` u2
+    ON u1.email_normalized = u2.email_normalized
+   AND u1.id > u2.id
+WHERE u1.email_normalized IS NOT NULL;
+
 ALTER TABLE `users`
     ADD INDEX `idx_users_email_normalized` (`email_normalized`);
 
