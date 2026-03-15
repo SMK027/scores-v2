@@ -41,10 +41,27 @@ class SpaceController extends Controller
         $spaces = $this->spaceModel->findByUser($userId);
         $pendingInvitations = $this->invitationModel->findPendingForUser($userId);
 
+        // Tri des espaces
+        $validSorts = ['name', 'created_at', 'role'];
+        $sort = $_GET['sort'] ?? 'updated_at';
+        if (!in_array($sort, $validSorts, true)) {
+            $sort = 'updated_at';
+        }
+        $roleOrder = ['admin' => 0, 'moderator' => 1, 'member' => 2];
+        usort($spaces, function (array $a, array $b) use ($sort, $roleOrder): int {
+            return match ($sort) {
+                'name'       => strnatcasecmp($a['name'], $b['name']),
+                'created_at' => $b['created_at'] <=> $a['created_at'],
+                'role'       => ($roleOrder[$a['user_role']] ?? 9) <=> ($roleOrder[$b['user_role']] ?? 9),
+                default      => 0,
+            };
+        });
+
         $this->render('spaces/index', [
             'title'              => 'Mes espaces',
             'spaces'             => $spaces,
             'pendingInvitations' => $pendingInvitations,
+            'currentSort'        => $sort,
         ]);
     }
 
@@ -178,16 +195,23 @@ class SpaceController extends Controller
             $this->redirect('/spaces/' . $id);
         }
 
-        $data = $this->getPostData(['name', 'description']);
+        $data = $this->getPostData(['name', 'description', 'color']);
 
         if (empty($data['name'])) {
             $this->setFlash('danger', 'Le nom de l\'espace est requis.');
             $this->redirect('/spaces/' . $id . '/edit');
         }
 
+        // Valider la couleur hex (optionnelle)
+        $color = null;
+        if (!empty($data['color']) && preg_match('/^#[0-9A-Fa-f]{6}$/', $data['color'])) {
+            $color = $data['color'];
+        }
+
         $this->spaceModel->update((int) $id, [
             'name'        => $data['name'],
             'description' => $data['description'],
+            'color'       => $color,
         ]);
 
         ActivityLog::logSpace((int) $id, 'space.update', $this->getCurrentUserId(), 'space', (int) $id, ['name' => $data['name']]);

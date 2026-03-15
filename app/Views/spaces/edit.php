@@ -19,6 +19,17 @@
                 <textarea id="description" name="description" class="form-control" rows="3"><?= e($currentSpace['description'] ?? '') ?></textarea>
             </div>
             <div class="form-group">
+                <label for="color" class="form-label">Couleur de l'espace</label>
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <input type="color" id="color" name="color"
+                           value="<?= e(!empty($currentSpace['color']) ? $currentSpace['color'] : '#4361ee') ?>"
+                           style="width:56px;height:36px;padding:2px 4px;border:1px solid var(--border-color);border-radius:var(--border-radius);cursor:pointer;">
+                    <button type="button" class="btn btn-outline btn-sm"
+                            onclick="document.getElementById('color').value='#4361ee'">Réinitialiser</button>
+                </div>
+                <span class="form-hint">Couleur utilisée pour distinguer cet espace dans la liste.</span>
+            </div>
+            <div class="form-group">
                 <button type="submit" class="btn btn-primary">Enregistrer</button>
             </div>
         </form>

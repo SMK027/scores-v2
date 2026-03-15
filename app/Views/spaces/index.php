@@ -1,6 +1,15 @@
 <div class="page-header">
     <h1>Mes espaces</h1>
-    <a href="/spaces/create" class="btn btn-primary">+ Créer un espace</a>
+    <div class="d-flex align-center gap-1 flex-wrap">
+        <span class="text-muted text-small">Trier par :</span>
+        <a href="/spaces?sort=name"
+           class="btn btn-sm <?= ($currentSort ?? '') === 'name' ? 'btn-primary' : 'btn-outline' ?>">Nom</a>
+        <a href="/spaces?sort=created_at"
+           class="btn btn-sm <?= ($currentSort ?? '') === 'created_at' ? 'btn-primary' : 'btn-outline' ?>">Date de création</a>
+        <a href="/spaces?sort=role"
+           class="btn btn-sm <?= ($currentSort ?? '') === 'role' ? 'btn-primary' : 'btn-outline' ?>">Rôle</a>
+        <a href="/spaces/create" class="btn btn-primary btn-sm" style="margin-left:auto;">+ Créer un espace</a>
+    </div>
 </div>
 
 <?php if (!empty($pendingInvitations)): ?>
@@ -57,8 +66,12 @@
 <?php else: ?>
     <div class="card-grid">
         <?php foreach ($spaces as $space): ?>
+            <?php $accentColor = !empty($space['color']) ? $space['color'] : null; ?>
             <a href="/spaces/<?= $space['id'] ?>" class="card-link">
-                <div class="card">
+                <div class="card" style="<?= $accentColor ? 'border-top: 3px solid ' . e($accentColor) . '; --space-accent:' . e($accentColor) . ';' : '' ?>">
+                    <?php if ($accentColor): ?>
+                    <div style="height:4px;background:<?= e($accentColor) ?>;border-radius:var(--border-radius) var(--border-radius) 0 0;margin:-1px -1px 0;"></div>
+                    <?php endif; ?>
                     <div class="card-body">
                         <h3><?= e($space['name']) ?></h3>
                         <?php if ($space['description']): ?>
