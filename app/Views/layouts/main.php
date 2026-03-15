@@ -8,6 +8,24 @@
     <link rel="stylesheet" href="/css/style.css?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . '/css/style.css') ?>">
 </head>
 <body>
+    <?php
+        $__activeUserRestrictionLabels = [];
+        $__activeUserRestrictionReason = null;
+        if (is_authenticated()) {
+            $__userModel = new \App\Models\User();
+            $__uid = (int) current_user_id();
+            $__restrictionMap = $__userModel->getRestrictions($__uid);
+            foreach ($__restrictionMap as $__k => $__v) {
+                if (!empty($__v) && !empty(\App\Models\User::RESTRICTION_KEYS[$__k])) {
+                    $__activeUserRestrictionLabels[] = \App\Models\User::RESTRICTION_KEYS[$__k];
+                }
+            }
+            if (!empty($__activeUserRestrictionLabels)) {
+                $__u = $__userModel->find($__uid);
+                $__activeUserRestrictionReason = $__u['restriction_reason'] ?? null;
+            }
+        }
+    ?>
     <!-- Barre de navigation -->
     <nav class="navbar">
         <div class="container navbar-container">
@@ -89,6 +107,19 @@
         </aside>
         <main class="main-content with-sidebar">
             <?php include __DIR__ . '/../partials/flash.php'; ?>
+            <?php if (!empty($__activeUserRestrictionLabels)): ?>
+            <div class="alert alert-warning alert-persistent" style="border-left:4px solid var(--warning,#f59e0b);margin-bottom:1rem;">
+                <strong>⚠️ Des restrictions sont actives sur votre compte :</strong>
+                <ul style="margin:0.5rem 0 0 1.25rem;">
+                    <?php foreach ($__activeUserRestrictionLabels as $__label): ?>
+                        <li><?= e($__label) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+                <?php if (!empty($__activeUserRestrictionReason)): ?>
+                    <span class="text-muted">Motif : <?= e((string) $__activeUserRestrictionReason) ?></span>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
             <?php
                 $__spaceRestrictions = (new \App\Models\Space())->getRestrictions($currentSpace['id']);
                 if (!empty($__spaceRestrictions)):
@@ -145,6 +176,19 @@
     <main class="main-content">
         <div class="container">
             <?php include __DIR__ . '/../partials/flash.php'; ?>
+            <?php if (!empty($__activeUserRestrictionLabels)): ?>
+            <div class="alert alert-warning alert-persistent" style="border-left:4px solid var(--warning,#f59e0b);margin-bottom:1rem;">
+                <strong>⚠️ Des restrictions sont actives sur votre compte :</strong>
+                <ul style="margin:0.5rem 0 0 1.25rem;">
+                    <?php foreach ($__activeUserRestrictionLabels as $__label): ?>
+                        <li><?= e($__label) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+                <?php if (!empty($__activeUserRestrictionReason)): ?>
+                    <span class="text-muted">Motif : <?= e((string) $__activeUserRestrictionReason) ?></span>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
             <?= $content ?>
         </div>
     </main>

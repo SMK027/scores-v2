@@ -169,6 +169,12 @@ class AdminController extends Controller
             return;
         }
 
+        if (in_array((string) ($user['global_role'] ?? 'user'), ['admin', 'superadmin'], true)) {
+            $this->setFlash('danger', 'Les restrictions compte ne peuvent pas être appliquées aux administrateurs et super-administrateurs globaux.');
+            $this->redirect('/admin/users');
+            return;
+        }
+
         $restrictions = $this->userModel->getRestrictions((int) $uid);
 
         $this->render('admin/user_restrictions', [
@@ -191,6 +197,12 @@ class AdminController extends Controller
         $user = $this->userModel->find((int) $uid);
         if (!$user) {
             $this->setFlash('danger', 'Utilisateur introuvable.');
+            $this->redirect('/admin/users');
+            return;
+        }
+
+        if (in_array((string) ($user['global_role'] ?? 'user'), ['admin', 'superadmin'], true)) {
+            $this->setFlash('danger', 'Les restrictions compte ne peuvent pas être appliquées aux administrateurs et super-administrateurs globaux.');
             $this->redirect('/admin/users');
             return;
         }

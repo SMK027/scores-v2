@@ -36,9 +36,13 @@
                             <?php if (in_array(current_global_role(), ['admin', 'superadmin'], true)): ?>
                                 <td class="text-right">
                                     <div class="d-flex gap-1 justify-end" style="display:inline-flex;flex-wrap:wrap;">
-                                        <a href="/admin/users/<?= $user['id'] ?>/restrictions" class="btn btn-sm btn-outline<?= !empty($user['restrictions']) ? '-danger' : '' ?>">
-                                            <?= !empty($user['restrictions']) ? '🔒 Restreint' : '🔒 Restrictions' ?>
-                                        </a>
+                                        <?php if (in_array($user['global_role'], ['admin', 'superadmin'], true)): ?>
+                                            <span class="text-muted text-small">Compte protège</span>
+                                        <?php else: ?>
+                                            <a href="/admin/users/<?= $user['id'] ?>/restrictions" class="btn btn-sm btn-outline<?= !empty($user['restrictions']) ? '-danger' : '' ?>">
+                                                <?= !empty($user['restrictions']) ? '🔒 Restreint' : '🔒 Restrictions' ?>
+                                            </a>
+                                        <?php endif; ?>
 
                                         <?php if (current_global_role() === 'superadmin' && $user['id'] != current_user_id()): ?>
                                             <form method="POST" action="/admin/users/<?= $user['id'] ?>/role" class="d-flex gap-1 justify-end" style="display:inline-flex;">
