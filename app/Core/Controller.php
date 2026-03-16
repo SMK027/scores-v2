@@ -82,6 +82,8 @@ abstract class Controller
 
     /**
      * Vérifie que l'utilisateur est connecté, sinon redirige vers login.
+     * Synchronise aussi le rôle global depuis la DB pour refléter immédiatement
+     * tout changement effectué par un administrateur sans reconnexion.
      */
     protected function requireAuth(): void
     {
@@ -91,6 +93,35 @@ abstract class Controller
             }
             $this->setFlash('warning', 'Vous devez être connecté pour accéder à cette page.');
             $this->redirect('/login');
+        }
+
+        $this->syncRoleFromDb();
+    }
+
+    /**
+     * Relit le rôle global de l'utilisateur connecté depuis la DB et met à jour
+     * la session si nécessaire. Exécuté au plus une fois par requête HTTP.
+     */
+    private function syncRoleFromDb(): void
+    {
+        static $synced = false;
+        if ($synced) {
+            return;
+        }
+        $synced = true;
+
+        $userId = (int) Session::get('user_id');
+        $user = (new \App\Models\User())->find($userId);
+
+        if (!$user) {
+            // Compte supprimé : forcer la déconnexion
+            Session::destroy();
+            Session::start();
+            $this->redirect('/login');
+        }
+
+        if ((string) $user['global_role'] !== (string) Session::get('global_role')) {
+            Session::set('global_role', $user['global_role']);
         }
     }
 

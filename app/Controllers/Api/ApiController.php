@@ -80,6 +80,13 @@ abstract class ApiController
 
         $this->userId = (int) $payload['user_id'];
         $this->userPayload = $payload;
+
+        // Relire le rôle depuis la DB pour refléter immédiatement un changement
+        // effectué par un administrateur sans que l'utilisateur renouvelle son token.
+        $freshUser = (new \App\Models\User())->find($this->userId);
+        if ($freshUser) {
+            $this->userPayload['global_role'] = $freshUser['global_role'];
+        }
     }
 
     /**
