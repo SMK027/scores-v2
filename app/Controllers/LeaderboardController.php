@@ -63,15 +63,19 @@ class LeaderboardController extends Controller
         $stmt = $pdo->prepare("
             SELECT DISTINCT u.id, u.username, u.avatar
             FROM users u
-            WHERE EXISTS (
-                SELECT 1
-                FROM space_members sm
-                WHERE sm.user_id = u.id
-            )
-            OR EXISTS (
-                SELECT 1
-                FROM spaces s
-                WHERE s.created_by = u.id
+            WHERE u.account_status = 'active'
+              AND u.is_anonymized = 0
+              AND (
+                EXISTS (
+                    SELECT 1
+                    FROM space_members sm
+                    WHERE sm.user_id = u.id
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM spaces s
+                    WHERE s.created_by = u.id
+                )
             )
         ");
         $stmt->execute();

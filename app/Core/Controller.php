@@ -120,6 +120,18 @@ abstract class Controller
             $this->redirect('/login');
         }
 
+        $status = (string) ($user['account_status'] ?? \App\Models\User::ACCOUNT_STATUS_ACTIVE);
+        $isAnonymized = !empty($user['is_anonymized']);
+        if ($status !== \App\Models\User::ACCOUNT_STATUS_ACTIVE || $isAnonymized) {
+            Session::destroy();
+            Session::start();
+            Session::set('flash', [
+                'type' => 'warning',
+                'message' => 'Votre compte est désactivé ou suspendu.',
+            ]);
+            $this->redirect('/login');
+        }
+
         if ((string) $user['global_role'] !== (string) Session::get('global_role')) {
             Session::set('global_role', $user['global_role']);
         }

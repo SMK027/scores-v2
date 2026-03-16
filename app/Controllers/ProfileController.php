@@ -6,9 +6,11 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\Session;
+use App\Core\Mailer;
 use App\Models\User;
 use App\Models\PasswordPolicy;
 use App\Models\ActivityLog;
+use App\Models\RememberToken;
 use App\Config\Database;
 
 /**
@@ -435,6 +437,81 @@ class ProfileController extends Controller
     }
 
     /**
+     * Démarre une demande de suppression de compte (grâce de 15 jours).
+     */
+    public function requestDeletion(): void
+    {
+        $this->requireAuth();
+        $this->validateCSRF();
+
+        $userId = $this->getCurrentUserId();
+        $currentPassword = trim((string) ($_POST['current_password_delete'] ?? ''));
+        $confirm = (string) ($_POST['confirm_delete_account'] ?? '0');
+
+        if ($confirm !== '1') {
+            $this->setFlash('danger', 'Vous devez confirmer la demande de suppression de compte.');
+            $this->redirect('/profile/edit');
+        }
+
+        if ($currentPassword === '') {
+            $this->setFlash('danger', 'Le mot de passe actuel est requis pour supprimer le compte.');
+            $this->redirect('/profile/edit');
+        }
+
+        $user = $this->userModel->find((int) $userId);
+        if (!$user) {
+            $this->setFlash('danger', 'Utilisateur introuvable.');
+            $this->redirect('/profile/edit');
+        }
+
+        $status = (string) ($user['account_status'] ?? User::ACCOUNT_STATUS_ACTIVE);
+        if ($status !== User::ACCOUNT_STATUS_ACTIVE) {
+            $this->setFlash('warning', 'Une demande de suppression est déjà en cours ou le compte est suspendu.');
+            $this->redirect('/login');
+        }
+
+        if (!password_verify($currentPassword, (string) $user['password_hash'])) {
+            $this->setFlash('danger', 'Mot de passe actuel incorrect.');
+            $this->redirect('/profile/edit');
+        }
+
+        $effectiveAt = $this->userModel->requestDeletion((int) $userId);
+        if ($effectiveAt === null) {
+            $this->setFlash('danger', 'Impossible de planifier la suppression du compte.');
+            $this->redirect('/profile/edit');
+        }
+
+        ActivityLog::logAuth('account.deletion.requested', (int) $userId, [
+            'effective_at' => $effectiveAt,
+        ]);
+
+        // Révoquer toutes les sessions persistantes immédiatement.
+        (new RememberToken())->deleteByUser((int) $userId);
+
+        try {
+            $mailer = new Mailer();
+            $mailer->send(
+                (string) $user['email'],
+                'Scores — Demande de suppression de compte enregistrée',
+                $this->buildAccountDeletionRequestedEmail((string) $user['username'], (string) $effectiveAt)
+            );
+        } catch (\RuntimeException $e) {
+            if (getenv('APP_DEBUG') === 'true') {
+                error_log('Account deletion request mail error: ' . $e->getMessage());
+            }
+        }
+
+        Session::destroy();
+        Session::start();
+        $this->setFlash(
+            'info',
+            'Votre demande de suppression a été enregistrée. Le compte est désactivé pendant 15 jours. '
+            . 'Vous recevrez un email de confirmation une fois l\'anonymisation effective.'
+        );
+        $this->redirect('/login');
+    }
+
+    /**
      * Calcule le taux de victoire global d'un utilisateur, tous espaces confondus.
      * Une manche est comptée comme gagnée si le joueur a le meilleur score
      * selon la win_condition du type de jeu (ex-aequo inclus).
@@ -819,7 +896,11 @@ class ProfileController extends Controller
     public function showPublic(string $username): void
     {
         $user = $this->userModel->findByUsername($username);
-        if (!$user) {
+        $isHidden = !$user
+            || ((string) ($user['account_status'] ?? User::ACCOUNT_STATUS_ACTIVE) !== User::ACCOUNT_STATUS_ACTIVE)
+            || !empty($user['is_anonymized']);
+
+        if ($isHidden) {
             $this->setFlash('danger', 'Utilisateur introuvable.');
             $this->redirect('/leaderboard');
         }
@@ -831,5 +912,22 @@ class ProfileController extends Controller
             'user'     => $user,
             'winStats' => $this->computeGlobalWinRate((int) $user['id'], $pdo),
         ]);
+    }
+
+    /**
+     * Email envoyé lors de la demande de suppression de compte.
+     */
+    private function buildAccountDeletionRequestedEmail(string $username, string $effectiveAt): string
+    {
+        $effectiveDate = date('d/m/Y à H:i', strtotime($effectiveAt));
+        $appName = 'Scores';
+
+        return '<p>Bonjour ' . e($username) . ',</p>'
+            . '<p>Votre demande de suppression de compte a bien été enregistrée.</p>'
+            . '<p>Votre compte est désormais désactivé pendant 15 jours. '
+            . 'La suppression effective (anonymisation) est prévue le <strong>' . e($effectiveDate) . '</strong>.</p>'
+            . '<p>Conformément au droit à l\'oubli, vos données personnelles seront anonymisées '
+            . 'tout en conservant les données de jeu nécessaires aux statistiques agrégées.</p>'
+            . '<p>L\'équipe ' . e($appName) . '</p>';
     }
 }

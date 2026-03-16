@@ -88,7 +88,10 @@ if (!$isApiRequest && !Session::get('user_id')) {
                 if ($valid) {
                     $userModel = new User();
                     $user = $userModel->find((int) $tokenRow['user_id']);
-                    if ($user) {
+                    $accountStatus = (string) ($user['account_status'] ?? 'active');
+                    $isAnonymized = !empty($user['is_anonymized']);
+
+                    if ($user && $accountStatus === 'active' && !$isAnonymized) {
                         Session::regenerate();
                         Session::set('user_id', (int) $user['id']);
                         Session::set('username', $user['username']);
@@ -216,6 +219,7 @@ $router->get('/profile/calendar/events', ProfileController::class, 'calendarEven
 $router->get('/profile/calendar', ProfileController::class, 'calendar');
 $router->get('/profile/edit', ProfileController::class, 'editForm');
 $router->post('/profile/edit', ProfileController::class, 'update');
+$router->post('/profile/delete-request', ProfileController::class, 'requestDeletion');
 $router->get('/profile/{username}', ProfileController::class, 'showPublic');
 $router->get('/leaderboard', LeaderboardController::class, 'index');
 

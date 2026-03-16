@@ -13,6 +13,7 @@ class User extends Model
 {
     protected string $table = 'users';
     private ?bool $hasEmailNormalizedColumn = null;
+    private ?bool $hasAccountDeletionColumns = null;
 
     /**
      * Normalise un email pour les contrôles d'unicité.
@@ -50,6 +51,10 @@ class User extends Model
         'profile_photo_manage'       => 'Création/modification/suppression de photo de profil',
         'comments_manage'            => 'Création/modification/suppression de commentaires',
     ];
+
+    public const ACCOUNT_STATUS_ACTIVE = 'active';
+    public const ACCOUNT_STATUS_PENDING_DELETION = 'pending_deletion';
+    public const ACCOUNT_STATUS_SUSPENDED = 'suspended';
 
     /**
      * Crée un nouvel utilisateur avec mot de passe hashé.
@@ -191,6 +196,21 @@ class User extends Model
         $this->hasEmailNormalizedColumn = (bool) $stmt->fetch();
 
         return $this->hasEmailNormalizedColumn;
+    }
+
+    /**
+     * Indique si les colonnes liées au droit à l'oubli sont disponibles.
+     */
+    private function supportsAccountDeletionColumns(): bool
+    {
+        if ($this->hasAccountDeletionColumns !== null) {
+            return $this->hasAccountDeletionColumns;
+        }
+
+        $stmt = $this->query("SHOW COLUMNS FROM {$this->table} LIKE 'account_status'");
+        $this->hasAccountDeletionColumns = (bool) $stmt->fetch();
+
+        return $this->hasAccountDeletionColumns;
     }
 
     /**
@@ -348,5 +368,132 @@ class User extends Model
                 'created_date' => $createdDate,
             ],
         ];
+    }
+
+    /**
+     * Place le compte en suppression demandée (grâce de 15 jours).
+     *
+     * @return string|null Date de suppression effective (Y-m-d H:i:s) si succès.
+     */
+    public function requestDeletion(int $id): ?string
+    {
+        if (!$this->supportsAccountDeletionColumns()) {
+            return null;
+        }
+
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET account_status = :status,
+                 deletion_requested_at = NOW(),
+                 deletion_effective_at = DATE_ADD(NOW(), INTERVAL 15 DAY),
+                 deletion_contact_email = email
+             WHERE id = :id
+               AND account_status = :active"
+        );
+        $stmt->execute([
+            'status' => self::ACCOUNT_STATUS_PENDING_DELETION,
+            'active' => self::ACCOUNT_STATUS_ACTIVE,
+            'id' => $id,
+        ]);
+
+        if ($stmt->rowCount() <= 0) {
+            return null;
+        }
+
+        $row = $this->find($id);
+        return $row['deletion_effective_at'] ?? null;
+    }
+
+    /**
+     * Retourne les demandes de suppression arrivées à échéance.
+     */
+    public function findDueDeletionRequests(int $limit = 100): array
+    {
+        if (!$this->supportsAccountDeletionColumns()) {
+            return [];
+        }
+
+        $limit = max(1, $limit);
+        $stmt = $this->db->query(
+            "SELECT *
+             FROM {$this->table}
+             WHERE account_status = 'pending_deletion'
+               AND deletion_effective_at IS NOT NULL
+               AND deletion_effective_at <= NOW()
+             ORDER BY deletion_effective_at ASC
+             LIMIT {$limit}"
+        );
+
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Finalise la suppression: suspension définitive + anonymisation + déliaison des joueurs.
+     */
+    public function finalizeDeletion(int $id): bool
+    {
+        if (!$this->supportsAccountDeletionColumns()) {
+            return false;
+        }
+
+        try {
+            $this->db->beginTransaction();
+
+            $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = :id FOR UPDATE");
+            $stmt->execute(['id' => $id]);
+            $user = $stmt->fetch();
+
+            if (!$user || ($user['account_status'] ?? '') !== self::ACCOUNT_STATUS_PENDING_DELETION) {
+                $this->db->rollBack();
+                return false;
+            }
+
+            $passwordHash = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT);
+            $anonymizedUsername = 'deleted_user_' . $id;
+            $anonymizedEmail = 'deleted+' . $id . '@anonymized.scores.local';
+
+            $payload = [
+                'username' => $anonymizedUsername,
+                'email' => $anonymizedEmail,
+                'password_hash' => $passwordHash,
+                'avatar' => null,
+                'bio' => null,
+                'global_role' => 'user',
+                'account_status' => self::ACCOUNT_STATUS_SUSPENDED,
+                'is_anonymized' => 1,
+                'anonymized_at' => date('Y-m-d H:i:s'),
+                'show_win_rate_public' => 0,
+                'restrictions' => null,
+                'restriction_reason' => null,
+                'restricted_by' => null,
+                'restricted_at' => null,
+            ];
+
+            if ($this->supportsEmailNormalizedColumn()) {
+                $payload['email_normalized'] = self::normalizeEmail($anonymizedEmail);
+            }
+
+            $this->update($id, $payload);
+
+            // Le compte n'apparaît plus dans les membres d'espaces.
+            $unlinkMembers = $this->db->prepare("DELETE FROM space_members WHERE user_id = :uid");
+            $unlinkMembers->execute(['uid' => $id]);
+
+            // Les joueurs liés au compte sont conservés mais dissociés.
+            $unlinkPlayers = $this->db->prepare("UPDATE players SET user_id = NULL WHERE user_id = :uid");
+            $unlinkPlayers->execute(['uid' => $id]);
+
+            // Révoquer les sessions persistantes.
+            $revokeRemember = $this->db->prepare("DELETE FROM remember_tokens WHERE user_id = :uid");
+            $revokeRemember->execute(['uid' => $id]);
+
+            $this->db->commit();
+            return true;
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
     }
 }

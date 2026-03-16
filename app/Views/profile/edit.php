@@ -109,6 +109,42 @@
     </div>
 </div>
 
+<div class="card mt-3" style="border-color:#ef4444;">
+    <div class="card-body">
+        <h3 style="color:#b91c1c;">Suppression de compte</h3>
+        <p class="text-muted">
+            Cette action lance la procédure de droit à l'oubli:
+            le compte est désactivé immédiatement, puis anonymisé automatiquement après 15 jours.
+        </p>
+        <form method="POST" action="/profile/delete-request">
+            <?= csrf_field() ?>
+
+            <div class="form-group">
+                <label for="current_password_delete" class="form-label">Mot de passe actuel (confirmation)</label>
+                <div class="password-wrapper">
+                    <input type="password" id="current_password_delete" name="current_password_delete" class="form-control"
+                           placeholder="Saisissez votre mot de passe actuel" required>
+                    <button type="button" class="btn-toggle-password" data-target="current_password_delete" title="Afficher le mot de passe">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;">
+                    <input type="checkbox" name="confirm_delete_account" value="1" required>
+                    Je confirme demander la suppression de mon compte
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-danger"
+                    data-confirm="Confirmer la demande de suppression de compte ? Cette action désactivera immédiatement l'accès.">
+                Demander la suppression de mon compte
+            </button>
+        </form>
+    </div>
+</div>
+
 <script>
 (function() {
     var policy = <?= $policyJson ?? '{}' ?>;

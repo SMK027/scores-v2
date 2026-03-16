@@ -84,9 +84,17 @@ abstract class ApiController
         // Relire le rôle depuis la DB pour refléter immédiatement un changement
         // effectué par un administrateur sans que l'utilisateur renouvelle son token.
         $freshUser = (new \App\Models\User())->find($this->userId);
-        if ($freshUser) {
-            $this->userPayload['global_role'] = $freshUser['global_role'];
+        if (!$freshUser) {
+            $this->error('Utilisateur introuvable.', 401);
         }
+
+        $status = (string) ($freshUser['account_status'] ?? \App\Models\User::ACCOUNT_STATUS_ACTIVE);
+        $isAnonymized = !empty($freshUser['is_anonymized']);
+        if ($status !== \App\Models\User::ACCOUNT_STATUS_ACTIVE || $isAnonymized) {
+            $this->error('Ce compte est suspendu.', 403);
+        }
+
+        $this->userPayload['global_role'] = $freshUser['global_role'];
     }
 
     /**

@@ -92,6 +92,13 @@ class AuthController extends Controller
             $this->redirect('/login');
         }
 
+        $accountStatus = (string) ($user['account_status'] ?? User::ACCOUNT_STATUS_ACTIVE);
+        $isAnonymized = !empty($user['is_anonymized']);
+        if ($accountStatus !== User::ACCOUNT_STATUS_ACTIVE || $isAnonymized) {
+            $this->setFlash('danger', $this->buildAccountAccessDeniedMessage($user));
+            $this->redirect('/login');
+        }
+
         // ── Vérifier verrou fail2ban sur le compte (bloque uniquement la connexion) ──
         $userLock = $lockModel->findActiveByUser((int) $user['id']);
         if ($userLock) {
@@ -183,6 +190,24 @@ class AuthController extends Controller
 
         $this->setFlash('success', 'Bienvenue, ' . $user['username'] . ' !');
         $this->redirect('/spaces');
+    }
+
+    /**
+     * Message utilisateur lorsque l'accès au compte est suspendu.
+     */
+    private function buildAccountAccessDeniedMessage(array $user): string
+    {
+        $status = (string) ($user['account_status'] ?? User::ACCOUNT_STATUS_ACTIVE);
+        if ($status === User::ACCOUNT_STATUS_PENDING_DELETION) {
+            $effectiveAt = (string) ($user['deletion_effective_at'] ?? '');
+            if ($effectiveAt !== '') {
+                $formatted = date('d/m/Y à H:i', strtotime($effectiveAt));
+                return "Votre compte est désactivé suite à une demande de suppression. Anonymisation prévue le {$formatted}.";
+            }
+            return 'Votre compte est désactivé suite à une demande de suppression.';
+        }
+
+        return 'Ce compte est définitivement suspendu et anonymisé.';
     }
 
     /**

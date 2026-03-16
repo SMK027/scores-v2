@@ -57,6 +57,12 @@ class AuthApiController extends ApiController
             $this->error('Email ou mot de passe incorrect.', 401);
         }
 
+        $accountStatus = (string) ($user['account_status'] ?? User::ACCOUNT_STATUS_ACTIVE);
+        $isAnonymized = !empty($user['is_anonymized']);
+        if ($accountStatus !== User::ACCOUNT_STATUS_ACTIVE || $isAnonymized) {
+            $this->error($this->buildAccountAccessDeniedMessage($user), 403);
+        }
+
         // Vérifier verrou fail2ban compte
         $userLock = $lockModel->findActiveByUser((int) $user['id']);
         if ($userLock) {
@@ -257,5 +263,17 @@ class AuthApiController extends ApiController
                 $attemptModel->clearByUser((int) $targetUser['id']);
             }
         }
+    }
+
+    /**
+     * Message API lorsque l'accès au compte est suspendu.
+     */
+    private function buildAccountAccessDeniedMessage(array $user): string
+    {
+        $status = (string) ($user['account_status'] ?? User::ACCOUNT_STATUS_ACTIVE);
+        if ($status === User::ACCOUNT_STATUS_PENDING_DELETION) {
+            return 'Votre compte est désactivé suite à une demande de suppression.';
+        }
+        return 'Ce compte est définitivement suspendu et anonymisé.';
     }
 }
