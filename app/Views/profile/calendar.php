@@ -10,6 +10,13 @@ $fcVersion = '6.1.15';
 .fc-ev-paused { --fc-event-bg-color:#f59e0b; --fc-event-border-color:#b45309; --fc-event-text-color:#fff; }
 .fc-ev-pending{ --fc-event-bg-color:#94a3b8; --fc-event-border-color:#64748b; --fc-event-text-color:#fff; }
 #fc-calendar  { min-height: 320px; }
+.collapsible-toggle {
+    margin-left: auto;
+    white-space: nowrap;
+}
+.collapsible-content.is-collapsed {
+    display: none;
+}
 @media (max-width:600px){
     .fc .fc-toolbar { flex-direction:column; gap:.4rem; }
     .fc .fc-toolbar-title { font-size:1rem; }
@@ -99,8 +106,16 @@ $fcVersion = '6.1.15';
             <span style="display:inline-flex;align-items:center;gap:.3rem;"><span style="width:10px;height:10px;border-radius:2px;background:#3b82f6;display:inline-block;"></span>En cours</span>
             <span style="display:inline-flex;align-items:center;gap:.3rem;"><span style="width:10px;height:10px;border-radius:2px;background:#f59e0b;display:inline-block;"></span>En pause</span>
         </div>
+        <button
+            type="button"
+            class="btn btn-sm btn-outline collapsible-toggle"
+            data-target="calendar-section-content"
+            data-label-expand="Afficher"
+            data-label-collapse="Replier"
+            aria-expanded="true"
+        >Replier</button>
     </div>
-    <div class="card-body" style="padding:.75rem;">
+    <div class="card-body collapsible-content" id="calendar-section-content" style="padding:.75rem;">
         <div id="fc-calendar"></div>
     </div>
 </div>
@@ -119,8 +134,16 @@ $queryBase = [
     <div class="card-header">
         <h3>Historique des parties</h3>
         <span class="badge badge-primary"><?= (int) $history['total'] ?> résultat<?= ((int) $history['total'] > 1) ? 's' : '' ?></span>
+        <button
+            type="button"
+            class="btn btn-sm btn-outline collapsible-toggle"
+            data-target="history-section-content"
+            data-label-expand="Afficher"
+            data-label-collapse="Replier"
+            aria-expanded="true"
+        >Replier</button>
     </div>
-    <div class="card-body">
+    <div class="card-body collapsible-content" id="history-section-content">
         <?php if (empty($history['data'])): ?>
             <p class="text-muted">Aucune partie ne correspond aux filtres actuels.</p>
         <?php else: ?>
@@ -221,6 +244,31 @@ $queryBase = [
 <script>
 (function () {
     var calendarEl = document.getElementById('fc-calendar');
+    var calendar = null;
+
+    function bindCollapsibles() {
+        var toggles = document.querySelectorAll('.collapsible-toggle');
+        toggles.forEach(function (toggleBtn) {
+            toggleBtn.addEventListener('click', function () {
+                var targetId = toggleBtn.getAttribute('data-target');
+                var target = targetId ? document.getElementById(targetId) : null;
+                if (!target) return;
+
+                var isCollapsed = target.classList.toggle('is-collapsed');
+                toggleBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+                var expandLabel = toggleBtn.getAttribute('data-label-expand') || 'Afficher';
+                var collapseLabel = toggleBtn.getAttribute('data-label-collapse') || 'Replier';
+                toggleBtn.textContent = isCollapsed ? expandLabel : collapseLabel;
+
+                if (!isCollapsed && targetId === 'calendar-section-content' && calendar) {
+                    calendar.updateSize();
+                }
+            });
+        });
+    }
+
+    bindCollapsibles();
+
     if (!calendarEl) return;
 
     var filterParams = new URLSearchParams();
@@ -242,7 +290,7 @@ $queryBase = [
             : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listMonth' };
     }
 
-    var calendar = new FullCalendar.Calendar(calendarEl, {
+    calendar = new FullCalendar.Calendar(calendarEl, {
         locale: 'fr',
         initialView: isMobile ? 'listMonth' : 'dayGridMonth',
         headerToolbar: getToolbar(isMobile),
