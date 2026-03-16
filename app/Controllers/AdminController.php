@@ -669,9 +669,13 @@ class AdminController extends Controller
     {
         $this->checkAdmin();
 
+        $role = \App\Core\Session::get('global_role');
+        $canBanPermanently = in_array($role, ['admin', 'superadmin'], true);
+
         $this->render('admin/ip_ban_form', [
-            'title'      => 'Bannir une adresse IP',
-            'activeMenu' => 'admin',
+            'title'            => 'Bannir une adresse IP',
+            'activeMenu'       => 'admin',
+            'canBanPermanently' => $canBanPermanently,
         ]);
     }
 
@@ -700,7 +704,12 @@ class AdminController extends Controller
 
         $expiresAt = null;
         if ($data['duration_type'] === 'permanent') {
-            // Tous les modérateurs, admins et superadmins peuvent bannir une IP permanemment
+            $role = \App\Core\Session::get('global_role');
+            if (!in_array($role, ['admin', 'superadmin'], true)) {
+                $this->setFlash('danger', 'Les modérateurs ne peuvent pas imposer de bannissement IP permanent. Veuillez choisir une durée limitée.');
+                $this->redirect('/admin/bans/ips/create');
+                return;
+            }
         } else {
             $value = max(1, (int) ($data['duration_value'] ?? 1));
             $unit = $data['duration_unit'] ?? 'hours';

@@ -30,11 +30,15 @@
                                onchange="document.getElementById('durationFields').style.display='flex'">
                         Temporaire
                     </label>
+                    <?php if (!empty($canBanPermanently)): ?>
                     <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
                         <input type="radio" name="duration_type" value="permanent"
                                onchange="document.getElementById('durationFields').style.display='none'">
                         Permanent
                     </label>
+                    <?php else: ?>
+                    <span class="badge badge-secondary" title="Réservé aux administrateurs">Permanent (admin uniquement)</span>
+                    <?php endif; ?>
                 </div>
             </div>
 
