@@ -14,12 +14,11 @@ class GamePlayer extends Model
     protected string $table = 'game_players';
 
     /**
-     * Vérifie qu'aucun joueur lié à un compte restreint compétition
-     * n'est ajouté à une partie de compétition.
+     * Vérifie qu'aucun joueur lié à un compte restreint n'est ajouté à la partie.
      *
      * @throws \DomainException
      */
-    private function assertCompetitionEligiblePlayers(int $gameId, array $playerIds): void
+    private function assertEligiblePlayers(int $gameId, array $playerIds): void
     {
         if (empty($playerIds)) {
             return;
@@ -30,9 +29,11 @@ class GamePlayer extends Model
             ['game_id' => $gameId]
         );
         $game = $gameStmt->fetch();
-        if (!$game || empty($game['competition_id'])) {
+        if (!$game) {
             return;
         }
+
+        $isCompetitionGame = !empty($game['competition_id']);
 
         $normalizedIds = array_values(array_unique(array_map('intval', $playerIds)));
         if (empty($normalizedIds)) {
@@ -49,17 +50,33 @@ class GamePlayer extends Model
         $players = $stmt->fetchAll();
 
         $userModel = new User();
-        $blockedNames = [];
+        $blockedGameParticipation = [];
+        $blockedCompetitionParticipation = [];
         foreach ($players as $player) {
             $userId = (int) ($player['user_id'] ?? 0);
-            if ($userId > 0 && $userModel->isRestricted($userId, 'competitions_participation')) {
-                $blockedNames[] = (string) $player['name'];
+            if ($userId <= 0) {
+                continue;
+            }
+
+            if ($userModel->isRestricted($userId, 'games_participation')) {
+                $blockedGameParticipation[] = (string) $player['name'];
+                continue;
+            }
+
+            if ($isCompetitionGame && $userModel->isRestricted($userId, 'competitions_participation')) {
+                $blockedCompetitionParticipation[] = (string) $player['name'];
             }
         }
 
-        if (!empty($blockedNames)) {
+        if (!empty($blockedGameParticipation)) {
             throw new \DomainException(
-                'Impossible de rattacher à une partie de compétition : ' . implode(', ', $blockedNames) . '.'
+                'Impossible de rattacher à une partie : ' . implode(', ', $blockedGameParticipation) . '.'
+            );
+        }
+
+        if (!empty($blockedCompetitionParticipation)) {
+            throw new \DomainException(
+                'Impossible de rattacher à une partie de compétition : ' . implode(', ', $blockedCompetitionParticipation) . '.'
             );
         }
     }
@@ -93,7 +110,7 @@ class GamePlayer extends Model
      */
     public function addPlayers(int $gameId, array $playerIds): void
     {
-        $this->assertCompetitionEligiblePlayers($gameId, $playerIds);
+        $this->assertEligiblePlayers($gameId, $playerIds);
 
         foreach ($playerIds as $playerId) {
             $this->create([

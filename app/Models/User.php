@@ -45,6 +45,7 @@ class User extends Model
         'space_create'               => 'Création d\'espaces',
         'space_join'                 => 'Ajout dans des espaces existants',
         'games_manage'               => 'Création/modification/suppression de parties',
+        'games_participation'        => 'Participation aux parties',
         'competitions_participation' => 'Participation aux compétitions',
         'profile_photo_manage'       => 'Création/modification/suppression de photo de profil',
         'comments_manage'            => 'Création/modification/suppression de commentaires',

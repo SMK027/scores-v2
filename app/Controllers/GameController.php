@@ -16,6 +16,7 @@ use App\Models\RoundScore;
 use App\Models\RoundPause;
 use App\Models\Comment;
 use App\Models\ActivityLog;
+use App\Models\User;
 
 /**
  * Contrôleur des parties.
@@ -63,6 +64,27 @@ class GameController extends Controller
     }
 
     /**
+     * Retourne les IDs de joueurs liés à des comptes restreints pour la participation aux parties.
+     */
+    private function getRestrictedGamePlayerIds(array $players): array
+    {
+        if (empty($players)) {
+            return [];
+        }
+
+        $userModel = new User();
+        $restricted = [];
+        foreach ($players as $player) {
+            $userId = (int) ($player['user_id'] ?? 0);
+            if ($userId > 0 && $userModel->isRestricted($userId, 'games_participation')) {
+                $restricted[] = (int) $player['id'];
+            }
+        }
+
+        return $restricted;
+    }
+
+    /**
      * Liste les parties d'un espace.
      */
     public function index(string $id): void
@@ -101,6 +123,7 @@ class GameController extends Controller
 
         $gameTypes = $this->gameTypeModel->findBySpace((int) $id);
         $players = $this->playerModel->findBySpace((int) $id);
+        $restrictedGamePlayerIds = $this->getRestrictedGamePlayerIds($players);
 
         if (empty($gameTypes)) {
             $this->setFlash('warning', 'Vous devez d\'abord créer un type de jeu.');
@@ -119,6 +142,7 @@ class GameController extends Controller
             'activeMenu'   => 'games',
             'gameTypes'    => $gameTypes,
             'players'      => $players,
+            'restrictedGamePlayerIds' => $restrictedGamePlayerIds,
         ]);
     }
 
@@ -178,7 +202,14 @@ class GameController extends Controller
             'created_by'   => $this->getCurrentUserId(),
         ]);
 
-        $this->gamePlayerModel->addPlayers($gameId, $playerIds);
+        try {
+            $this->gamePlayerModel->addPlayers($gameId, $playerIds);
+        } catch (\DomainException $e) {
+            $this->gameModel->delete((int) $gameId);
+            $this->setFlash('danger', $e->getMessage());
+            $this->redirect("/spaces/{$id}/games/create");
+            return;
+        }
 
         ActivityLog::logSpace((int) $id, 'game.create', $this->getCurrentUserId(), 'game', $gameId, ['game_type' => $gameType['name'], 'players' => count($playerIds)]);
 

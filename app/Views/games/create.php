@@ -20,6 +20,11 @@
             <div class="form-group">
                 <label class="form-label">Joueurs *</label>
                 <p id="player-count-info" class="text-muted text-small">Sélectionnez au moins 2 joueurs.</p>
+                <?php if (!empty($restrictedGamePlayerIds)): ?>
+                    <p class="text-warning text-small" style="margin:0.25rem 0 0.5rem;">
+                        Les joueurs marqués "Banni des parties" restent visibles pour identification mais ne peuvent pas être sélectionnés.
+                    </p>
+                <?php endif; ?>
                 <div id="selected-players" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;"></div>
                 <div class="autocomplete-wrapper" style="position:relative;">
                     <input type="text" id="player_search" class="form-control" placeholder="Rechercher un joueur..." autocomplete="off">
@@ -54,10 +59,12 @@ const gameTypes = <?= json_encode(array_map(fn($gt) => [
 
 const allPlayers = <?= json_encode(array_map(fn($p) => [
     'id' => $p['id'],
-    'name' => $p['name']
+    'name' => $p['name'],
+    'games_restricted' => in_array((int) $p['id'], array_map('intval', $restrictedGamePlayerIds ?? []), true)
 ], $players)) ?>;
 
 const oldPlayerIds = <?= json_encode(isset($old['player_ids']) ? array_map('intval', $old['player_ids']) : []) ?>;
+const restrictedGamePlayerIds = new Set(<?= json_encode(array_map('intval', $restrictedGamePlayerIds ?? [])) ?>);
 
 // ==== Game type autocomplete ====
 const searchInput = document.getElementById('game_type_search');
@@ -122,6 +129,7 @@ const playerSearchInput = document.getElementById('player_search');
 const playerListContainer = document.getElementById('player_list');
 const selectedPlayersContainer = document.getElementById('selected-players');
 let selectedPlayerIds = new Set(oldPlayerIds);
+selectedPlayerIds = new Set([...selectedPlayerIds].filter(id => !restrictedGamePlayerIds.has(id)));
 
 function renderSelectedPlayers() {
     selectedPlayersContainer.innerHTML = '';
@@ -143,14 +151,19 @@ function renderPlayerList(items) {
         playerListContainer.innerHTML = '<div style="padding:0.75rem;color:var(--gray);">Aucun joueur trouvé.</div>';
     } else {
         playerListContainer.innerHTML = available.map(p => `
-            <div class="autocomplete-item" style="padding:0.75rem;border-bottom:1px solid var(--gray-light);cursor:pointer;" data-id="${p.id}">
-                ${p.name}
+            <div class="autocomplete-item ${p.games_restricted ? 'is-disabled' : ''}" style="padding:0.75rem;border-bottom:1px solid var(--gray-light);cursor:${p.games_restricted ? 'not-allowed' : 'pointer'};opacity:${p.games_restricted ? '0.65' : '1'};display:flex;justify-content:space-between;align-items:center;gap:0.5rem;" data-id="${p.id}">
+                <span>${p.name}</span>
+                ${p.games_restricted ? '<span class="badge badge-warning">Banni des parties</span>' : ''}
             </div>
         `).join('');
     }
 
     document.querySelectorAll('#player_list .autocomplete-item').forEach(item => {
         item.addEventListener('click', () => {
+            const player = allPlayers.find(p => p.id == item.dataset.id);
+            if (!player || player.games_restricted) {
+                return;
+            }
             selectedPlayerIds.add(parseInt(item.dataset.id));
             renderSelectedPlayers();
             playerSearchInput.value = '';

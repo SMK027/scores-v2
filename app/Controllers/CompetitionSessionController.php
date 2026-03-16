@@ -39,7 +39,7 @@ class CompetitionSessionController extends Controller
 
     /**
      * Retourne les IDs de joueurs (dans un espace) liés à des comptes
-     * restreints pour la participation aux compétitions.
+     * restreints pour la participation aux parties/compétitions.
      */
     private function getRestrictedCompetitionPlayerIds(int $spaceId): array
     {
@@ -60,7 +60,10 @@ class CompetitionSessionController extends Controller
         $restricted = [];
         foreach ($rows as $row) {
             $uid = (int) ($row['user_id'] ?? 0);
-            if ($uid > 0 && $userModel->isRestricted($uid, 'competitions_participation')) {
+            if ($uid > 0 && (
+                $userModel->isRestricted($uid, 'games_participation')
+                || $userModel->isRestricted($uid, 'competitions_participation')
+            )) {
                 $restricted[] = (int) $row['id'];
             }
         }
@@ -360,7 +363,7 @@ class CompetitionSessionController extends Controller
             $restrictedSelected = array_values(array_filter($selectedPlayers, static fn(array $p): bool => !empty($blocked[(int) $p['id']])));
             if (!empty($restrictedSelected)) {
                 $names = array_map(static fn(array $p): string => (string) $p['name'], $restrictedSelected);
-                $this->setFlash('danger', 'Impossible de rattacher à une partie de compétition: ' . implode(', ', $names) . '.');
+                $this->setFlash('danger', 'Impossible de rattacher à une partie: ' . implode(', ', $names) . '.');
                 $this->redirect('/competition/dashboard');
                 return;
             }

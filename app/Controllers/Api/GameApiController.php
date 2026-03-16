@@ -168,7 +168,12 @@ class GameApiController extends ApiController
             'created_by'   => $this->userId,
         ]);
 
-        $this->gamePlayerModel->addPlayers($gameId, $playerIds);
+        try {
+            $this->gamePlayerModel->addPlayers($gameId, $playerIds);
+        } catch (\DomainException $e) {
+            $this->gameModel->delete((int) $gameId);
+            $this->error($e->getMessage(), 422);
+        }
 
         ActivityLog::logSpace((int) $id, 'game.create', $this->userId, 'game', $gameId, ['game_type' => $gameType['name'], 'players' => $playerCount]);
 
