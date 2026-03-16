@@ -405,6 +405,35 @@ class User extends Model
     }
 
     /**
+     * Annule une demande de suppression tant que l'échéance n'est pas atteinte.
+     */
+    public function cancelDeletionRequest(int $id): bool
+    {
+        if (!$this->supportsAccountDeletionColumns()) {
+            return false;
+        }
+
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET account_status = :active,
+                 deletion_requested_at = NULL,
+                 deletion_effective_at = NULL,
+                 deletion_contact_email = NULL
+             WHERE id = :id
+               AND account_status = :pending
+               AND deletion_effective_at IS NOT NULL
+               AND deletion_effective_at > NOW()"
+        );
+        $stmt->execute([
+            'active' => self::ACCOUNT_STATUS_ACTIVE,
+            'pending' => self::ACCOUNT_STATUS_PENDING_DELETION,
+            'id' => $id,
+        ]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    /**
      * Retourne les demandes de suppression arrivées à échéance.
      */
     public function findDueDeletionRequests(int $limit = 100): array

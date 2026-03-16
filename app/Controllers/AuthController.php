@@ -94,6 +94,36 @@ class AuthController extends Controller
 
         $accountStatus = (string) ($user['account_status'] ?? User::ACCOUNT_STATUS_ACTIVE);
         $isAnonymized = !empty($user['is_anonymized']);
+
+        // Si une suppression est en attente mais pas encore effective, une connexion
+        // explicite annule automatiquement la demande.
+        if ($accountStatus === User::ACCOUNT_STATUS_PENDING_DELETION) {
+            $effectiveAt = (string) ($user['deletion_effective_at'] ?? '');
+            if ($effectiveAt !== '' && strtotime($effectiveAt) > time()) {
+                $contactEmail = (string) ($user['deletion_contact_email'] ?? $user['email']);
+                if ($this->userModel->cancelDeletionRequest((int) $user['id'])) {
+                    ActivityLog::logAuth('account.deletion.cancelled', (int) $user['id']);
+
+                    try {
+                        $mailer = new Mailer();
+                        $mailer->send(
+                            $contactEmail,
+                            'Scores — Demande de suppression annulée',
+                            $this->buildAccountDeletionCancelledEmail((string) $user['username'])
+                        );
+                    } catch (\RuntimeException $e) {
+                        if (getenv('APP_DEBUG') === 'true') {
+                            error_log('Account deletion cancellation mail error: ' . $e->getMessage());
+                        }
+                    }
+
+                    $user = $this->userModel->find((int) $user['id']) ?: $user;
+                    $accountStatus = (string) ($user['account_status'] ?? User::ACCOUNT_STATUS_ACTIVE);
+                    $isAnonymized = !empty($user['is_anonymized']);
+                }
+            }
+        }
+
         if ($accountStatus !== User::ACCOUNT_STATUS_ACTIVE || $isAnonymized) {
             $this->setFlash('danger', $this->buildAccountAccessDeniedMessage($user));
             $this->redirect('/login');
@@ -208,6 +238,17 @@ class AuthController extends Controller
         }
 
         return 'Ce compte est définitivement suspendu et anonymisé.';
+    }
+
+    /**
+     * Email utilisateur après annulation d'une demande de suppression.
+     */
+    private function buildAccountDeletionCancelledEmail(string $username): string
+    {
+        return '<p>Bonjour ' . e($username) . ',</p>'
+            . '<p>Votre demande de suppression de compte a bien été annulée suite à votre connexion.</p>'
+            . '<p>Votre compte est de nouveau actif.</p>'
+            . '<p>L\'équipe Scores</p>';
     }
 
     /**
