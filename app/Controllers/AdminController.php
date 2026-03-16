@@ -79,12 +79,16 @@ class AdminController extends Controller
         $stmt->execute();
         $recentSpaces = $stmt->fetchAll();
 
+        $role = \App\Core\Session::get('global_role');
+        $canAdminOnly = in_array($role, ['admin', 'superadmin'], true);
+
         $this->render('admin/dashboard', [
             'title'        => 'Administration',
             'activeMenu'   => 'admin',
             'stats'        => $stats,
             'recentUsers'  => $recentUsers,
             'recentSpaces' => $recentSpaces,
+            'canAdminOnly' => $canAdminOnly,
         ]);
     }
 

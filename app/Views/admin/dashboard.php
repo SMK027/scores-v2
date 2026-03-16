@@ -22,15 +22,18 @@
     </div>
 </div>
 
+<?php $canAdminOnly = $canAdminOnly ?? false; ?>
 <div class="d-flex gap-1 mb-3 flex-wrap">
     <a href="/admin/users" class="btn btn-outline">👥 Gérer les utilisateurs</a>
     <a href="/admin/spaces" class="btn btn-outline">📦 Gérer les espaces</a>
+    <a href="/admin/bans/users" class="btn btn-outline">🚫 Bannissements comptes</a>
+    <a href="/admin/bans/ips" class="btn btn-outline">🌐 Bannissements IP</a>
+    <?php if ($canAdminOnly): ?>
     <a href="/admin/password-policy" class="btn btn-outline">🔐 Politique de mot de passe</a>
     <a href="/admin/fail2ban" class="btn btn-outline">🛡️ Fail2ban</a>
     <a href="/admin/leaderboard-criteria" class="btn btn-outline">🏆 Critères leaderboard</a>
-    <a href="/admin/bans/users" class="btn btn-outline">🚫 Bannissements comptes</a>
-    <a href="/admin/bans/ips" class="btn btn-outline">🌐 Bannissements IP</a>
     <a href="/admin/logs" class="btn btn-outline">📋 Journal d'activité</a>
+    <?php endif; ?>
 </div>
 
 <div class="card mb-3">
