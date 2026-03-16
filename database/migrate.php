@@ -127,10 +127,13 @@ if ($count === 0) {
 
 /**
  * Découpe un fichier SQL en statements individuels.
- * Gère les chaînes de caractères quotées et les commentaires.
+ * Gère les chaînes de caractères quotées, les commentaires et les blocs DELIMITER.
  */
 function splitStatements(string $sql): array
 {
+    // Normaliser les blocs DELIMITER // ... // pour compatibilité PDO
+    $sql = preprocessDelimiters($sql);
+
     $statements = [];
     $current = '';
     $inSingleQuote = false;
@@ -195,7 +198,8 @@ function splitStatements(string $sql): array
         if ($char === ';' && !$inSingleQuote && !$inDoubleQuote && !$inBlockComment && !$inLineComment) {
             $trimmed = trim($current);
             if ($trimmed !== '') {
-                $statements[] = $trimmed;
+                // Restaurer les ';' protégés dans les blocs DELIMITER (ex: corps de procédure)
+                $statements[] = str_replace("\x01", ';', $trimmed);
             }
             $current = '';
             continue;
@@ -206,8 +210,73 @@ function splitStatements(string $sql): array
 
     $trimmed = trim($current);
     if ($trimmed !== '') {
-        $statements[] = $trimmed;
+        $statements[] = str_replace("\x01", ';', $trimmed);
     }
 
     return $statements;
+}
+
+/**
+ * Prétraite les blocs DELIMITER pour compatibilité PDO.
+ *
+ * Les instructions DELIMITER // ... // sont converties en statements ;-terminés.
+ * Les ';' internes au bloc sont temporairement remplacés par \x01 pour éviter
+ * un découpage prématuré par splitStatements().
+ */
+function preprocessDelimiters(string $sql): string
+{
+    $lines  = explode("\n", $sql);
+    $output = [];
+    $customDelim = null; // null = mode normal ';'
+    $buffer = [];
+
+    foreach ($lines as $line) {
+        $rtrimmed = rtrim($line);
+
+        // Détecter une directive DELIMITER
+        if (preg_match('/^\s*DELIMITER\s+(\S+)\s*$/i', $rtrimmed, $m)) {
+            $newDelim = $m[1];
+            if ($newDelim === ';') {
+                // Retour au mode normal : vider le buffer si nécessaire
+                if (!empty($buffer)) {
+                    $block = implode("\n", $buffer);
+                    $block = str_replace(';', "\x01", $block);
+                    $output[] = $block . ';';
+                    $buffer = [];
+                }
+                $customDelim = null;
+            } else {
+                $customDelim = $newDelim;
+            }
+            continue; // Ignorer la ligne DELIMITER elle-même
+        }
+
+        if ($customDelim === null) {
+            // Mode normal : passer la ligne telle quelle
+            $output[] = $line;
+        } else {
+            // Mode délimiteur custom : accumuler jusqu'au délimiteur
+            $escapedDelim = preg_quote($customDelim, '/');
+            if (preg_match('/' . $escapedDelim . '\s*$/', $rtrimmed)) {
+                // Ligne terminatrice : retirer le délimiteur et vider le buffer
+                $cleanLine = rtrim(preg_replace('/' . $escapedDelim . '\s*$/', '', $rtrimmed));
+                if ($cleanLine !== '') {
+                    $buffer[] = $cleanLine;
+                }
+                $block = implode("\n", $buffer);
+                $block = str_replace(';', "\x01", $block);
+                $output[] = $block . ';';
+                $buffer = [];
+            } else {
+                $buffer[] = $line;
+            }
+        }
+    }
+
+    // Buffer résiduel (fichier mal terminé)
+    if (!empty($buffer)) {
+        $output[] = implode("\n", $buffer);
+    }
+
+    return implode("\n", $output);
 }

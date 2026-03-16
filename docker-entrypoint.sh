@@ -11,10 +11,11 @@ echo "[entrypoint] Exécution des migrations..."
 php /var/www/html/database/migrate.php
 echo "[entrypoint] Migrations terminées."
 
-# Configure cron for automatic space purge (every minute)
+# Configure cron for automatic space purge (every minute) and log archiving (daily)
 touch /var/log/scores-purge.log
-chown www-data:www-data /var/log/scores-purge.log
-# Export env vars into crontab so the PHP script can connect to DB
+touch /var/log/scores-archive.log
+chown www-data:www-data /var/log/scores-purge.log /var/log/scores-archive.log
+# Export env vars into crontab so the PHP scripts can connect to DB
 {
     echo "DB_HOST=${DB_HOST}"
     echo "DB_PORT=${DB_PORT}"
@@ -24,11 +25,12 @@ chown www-data:www-data /var/log/scores-purge.log
     echo "APP_DEBUG=${APP_DEBUG:-false}"
     echo ""
     echo "* * * * * /usr/local/bin/php /var/www/html/bin/purge-spaces.php >> /var/log/scores-purge.log 2>&1"
+    echo "0 0 * * * /usr/local/bin/php /var/www/html/bin/archive-logs.php >> /var/log/scores-archive.log 2>&1"
 } > /tmp/scores-cron
 crontab -u www-data /tmp/scores-cron
 rm -f /tmp/scores-cron
 service cron start
-echo "[entrypoint] Cron démarré (purge auto toutes les minutes)."
+echo "[entrypoint] Cron démarré (purge espaces toutes les minutes, archivage logs quotidien à minuit)."
 
 # Start Apache in foreground
 exec apache2-foreground
