@@ -160,7 +160,7 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
     try {
       setSaving(true);
       setError(null);
-      await createGame(token, space.id, {
+      const createdGame = await createGame(token, space.id, {
         gameTypeId: selectedGameTypeId,
         playerIds: selectedPlayerIds,
         notes,
@@ -172,6 +172,7 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
       setPlayerQuery("");
       setNotes("");
       await loadData();
+      onOpenGame(createdGame.id);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
