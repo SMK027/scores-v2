@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -30,6 +30,8 @@ export function AutocompleteSelect({
   onSelect,
   placeholder,
 }: Props) {
+  const [isOpen, setIsOpen] = useState(false);
+
   const visibleOptions = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) {
@@ -46,18 +48,26 @@ export function AutocompleteSelect({
       <Text style={styles.label}>{label}</Text>
       <TextInput
         value={query}
-        onChangeText={onQueryChange}
+        onChangeText={(value) => {
+          onQueryChange(value);
+          setIsOpen(true);
+        }}
+        onFocus={() => setIsOpen(true)}
+        onBlur={() => setIsOpen(false)}
         placeholder={placeholder}
         style={styles.input}
       />
 
-      {visibleOptions.length > 0 ? (
+      {isOpen && visibleOptions.length > 0 ? (
         <View style={styles.dropdown}>
           {visibleOptions.map((option) => (
             <Pressable
               key={option.id}
               style={styles.option}
-              onPress={() => onSelect(option.id)}
+              onPress={() => {
+                onSelect(option.id);
+                setIsOpen(false);
+              }}
             >
               <Text style={styles.optionText}>{option.label}</Text>
             </Pressable>
