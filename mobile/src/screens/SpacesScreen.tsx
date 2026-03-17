@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -7,6 +7,7 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { ApiError, fetchSpaces } from "../services/api";
@@ -25,6 +26,7 @@ type Props = {
 
 export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfile }: Props) {
   const [spaces, setSpaces] = useState<Space[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +61,14 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
   };
 
   const avatarUri = getAvatarUri(user.avatar);
+
+  const filteredSpaces = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) {
+      return spaces;
+    }
+    return spaces.filter((space) => space.name.toLowerCase().includes(query));
+  }, [searchQuery, spaces]);
 
   if (loading) {
     return (
@@ -95,14 +105,26 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
         <Text style={styles.profileCardText}>Consulter mes statistiques globales et ma bio</Text>
       </Pressable>
 
+      <TextInput
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Filtrer les espaces par nom"
+        style={styles.searchInput}
+        autoCorrect={false}
+      />
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <FlatList
-        data={spaces}
+        data={filteredSpaces}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={<Text style={styles.empty}>Aucun espace disponible.</Text>}
+        ListEmptyComponent={
+          <Text style={styles.empty}>
+            {searchQuery.trim() ? "Aucun espace ne correspond a ce filtre." : "Aucun espace disponible."}
+          </Text>
+        }
         renderItem={({ item }) => (
           <Pressable style={styles.card} onPress={() => onSelectSpace(item)}>
             <View style={styles.cardHeader}>
@@ -205,6 +227,15 @@ const styles = StyleSheet.create({
   profileCardText: {
     marginTop: 4,
     color: theme.colors.mutedText,
+  },
+  searchInput: {
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
   },
   listContent: {
     paddingBottom: 18,
