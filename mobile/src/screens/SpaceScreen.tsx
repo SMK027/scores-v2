@@ -200,15 +200,30 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
     [gameTypes, selectedGameTypeId]
   );
 
+  const restrictedParticipationUserIds = useMemo(
+    () => new Set(members.filter((member) => member.games_participation_restricted).map((member) => member.user_id)),
+    [members]
+  );
+
+  const availablePlayersForGame = useMemo(
+    () => players.filter((player) => !player.user_id || !restrictedParticipationUserIds.has(player.user_id)),
+    [players, restrictedParticipationUserIds]
+  );
+
   const selectedPlayers = useMemo(
-    () => players.filter((player) => selectedPlayerIds.includes(player.id)),
-    [players, selectedPlayerIds]
+    () => availablePlayersForGame.filter((player) => selectedPlayerIds.includes(player.id)),
+    [availablePlayersForGame, selectedPlayerIds]
   );
 
   const selectablePlayers = useMemo(
-    () => players.filter((player) => !selectedPlayerIds.includes(player.id)),
-    [players, selectedPlayerIds]
+    () => availablePlayersForGame.filter((player) => !selectedPlayerIds.includes(player.id)),
+    [availablePlayersForGame, selectedPlayerIds]
   );
+
+  useEffect(() => {
+    const allowedIds = new Set(availablePlayersForGame.map((player) => player.id));
+    setSelectedPlayerIds((current) => current.filter((id) => allowedIds.has(id)));
+  }, [availablePlayersForGame]);
 
   const selectGameType = (id: number) => {
     const gameType = gameTypes.find((item) => item.id === id);
@@ -217,7 +232,7 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
   };
 
   const addPlayer = (id: number) => {
-    const player = players.find((item) => item.id === id);
+    const player = availablePlayersForGame.find((item) => item.id === id);
     if (!player || selectedPlayerIds.includes(id)) {
       return;
     }

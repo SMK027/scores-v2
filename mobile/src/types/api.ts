@@ -53,6 +53,7 @@ export type SpaceMember = {
   username: string;
   email?: string;
   avatar?: string | null;
+  games_participation_restricted?: boolean;
 };
 
 export type Game = {
