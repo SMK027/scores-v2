@@ -31,16 +31,10 @@
 
             <div class="form-group">
                 <label class="form-label">Types de jeu autorisés *</label>
-                <div class="d-flex gap-1 flex-wrap">
-                    <?php foreach (($gameTypes ?? []) as $gt): ?>
-                        <label style="display:flex;align-items:center;gap:0.45rem;cursor:pointer;border:1px solid var(--gray-light);padding:0.35rem 0.55rem;border-radius:8px;">
-                            <input type="checkbox" name="allowed_game_type_ids[]" value="<?= (int) $gt['id'] ?>">
-                            <span>
-                                <strong><?= e($gt['name']) ?></strong>
-                                <span class="text-muted text-small">(<?= win_condition_label($gt['win_condition']) ?>)</span>
-                            </span>
-                        </label>
-                    <?php endforeach; ?>
+                <div id="selected-game-types" class="d-flex gap-1 flex-wrap" style="margin-bottom:0.5rem;"></div>
+                <div class="autocomplete-wrapper" style="position:relative;max-width:540px;">
+                    <input type="text" id="game_type_search" class="form-control" placeholder="Rechercher un type de jeu..." autocomplete="off">
+                    <div id="game_type_options" class="autocomplete-list" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:240px;overflow-y:auto;background:#fff;border:1px solid var(--gray-light);border-radius:var(--radius);margin-top:0.25rem;z-index:1000;box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
                 </div>
                 <span class="form-hint">Seuls ces types seront proposés aux arbitres pendant la compétition.</span>
             </div>
@@ -84,4 +78,95 @@ function addSessionRow() {
     container.appendChild(div);
     div.querySelector('input').focus();
 }
+
+(function() {
+    const availableGameTypes = <?= json_encode(array_map(fn($gt) => [
+        'id' => (int) $gt['id'],
+        'name' => $gt['name'],
+        'win_condition' => win_condition_label($gt['win_condition']),
+    ], $gameTypes ?? []), JSON_UNESCAPED_UNICODE) ?>;
+
+    const selectedContainer = document.getElementById('selected-game-types');
+    const searchInput = document.getElementById('game_type_search');
+    const optionsContainer = document.getElementById('game_type_options');
+    const form = document.getElementById('competitionForm');
+    const selectedIds = new Set();
+
+    function hideOptions() {
+        optionsContainer.style.display = 'none';
+    }
+
+    function renderSelected() {
+        selectedContainer.innerHTML = '';
+
+        selectedIds.forEach((id) => {
+            const gt = availableGameTypes.find((item) => item.id === id);
+            if (!gt) return;
+
+            const tag = document.createElement('span');
+            tag.style.cssText = 'display:inline-flex;align-items:center;gap:0.35rem;padding:0.3rem 0.55rem;border-radius:20px;background:var(--primary);color:#fff;font-size:0.85rem;';
+            tag.innerHTML = '<span>' + gt.name + '</span>'
+                + '<input type="hidden" name="allowed_game_type_ids[]" value="' + gt.id + '">'
+                + '<button type="button" class="gt-remove" data-id="' + gt.id + '" style="background:none;border:none;color:#fff;cursor:pointer;font-size:1rem;line-height:1;">&times;</button>';
+            selectedContainer.appendChild(tag);
+        });
+    }
+
+    function renderOptions(items) {
+        const filtered = items.filter((item) => !selectedIds.has(item.id));
+        if (filtered.length === 0) {
+            optionsContainer.innerHTML = '<div style="padding:0.65rem;color:var(--gray);">Aucun type disponible.</div>';
+            optionsContainer.style.display = 'block';
+            return;
+        }
+
+        optionsContainer.innerHTML = filtered.map((gt) => (
+            '<div class="gt-option" data-id="' + gt.id + '" style="padding:0.65rem;border-bottom:1px solid var(--gray-light);cursor:pointer;">'
+            + '<strong>' + gt.name + '</strong> <span class="text-muted text-small">(' + gt.win_condition + ')</span>'
+            + '</div>'
+        )).join('');
+
+        optionsContainer.querySelectorAll('.gt-option').forEach((el) => {
+            el.addEventListener('click', () => {
+                selectedIds.add(parseInt(el.dataset.id, 10));
+                renderSelected();
+                searchInput.value = '';
+                renderOptions(availableGameTypes);
+                searchInput.focus();
+            });
+        });
+
+        optionsContainer.style.display = 'block';
+    }
+
+    selectedContainer.addEventListener('click', (event) => {
+        const btn = event.target.closest('.gt-remove');
+        if (!btn) return;
+        selectedIds.delete(parseInt(btn.dataset.id, 10));
+        renderSelected();
+        renderOptions(availableGameTypes);
+    });
+
+    searchInput.addEventListener('focus', () => renderOptions(availableGameTypes));
+    searchInput.addEventListener('input', () => {
+        const q = searchInput.value.trim().toLowerCase();
+        const filtered = q === ''
+            ? availableGameTypes
+            : availableGameTypes.filter((gt) => gt.name.toLowerCase().includes(q));
+        renderOptions(filtered);
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('.autocomplete-wrapper')) {
+            hideOptions();
+        }
+    });
+
+    form.addEventListener('submit', (event) => {
+        if (selectedIds.size === 0) {
+            event.preventDefault();
+            alert('Veuillez sélectionner au moins un type de jeu autorisé.');
+        }
+    });
+})();
 </script>

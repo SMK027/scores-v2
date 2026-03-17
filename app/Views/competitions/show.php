@@ -102,15 +102,16 @@
     </div>
     <div class="card-body">
         <?php if ($isStaff && $competition['status'] !== 'closed'): ?>
-            <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/participants/add" class="d-flex gap-1 mb-2 flex-wrap">
+            <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/participants/add" class="mb-2" id="participant-add-form">
                 <?= csrf_field() ?>
-                <select name="player_id" class="form-control form-control-sm" required style="max-width:320px;">
-                    <option value="">Ajouter un joueur inscrit à l'espace...</option>
-                    <?php foreach (($allSpacePlayers ?? []) as $p): ?>
-                        <option value="<?= (int) $p['id'] ?>"><?= e($p['name']) ?><?= !empty($p['linked_username']) ? ' (compte: ' . e($p['linked_username']) . ')' : '' ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <button class="btn btn-sm btn-outline">+ Inscrire</button>
+                <div class="d-flex gap-1 flex-wrap align-center" style="max-width:640px;">
+                    <div class="autocomplete-wrapper" style="position:relative;flex:1;min-width:280px;">
+                        <input type="text" id="participant_search" class="form-control form-control-sm" placeholder="Rechercher un membre/joueur de l'espace..." autocomplete="off">
+                        <input type="hidden" name="player_id" id="participant_player_id" required>
+                        <div id="participant_options" class="autocomplete-list" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:260px;overflow-y:auto;background:#fff;border:1px solid var(--gray-light);border-radius:var(--radius);margin-top:0.25rem;z-index:1000;box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
+                    </div>
+                    <button class="btn btn-sm btn-outline">+ Inscrire</button>
+                </div>
             </form>
             <p class="text-muted text-small">Un joueur sans compte lié doit être inscrit ici par un membre de l'équipe.</p>
         <?php endif; ?>
@@ -156,6 +157,83 @@
         <?php endif; ?>
     </div>
 </div>
+
+<script>
+(function() {
+    const participantInput = document.getElementById('participant_search');
+    const participantHidden = document.getElementById('participant_player_id');
+    const participantOptions = document.getElementById('participant_options');
+    const participantForm = document.getElementById('participant-add-form');
+
+    if (!participantInput || !participantHidden || !participantOptions || !participantForm) {
+        return;
+    }
+
+    const players = <?= json_encode(array_map(fn($p) => [
+        'id' => (int) $p['id'],
+        'name' => $p['name'],
+        'linked_username' => $p['linked_username'] ?? null,
+    ], $allSpacePlayers ?? []), JSON_UNESCAPED_UNICODE) ?>;
+
+    function hideOptions() {
+        participantOptions.style.display = 'none';
+    }
+
+    function renderOptions(items) {
+        if (items.length === 0) {
+            participantOptions.innerHTML = '<div style="padding:0.65rem;color:var(--gray);">Aucun membre correspondant.</div>';
+            participantOptions.style.display = 'block';
+            return;
+        }
+
+        participantOptions.innerHTML = items.map((p) => (
+            '<div class="participant-option" data-id="' + p.id + '" data-name="' + p.name.replace(/"/g, '&quot;') + '" style="padding:0.65rem;border-bottom:1px solid var(--gray-light);cursor:pointer;display:flex;justify-content:space-between;gap:0.5rem;">'
+            + '<span>' + p.name + '</span>'
+            + (p.linked_username ? '<span class="text-muted text-small">compte: ' + p.linked_username + '</span>' : '<span class="text-muted text-small">sans compte</span>')
+            + '</div>'
+        )).join('');
+
+        participantOptions.querySelectorAll('.participant-option').forEach((el) => {
+            el.addEventListener('click', () => {
+                participantHidden.value = el.dataset.id;
+                participantInput.value = el.dataset.name;
+                hideOptions();
+            });
+        });
+
+        participantOptions.style.display = 'block';
+    }
+
+    participantInput.addEventListener('focus', () => {
+        renderOptions(players);
+    });
+
+    participantInput.addEventListener('input', () => {
+        const query = participantInput.value.trim().toLowerCase();
+        participantHidden.value = '';
+        const filtered = query === ''
+            ? players
+            : players.filter((p) =>
+                p.name.toLowerCase().includes(query)
+                || (p.linked_username && p.linked_username.toLowerCase().includes(query))
+            );
+        renderOptions(filtered);
+    });
+
+    participantForm.addEventListener('submit', (event) => {
+        if (!participantHidden.value) {
+            event.preventDefault();
+            alert('Veuillez sélectionner un compétiteur via l\'auto-complétion.');
+        }
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('.autocomplete-wrapper')) {
+            hideOptions();
+        }
+    });
+})();
+</script>
 
 <!-- Sessions -->
 <div class="card mb-3">
