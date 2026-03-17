@@ -6,6 +6,7 @@ import type {
   GameType,
   GamesResponse,
   Player,
+  SpaceMember,
   Space,
   SpacesResponse,
   User,
@@ -89,6 +90,15 @@ export async function fetchGameTypes(token: string, spaceId: number): Promise<Ga
   return response.game_types;
 }
 
+export async function fetchSpaceMembers(token: string, spaceId: number): Promise<SpaceMember[]> {
+  const response = await request<{ success: boolean; members: SpaceMember[] }>(
+    `/api/spaces/${spaceId}/members`,
+    {},
+    token
+  );
+  return response.members;
+}
+
 export async function createGame(
   token: string,
   spaceId: number,
@@ -104,6 +114,49 @@ export async function createGame(
   }, token);
 
   return response.game;
+}
+
+export async function createPlayer(
+  token: string,
+  spaceId: number,
+  payload: { name: string; userId?: number | null }
+): Promise<Player> {
+  const response = await request<{ success: boolean; player: Player }>(`/api/spaces/${spaceId}/players`, {
+    method: "POST",
+    body: JSON.stringify({
+      name: payload.name,
+      user_id: payload.userId ?? null,
+    }),
+  }, token);
+
+  return response.player;
+}
+
+export async function updatePlayer(
+  token: string,
+  spaceId: number,
+  playerId: number,
+  payload: { name: string; userId?: number | null }
+): Promise<Player> {
+  const response = await request<{ success: boolean; player: Player }>(
+    `/api/spaces/${spaceId}/players/${playerId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        name: payload.name,
+        user_id: payload.userId ?? null,
+      }),
+    },
+    token
+  );
+
+  return response.player;
+}
+
+export async function deletePlayer(token: string, spaceId: number, playerId: number): Promise<void> {
+  await request<{ success: boolean }>(`/api/spaces/${spaceId}/players/${playerId}`, {
+    method: "DELETE",
+  }, token);
 }
 
 export async function fetchGameDetails(

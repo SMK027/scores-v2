@@ -13,14 +13,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AutocompleteSelect } from "../components/AutocompleteSelect";
 import {
   ApiError,
+  createPlayer,
   createGame,
+  deletePlayer,
   fetchGameDetails,
   fetchGameTypes,
   fetchPlayers,
+  fetchSpaceMembers,
   fetchSpaceGames,
+  updatePlayer,
 } from "../services/api";
 import { theme } from "../styles/theme";
-import type { Game, GameType, Player, Space } from "../types/api";
+import type { Game, GameType, Player, Space, SpaceMember } from "../types/api";
 
 type Props = {
   token: string;
@@ -29,7 +33,7 @@ type Props = {
   onOpenGame: (gameId: number) => void;
 };
 
-type SpaceView = "menu" | "games" | "create" | "stats";
+type SpaceView = "menu" | "games" | "create" | "stats" | "players";
 
 type PlayerStats = {
   playerId: number;
@@ -79,6 +83,7 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
   const [loading, setLoading] = useState(true);
   const [games, setGames] = useState<Game[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [members, setMembers] = useState<SpaceMember[]>([]);
   const [gameTypes, setGameTypes] = useState<GameType[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -92,19 +97,33 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStats[]>([]);
+  const [creatingPlayer, setCreatingPlayer] = useState(false);
+  const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null);
+  const [savingPlayer, setSavingPlayer] = useState(false);
+  const [deletingPlayerId, setDeletingPlayerId] = useState<number | null>(null);
+
+  const [newPlayerName, setNewPlayerName] = useState("");
+  const [newPlayerMemberQuery, setNewPlayerMemberQuery] = useState("");
+  const [newPlayerUserId, setNewPlayerUserId] = useState<number | null>(null);
+
+  const [editPlayerName, setEditPlayerName] = useState("");
+  const [editPlayerMemberQuery, setEditPlayerMemberQuery] = useState("");
+  const [editPlayerUserId, setEditPlayerUserId] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const [gamesData, playersData, gameTypesData] = await Promise.all([
+      const [gamesData, playersData, gameTypesData, membersData] = await Promise.all([
         fetchSpaceGames(token, space.id),
         fetchPlayers(token, space.id),
         fetchGameTypes(token, space.id),
+        fetchSpaceMembers(token, space.id),
       ]);
 
       setGames(gamesData);
       setPlayers(playersData);
       setGameTypes(gameTypesData);
+      setMembers(membersData);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -306,6 +325,104 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
     return sorted[0] || null;
   }, [playerStats]);
 
+  const memberOptions = useMemo(
+    () => members.map((member) => ({ id: member.user_id, label: member.username })),
+    [members]
+  );
+
+  const createPlayerSubmit = async () => {
+    const trimmed = newPlayerName.trim();
+    if (!trimmed) {
+      setError("Le nom du joueur est requis.");
+      return;
+    }
+
+    try {
+      setCreatingPlayer(true);
+      setError(null);
+      await createPlayer(token, space.id, { name: trimmed, userId: newPlayerUserId });
+      setNewPlayerName("");
+      setNewPlayerMemberQuery("");
+      setNewPlayerUserId(null);
+      await loadData();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Impossible de creer le joueur.");
+      }
+    } finally {
+      setCreatingPlayer(false);
+    }
+  };
+
+  const startEditPlayer = (player: Player) => {
+    setEditingPlayerId(player.id);
+    setEditPlayerName(player.name);
+    setEditPlayerUserId(player.user_id ?? null);
+
+    const linkedMember = members.find((member) => member.user_id === (player.user_id ?? null));
+    setEditPlayerMemberQuery(linkedMember ? linkedMember.username : "");
+  };
+
+  const cancelEditPlayer = () => {
+    setEditingPlayerId(null);
+    setEditPlayerName("");
+    setEditPlayerMemberQuery("");
+    setEditPlayerUserId(null);
+  };
+
+  const saveEditPlayer = async () => {
+    if (!editingPlayerId) {
+      return;
+    }
+
+    const trimmed = editPlayerName.trim();
+    if (!trimmed) {
+      setError("Le nom du joueur est requis.");
+      return;
+    }
+
+    try {
+      setSavingPlayer(true);
+      setError(null);
+      await updatePlayer(token, space.id, editingPlayerId, {
+        name: trimmed,
+        userId: editPlayerUserId,
+      });
+      cancelEditPlayer();
+      await loadData();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Impossible de mettre a jour le joueur.");
+      }
+    } finally {
+      setSavingPlayer(false);
+    }
+  };
+
+  const removePlayerSubmit = async (playerId: number) => {
+    try {
+      setDeletingPlayerId(playerId);
+      setError(null);
+      await deletePlayer(token, space.id, playerId);
+      if (editingPlayerId === playerId) {
+        cancelEditPlayer();
+      }
+      await loadData();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Impossible de supprimer le joueur.");
+      }
+    } finally {
+      setDeletingPlayerId(null);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -355,6 +472,11 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
           <Pressable style={styles.menuCard} onPress={() => setCurrentView("stats")}>
             <Text style={styles.menuTitle}>Consulter les statistiques</Text>
             <Text style={styles.menuSubtitle}>Activite des joueurs et taux de victoire</Text>
+          </Pressable>
+
+          <Pressable style={styles.menuCard} onPress={() => setCurrentView("players")}>
+            <Text style={styles.menuTitle}>Gerer les joueurs</Text>
+            <Text style={styles.menuSubtitle}>Afficher, modifier, rattacher un compte, supprimer</Text>
           </Pressable>
         </View>
       ) : null}
@@ -486,6 +608,142 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
               </View>
             </>
           ) : null}
+        </ScrollView>
+      ) : null}
+
+      {currentView === "players" ? (
+        <ScrollView contentContainerStyle={styles.formCard} keyboardShouldPersistTaps="handled">
+          <Text style={styles.sectionTitle}>Gerer les joueurs</Text>
+
+          <View style={styles.playerEditorCard}>
+            <Text style={styles.playerEditorTitle}>Nouveau joueur</Text>
+            <TextInput
+              value={newPlayerName}
+              onChangeText={setNewPlayerName}
+              placeholder="Nom du joueur"
+              style={styles.input}
+            />
+
+            <View style={styles.spacer} />
+
+            <AutocompleteSelect
+              label="Rattacher a un compte (optionnel)"
+              query={newPlayerMemberQuery}
+              onQueryChange={setNewPlayerMemberQuery}
+              options={memberOptions}
+              onSelect={(id) => {
+                const member = members.find((m) => m.user_id === id);
+                setNewPlayerUserId(id);
+                setNewPlayerMemberQuery(member ? member.username : "");
+              }}
+              placeholder="Rechercher un membre"
+            />
+
+            {newPlayerUserId ? (
+              <Pressable
+                onPress={() => {
+                  setNewPlayerUserId(null);
+                  setNewPlayerMemberQuery("");
+                }}
+              >
+                <Text style={styles.unlinkText}>Retirer la liaison</Text>
+              </Pressable>
+            ) : null}
+
+            <Pressable
+              style={[styles.primaryButton, creatingPlayer ? styles.disabledButton : undefined]}
+              disabled={creatingPlayer}
+              onPress={createPlayerSubmit}
+            >
+              <Text style={styles.primaryText}>{creatingPlayer ? "Creation..." : "Ajouter le joueur"}</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.playerListSection}>
+            {players.length === 0 ? <Text style={styles.empty}>Aucun joueur dans cet espace.</Text> : null}
+
+            {players.map((player) => (
+              <View key={player.id} style={styles.playerCard}>
+                <View style={styles.playerCardHeader}>
+                  <View style={styles.playerCardHeaderMain}>
+                    <Text style={styles.playerName}>{player.name}</Text>
+                    <Text style={styles.playerLinkInfo}>
+                      {player.user_id
+                        ? `Compte lie: ${player.linked_username || `Utilisateur #${player.user_id}`}`
+                        : "Aucun compte lie"}
+                    </Text>
+                  </View>
+
+                  <View style={styles.playerActionsRow}>
+                    <Pressable onPress={() => startEditPlayer(player)}>
+                      <Text style={styles.linkAction}>Modifier</Text>
+                    </Pressable>
+                    <Pressable
+                      disabled={deletingPlayerId === player.id}
+                      onPress={() => removePlayerSubmit(player.id)}
+                    >
+                      <Text style={styles.deleteAction}>
+                        {deletingPlayerId === player.id ? "Suppression..." : "Supprimer"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                {editingPlayerId === player.id ? (
+                  <View style={styles.inlineEditor}>
+                    <TextInput
+                      value={editPlayerName}
+                      onChangeText={setEditPlayerName}
+                      placeholder="Nom du joueur"
+                      style={styles.input}
+                    />
+
+                    <View style={styles.spacer} />
+
+                    <AutocompleteSelect
+                      label="Rattacher a un compte (optionnel)"
+                      query={editPlayerMemberQuery}
+                      onQueryChange={setEditPlayerMemberQuery}
+                      options={memberOptions}
+                      onSelect={(id) => {
+                        const member = members.find((m) => m.user_id === id);
+                        setEditPlayerUserId(id);
+                        setEditPlayerMemberQuery(member ? member.username : "");
+                      }}
+                      placeholder="Rechercher un membre"
+                    />
+
+                    {editPlayerUserId ? (
+                      <Pressable
+                        onPress={() => {
+                          setEditPlayerUserId(null);
+                          setEditPlayerMemberQuery("");
+                        }}
+                      >
+                        <Text style={styles.unlinkText}>Retirer la liaison</Text>
+                      </Pressable>
+                    ) : null}
+
+                    <View style={styles.inlineEditorActions}>
+                      <Pressable
+                        style={[styles.secondaryButton, savingPlayer ? styles.disabledButton : undefined]}
+                        disabled={savingPlayer}
+                        onPress={saveEditPlayer}
+                      >
+                        <Text style={styles.secondaryButtonText}>
+                          {savingPlayer ? "Enregistrement..." : "Enregistrer"}
+                        </Text>
+                      </Pressable>
+
+                      <Pressable style={styles.ghostButton} onPress={cancelEditPlayer}>
+                        <Text style={styles.ghostButtonText}>Annuler</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+            ))}
+          </View>
         </ScrollView>
       ) : null}
     </View>
@@ -668,6 +926,27 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontWeight: "700",
   },
+  secondaryButton: {
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: theme.radius.md,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  secondaryButtonText: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+  },
+  ghostButton: {
+    marginTop: 8,
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  ghostButtonText: {
+    color: theme.colors.mutedText,
+    fontWeight: "600",
+  },
   empty: {
     color: theme.colors.mutedText,
     textAlign: "center",
@@ -705,5 +984,69 @@ const styles = StyleSheet.create({
   gameMeta: {
     color: theme.colors.mutedText,
     marginTop: 4,
+  },
+  playerEditorCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    padding: 12,
+    backgroundColor: theme.colors.card,
+  },
+  playerEditorTitle: {
+    color: theme.colors.text,
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+  unlinkText: {
+    marginTop: 8,
+    color: theme.colors.mutedText,
+    fontWeight: "600",
+  },
+  playerListSection: {
+    marginTop: 12,
+  },
+  playerCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    padding: 12,
+    backgroundColor: theme.colors.card,
+    marginBottom: 10,
+  },
+  playerCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  playerCardHeaderMain: {
+    flex: 1,
+    marginRight: 8,
+  },
+  playerName: {
+    color: theme.colors.text,
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  playerLinkInfo: {
+    color: theme.colors.mutedText,
+    marginTop: 4,
+  },
+  playerActionsRow: {
+    alignItems: "flex-end",
+    gap: 8,
+  },
+  linkAction: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+  },
+  deleteAction: {
+    color: theme.colors.danger,
+    fontWeight: "700",
+  },
+  inlineEditor: {
+    marginTop: 10,
+  },
+  inlineEditorActions: {
+    marginTop: 10,
   },
 });

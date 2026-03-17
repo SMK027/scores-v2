@@ -40,6 +40,17 @@ export type Player = {
   space_id: number;
   name: string;
   user_id?: number | null;
+  linked_username?: string | null;
+};
+
+export type SpaceMember = {
+  id: number;
+  space_id: number;
+  user_id: number;
+  role: "admin" | "manager" | "member" | "guest";
+  username: string;
+  email?: string;
+  avatar?: string | null;
 };
 
 export type Game = {
