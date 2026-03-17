@@ -41,34 +41,42 @@ export function LoginScreen({ onBack, onLoginSuccess }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Connexion</Text>
+      <View>
+        <Text style={styles.kicker}>Bon retour</Text>
+        <Text style={styles.title}>Connexion</Text>
+        <Text style={styles.subtitle}>Connectez-vous pour accéder à vos espaces et statistiques.</Text>
+      </View>
 
-      <TextInput
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        placeholder="Adresse mail"
-        style={styles.input}
-      />
+      <View style={styles.card}>
+        <Text style={styles.fieldLabel}>Adresse mail</Text>
+        <TextInput
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          placeholder="vous@domaine.com"
+          style={styles.input}
+        />
 
-      <TextInput
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        placeholder="Mot de passe"
-        style={styles.input}
-      />
+        <Text style={styles.fieldLabel}>Mot de passe</Text>
+        <TextInput
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          placeholder="Votre mot de passe"
+          style={styles.input}
+        />
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <Pressable
-        style={[styles.primaryButton, loading ? styles.disabledButton : undefined]}
-        disabled={loading}
-        onPress={submit}
-      >
-        {loading ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.primaryText}>Valider</Text>}
-      </Pressable>
+        <Pressable
+          style={[styles.primaryButton, loading ? styles.disabledButton : undefined]}
+          disabled={loading}
+          onPress={submit}
+        >
+          {loading ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.primaryText}>Se connecter</Text>}
+        </Pressable>
+      </View>
 
       <Pressable style={styles.backButton} onPress={onBack}>
         <Text style={styles.backText}>Retour</Text>
@@ -81,17 +89,44 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    justifyContent: "center",
+    justifyContent: "space-between",
     backgroundColor: theme.colors.background,
   },
-  title: {
-    fontSize: 28,
+  kicker: {
+    marginTop: 18,
+    color: theme.colors.primary,
     fontWeight: "700",
+    fontSize: 13,
+  },
+  title: {
+    fontSize: 34,
+    fontWeight: "800",
     color: theme.colors.text,
-    marginBottom: 24,
+    marginTop: 4,
+  },
+  subtitle: {
+    marginTop: 8,
+    color: theme.colors.mutedText,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  card: {
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 18,
+    ...theme.shadow.card,
+  },
+  fieldLabel: {
+    color: theme.colors.mutedText,
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 6,
+    marginTop: 10,
   },
   input: {
-    backgroundColor: theme.colors.card,
+    backgroundColor: theme.colors.backgroundSoft,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
@@ -108,7 +143,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     paddingVertical: 14,
     alignItems: "center",
-    marginTop: 4,
+    marginTop: 12,
   },
   disabledButton: {
     opacity: 0.6,
@@ -120,7 +155,7 @@ const styles = StyleSheet.create({
   backButton: {
     alignItems: "center",
     paddingVertical: 12,
-    marginTop: 10,
+    marginBottom: 4,
   },
   backText: {
     color: theme.colors.mutedText,

@@ -1596,7 +1596,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   back: {
     color: theme.colors.primary,
@@ -1605,14 +1605,14 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     textAlign: "center",
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 22,
+    fontWeight: "800",
     color: theme.colors.text,
     marginHorizontal: 8,
   },
   secondaryHeaderRow: {
     alignItems: "flex-end",
-    marginBottom: 8,
+    marginBottom: 10,
   },
   profileButton: {
     width: 34,
@@ -1637,7 +1637,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   menuContainer: {
-    gap: 10,
+    gap: 8,
   },
   navGrid: {
     marginTop: 6,
@@ -1654,6 +1654,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.card,
     paddingVertical: 12,
     alignItems: "center",
+    ...theme.shadow.card,
   },
   navIconCircle: {
     width: 42,
@@ -1764,6 +1765,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.lg,
     padding: 14,
     marginBottom: 14,
+    ...theme.shadow.card,
   },
   gamesContainer: {
     flex: 1,
@@ -1915,6 +1917,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     padding: 12,
     marginBottom: 8,
+    ...theme.shadow.card,
   },
   gameTitle: {
     color: theme.colors.text,
@@ -1968,6 +1971,7 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: theme.colors.card,
     marginBottom: 10,
+    ...theme.shadow.card,
   },
   playerCardHeader: {
     flexDirection: "row",

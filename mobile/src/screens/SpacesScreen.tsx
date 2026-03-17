@@ -71,9 +71,10 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerMain}>
+          <Text style={styles.kicker}>Espace personnel</Text>
           <Text style={styles.title}>Vos espaces</Text>
-          <Text style={styles.subtitle}>{user.username}</Text>
+          <Text style={styles.subtitle}>Bonjour {user.username}</Text>
         </View>
         <View style={styles.headerActions}>
           <Pressable style={styles.profileButton} onPress={onOpenProfile}>
@@ -89,11 +90,17 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
         </View>
       </View>
 
+      <Pressable style={styles.profileCard} onPress={onOpenProfile}>
+        <Text style={styles.profileCardTitle}>Mon profil</Text>
+        <Text style={styles.profileCardText}>Consulter mes statistiques globales et ma bio</Text>
+      </Pressable>
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <FlatList
         data={spaces}
         keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={<Text style={styles.empty}>Aucun espace disponible.</Text>}
         renderItem={({ item }) => (
@@ -129,17 +136,27 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 14,
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  headerMain: {
+    flex: 1,
+    marginRight: 10,
+  },
+  kicker: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+    fontSize: 12,
+    marginBottom: 3,
   },
   title: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 30,
+    fontWeight: "800",
     color: theme.colors.text,
   },
   subtitle: {
     color: theme.colors.mutedText,
-    marginTop: 2,
+    marginTop: 4,
   },
   logout: {
     color: theme.colors.primary,
@@ -150,9 +167,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   profileButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: theme.colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
@@ -171,6 +188,27 @@ const styles = StyleSheet.create({
     color: theme.colors.danger,
     marginBottom: 8,
   },
+  profileCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.card,
+    padding: 14,
+    marginBottom: 12,
+    ...theme.shadow.card,
+  },
+  profileCardTitle: {
+    color: theme.colors.text,
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  profileCardText: {
+    marginTop: 4,
+    color: theme.colors.mutedText,
+  },
+  listContent: {
+    paddingBottom: 18,
+  },
   empty: {
     color: theme.colors.mutedText,
     marginTop: 20,
@@ -181,8 +219,9 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    padding: 14,
+    padding: 15,
     marginBottom: 10,
+    ...theme.shadow.card,
   },
   cardHeader: {
     flexDirection: "row",

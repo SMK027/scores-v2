@@ -123,6 +123,7 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
         <Pressable onPress={onBack}>
           <Text style={styles.back}>Retour</Text>
         </Pressable>
+        <Text style={styles.headerTitle}>Profil</Text>
         <Pressable onPress={loadProfile}>
           <Text style={styles.back}>Rafraichir</Text>
         </Pressable>
@@ -232,11 +233,18 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    paddingBottom: 22,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
+  },
+  headerTitle: {
+    color: theme.colors.text,
+    fontWeight: "800",
+    fontSize: 18,
   },
   back: {
     color: theme.colors.primary,
@@ -253,11 +261,12 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.lg,
     padding: 16,
     marginBottom: 12,
+    ...theme.shadow.card,
   },
   avatarCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: theme.colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
@@ -276,8 +285,8 @@ const styles = StyleSheet.create({
   },
   username: {
     color: theme.colors.text,
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "800",
     textAlign: "center",
   },
   email: {
