@@ -32,6 +32,11 @@ export function AutocompleteSelect({
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
+  const handleOptionSelect = (id: number) => {
+    onSelect(id);
+    setIsOpen(false);
+  };
+
   const visibleOptions = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) {
@@ -53,7 +58,7 @@ export function AutocompleteSelect({
           setIsOpen(true);
         }}
         onFocus={() => setIsOpen(true)}
-        onBlur={() => setIsOpen(false)}
+        onBlur={() => setTimeout(() => setIsOpen(false), 120)}
         placeholder={placeholder}
         style={styles.input}
       />
@@ -64,10 +69,7 @@ export function AutocompleteSelect({
             <Pressable
               key={option.id}
               style={styles.option}
-              onPress={() => {
-                onSelect(option.id);
-                setIsOpen(false);
-              }}
+              onPressIn={() => handleOptionSelect(option.id)}
             >
               <Text style={styles.optionText}>{option.label}</Text>
             </Pressable>

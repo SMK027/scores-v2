@@ -204,7 +204,7 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <ScrollView contentContainerStyle={styles.formCard}>
+      <ScrollView contentContainerStyle={styles.formCard} keyboardShouldPersistTaps="handled">
         <Text style={styles.sectionTitle}>Creer une partie</Text>
 
         <AutocompleteSelect
