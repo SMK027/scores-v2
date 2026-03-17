@@ -17,9 +17,10 @@ type Props = {
   user: User;
   onSelectSpace: (space: Space) => void;
   onLogout: () => void;
+  onBack: () => void;
 };
 
-export function SpacesScreen({ token, user, onSelectSpace, onLogout }: Props) {
+export function SpacesScreen({ token, user, onSelectSpace, onLogout, onBack }: Props) {
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -66,6 +67,9 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout }: Props) {
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
+          <Pressable onPress={onBack}>
+            <Text style={styles.back}>Retour</Text>
+          </Pressable>
           <Text style={styles.title}>Vos espaces</Text>
           <Text style={styles.subtitle}>{user.username}</Text>
         </View>
@@ -114,6 +118,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700",
     color: theme.colors.text,
+  },
+  back: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+    marginBottom: 6,
   },
   subtitle: {
     color: theme.colors.mutedText,

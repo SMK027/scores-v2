@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { SafeAreaView, StyleSheet } from "react-native";
+import { DashboardScreen } from "./screens/DashboardScreen";
 import { GameDetailScreen } from "./screens/GameDetailScreen";
 import { LoginScreen } from "./screens/LoginScreen";
+import { ProfileScreen } from "./screens/ProfileScreen";
 import { SpaceScreen } from "./screens/SpaceScreen";
 import { SpacesScreen } from "./screens/SpacesScreen";
 import { WelcomeScreen } from "./screens/WelcomeScreen";
@@ -11,7 +13,9 @@ import type { Space, User } from "./types/api";
 type Route =
   | { name: "welcome" }
   | { name: "login" }
+  | { name: "dashboard" }
   | { name: "spaces" }
+  | { name: "profile" }
   | { name: "space"; space: Space }
   | { name: "game"; space: Space; gameId: number };
 
@@ -20,6 +24,7 @@ export function MobileApp() {
   const [user, setUser] = useState<User | null>(null);
   const [route, setRoute] = useState<Route>({ name: "welcome" });
 
+  const goToDashboard = () => setRoute({ name: "dashboard" });
   const goToSpaces = () => setRoute({ name: "spaces" });
 
   const logout = () => {
@@ -38,8 +43,17 @@ export function MobileApp() {
           onLoginSuccess={({ token: authToken, user: authUser }) => {
             setToken(authToken);
             setUser(authUser);
-            setRoute({ name: "spaces" });
+            setRoute({ name: "dashboard" });
           }}
+        />
+      ) : null}
+
+      {route.name === "dashboard" && token && user ? (
+        <DashboardScreen
+          user={user}
+          onOpenSpaces={() => setRoute({ name: "spaces" })}
+          onOpenProfile={() => setRoute({ name: "profile" })}
+          onLogout={logout}
         />
       ) : null}
 
@@ -49,7 +63,12 @@ export function MobileApp() {
           user={user}
           onSelectSpace={(space) => setRoute({ name: "space", space })}
           onLogout={logout}
+          onBack={goToDashboard}
         />
+      ) : null}
+
+      {route.name === "profile" && token && user ? (
+        <ProfileScreen token={token} fallbackUser={user} onBack={goToDashboard} />
       ) : null}
 
       {route.name === "space" && token ? (

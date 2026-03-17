@@ -11,6 +11,7 @@ export type User = {
   global_role: string;
   avatar?: string | null;
   bio?: string | null;
+  created_at?: string;
 };
 
 export type Space = {

@@ -62,6 +62,11 @@ export async function login(email: string, password: string): Promise<{ token: s
   });
 }
 
+export async function fetchProfile(token: string): Promise<User> {
+  const response = await request<{ success: boolean; user: User }>("/api/profile", {}, token);
+  return response.user;
+}
+
 export async function fetchSpaces(token: string): Promise<Space[]> {
   const response = await request<SpacesResponse>("/api/spaces", {}, token);
   return response.spaces;
