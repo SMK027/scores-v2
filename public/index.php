@@ -327,6 +327,7 @@ $router->post('/spaces/{id}/competitions/{cid}/delete', CompetitionController::c
 $router->get('/competition/login', CompetitionSessionController::class, 'loginForm');
 $router->post('/competition/login', CompetitionSessionController::class, 'login');
 $router->get('/competition/logout', CompetitionSessionController::class, 'logout');
+$router->post('/competition/sessions/{sid}/open', CompetitionSessionController::class, 'openAssignedSession');
 $router->get('/competition/dashboard', CompetitionSessionController::class, 'dashboard');
 $router->post('/competition/games/create', CompetitionSessionController::class, 'createGame');
 $router->get('/competition/games/{gid}', CompetitionSessionController::class, 'showGame');

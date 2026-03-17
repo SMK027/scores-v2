@@ -32,9 +32,10 @@ class CompetitionSession extends Model
     public function findByCompetition(int $competitionId): array
     {
         $stmt = $this->db->prepare("
-            SELECT cs.*,
+            SELECT cs.*, u.username AS referee_user_username,
                    (SELECT COUNT(*) FROM games g WHERE g.session_id = cs.id) AS game_count
             FROM {$this->table} cs
+            LEFT JOIN users u ON u.id = cs.referee_user_id
             WHERE cs.competition_id = :competition_id
             ORDER BY cs.session_number ASC
         ");
@@ -185,6 +186,7 @@ class CompetitionSession extends Model
         foreach ($referees as $referee) {
             $name  = is_array($referee) ? trim($referee['name'] ?? '') : trim($referee);
             $email = is_array($referee) ? trim($referee['email'] ?? '') : '';
+            $userId = is_array($referee) ? (int) ($referee['user_id'] ?? 0) : 0;
 
             $password = self::generatePassword();
             $id = $this->create([
@@ -192,6 +194,7 @@ class CompetitionSession extends Model
                 'session_number' => $nextNum,
                 'referee_name'   => $name,
                 'referee_email'  => $email ?: null,
+                'referee_user_id' => $userId > 0 ? $userId : null,
                 'password'       => $password,
                 'is_active'      => 1,
             ]);
@@ -200,6 +203,7 @@ class CompetitionSession extends Model
                 'session_number' => $nextNum,
                 'referee_name'   => $name,
                 'referee_email'  => $email ?: null,
+                'referee_user_id' => $userId > 0 ? $userId : null,
                 'password'       => $password,
             ];
             $nextNum++;
@@ -222,5 +226,25 @@ class CompetitionSession extends Model
     public function reactivate(int $sessionId): bool
     {
         return $this->update($sessionId, ['is_active' => 1]);
+    }
+
+    /**
+     * Retourne une session active d'une compétition assignée à un compte arbitre.
+     */
+    public function findAssignedSession(int $competitionId, int $userId): ?array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT cs.*, c.space_id, c.name AS competition_name, c.status AS competition_status
+             FROM {$this->table} cs
+             INNER JOIN competitions c ON c.id = cs.competition_id
+             WHERE cs.competition_id = :cid
+               AND cs.referee_user_id = :uid
+               AND cs.is_active = 1
+             ORDER BY cs.session_number ASC
+             LIMIT 1"
+        );
+        $stmt->execute(['cid' => $competitionId, 'uid' => $userId]);
+        $row = $stmt->fetch();
+        return $row ?: null;
     }
 }

@@ -246,6 +246,60 @@ class CompetitionSessionController extends Controller
         $this->redirect('/competition/login');
     }
 
+    /**
+     * Ouvre une session d'arbitrage pour un compte arbitre assigné.
+     */
+    public function openAssignedSession(string $sid): void
+    {
+        $this->requireAuth();
+
+        $sessionId = (int) $sid;
+        if ($sessionId <= 0) {
+            $this->setFlash('danger', 'Session invalide.');
+            $this->redirect('/spaces');
+            return;
+        }
+
+        $session = $this->sessionModel->find($sessionId);
+        if (!$session) {
+            $this->setFlash('danger', 'Session introuvable.');
+            $this->redirect('/spaces');
+            return;
+        }
+
+        if ((int) ($session['referee_user_id'] ?? 0) !== (int) $this->getCurrentUserId()) {
+            $this->setFlash('danger', 'Vous n\'êtes pas assigné à cette session.');
+            $this->redirect('/spaces');
+            return;
+        }
+
+        if ((int) ($session['is_active'] ?? 0) !== 1 || (int) ($session['is_locked'] ?? 0) === 1) {
+            $this->setFlash('danger', 'Cette session est inactive ou verrouillée.');
+            $this->redirect('/spaces');
+            return;
+        }
+
+        $competition = $this->competition->find((int) $session['competition_id']);
+        if (!$competition || !in_array((string) ($competition['status'] ?? ''), ['active', 'paused'], true)) {
+            $this->setFlash('danger', 'Cette compétition n\'autorise pas l\'arbitrage actuellement.');
+            $this->redirect('/spaces');
+            return;
+        }
+
+        Session::set('competition_session', [
+            'session_id'     => (int) $session['id'],
+            'competition_id' => (int) $session['competition_id'],
+            'session_number' => (int) $session['session_number'],
+            'referee_name'   => (string) $session['referee_name'],
+            'space_id'       => (int) $competition['space_id'],
+            'competition_name' => (string) $competition['name'],
+        ]);
+
+        ActivityLog::logCompetition((int) $session['competition_id'], 'session.login.user', (int) $this->getCurrentUserId(), 'competition_session', (int) $session['id'], (int) $session['id']);
+
+        $this->redirect('/competition/dashboard');
+    }
+
     // ================================================================
     // Dashboard de la session
     // ================================================================

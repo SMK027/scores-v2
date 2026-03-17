@@ -31,6 +31,12 @@
     </div>
     <div class="d-flex gap-1 flex-wrap">
         <a href="/spaces/<?= $currentSpace['id'] ?>/competitions" class="btn btn-outline btn-sm">← Retour</a>
+        <?php if (!empty($assignedArbitrationSession)): ?>
+            <form method="POST" action="/competition/sessions/<?= (int) $assignedArbitrationSession['id'] ?>/open" style="display:inline;">
+                <?= csrf_field() ?>
+                <button class="btn btn-sm btn-primary">Ouvrir la session d'arbitrage</button>
+            </form>
+        <?php endif; ?>
         <?php if ($isStaff): ?>
             <?php if ($competition['status'] !== 'closed'): ?>
                 <a href="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/edit" class="btn btn-sm btn-outline" title="Modifier">
@@ -242,6 +248,12 @@
         <?php if ($isStaff && $competition['status'] !== 'closed'): ?>
             <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/sessions/add" class="d-flex gap-1">
                 <?= csrf_field() ?>
+                <select name="referee_user_id" class="form-control form-control-sm" style="width:250px;">
+                    <option value="">Membre de l'espace (optionnel)</option>
+                    <?php foreach (($spaceMembers ?? []) as $m): ?>
+                        <option value="<?= (int) $m['id'] ?>"><?= e($m['username']) ?> (<?= e($m['email']) ?>)</option>
+                    <?php endforeach; ?>
+                </select>
                 <input type="text" name="referee_name" class="form-control form-control-sm" placeholder="Nom de l'arbitre" required style="width:150px;">
                 <input type="email" name="referee_email" class="form-control form-control-sm" placeholder="Email (optionnel)" style="width:200px;">
                 <button class="btn btn-sm btn-primary">+ Session</button>
@@ -274,6 +286,9 @@
                             <td><strong><?= (int) $s['session_number'] ?></strong></td>
                             <td>
                                 <?= e($s['referee_name']) ?>
+                                <?php if (!empty($s['referee_user_username'])): ?>
+                                    <span class="badge badge-info" style="margin-left:0.35rem;">compte lié: <?= e($s['referee_user_username']) ?></span>
+                                <?php endif; ?>
                                 <?php if (!empty($s['referee_email'])): ?>
                                     <span class="text-muted text-small">(<?= e($s['referee_email']) ?>)</span>
                                 <?php endif; ?>

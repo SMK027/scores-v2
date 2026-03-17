@@ -98,6 +98,7 @@ class CompetitionController extends Controller
         }
         $member = Middleware::checkSpaceAccess((int) $id, $this->getCurrentUserId());
         $gameTypes = (new GameType())->findBySpace((int) $id);
+        $spaceMembers = $this->getSpaceMembers((int) $id);
 
         $this->render('competitions/create', [
             'title'        => 'Nouvelle compétition',
@@ -105,6 +106,7 @@ class CompetitionController extends Controller
             'spaceRole'    => $member['role'] ?? 'admin',
             'activeMenu'   => 'competitions',
             'gameTypes'    => $gameTypes,
+            'spaceMembers' => $spaceMembers,
         ]);
     }
 
@@ -127,15 +129,10 @@ class CompetitionController extends Controller
         $allowedGameTypeIds = array_values(array_unique(array_map('intval', (array) ($_POST['allowed_game_type_ids'] ?? []))));
         $refereeNames  = $_POST['referee_names'] ?? [];
         $refereeEmails = $_POST['referee_emails'] ?? [];
+        $refereeUserIds = $_POST['referee_user_ids'] ?? [];
 
         if (empty($data['name']) || empty($data['starts_at']) || empty($data['ends_at'])) {
             $this->setFlash('danger', 'Le nom, la date de début et la date de fin sont requis.');
-            $this->redirect("/spaces/{$id}/competitions/create");
-            return;
-        }
-
-        if (empty($refereeNames) || count(array_filter($refereeNames, fn($n) => trim($n) !== '')) === 0) {
-            $this->setFlash('danger', 'Vous devez ajouter au moins une session avec un nom d\'arbitre.');
             $this->redirect("/spaces/{$id}/competitions/create");
             return;
         }
@@ -146,15 +143,38 @@ class CompetitionController extends Controller
             return;
         }
 
-        // Construire le tableau de referees avec noms et emails
+        // Construire le tableau de sessions arbitres: membre lié OU nom/email libre
+        $membersById = $this->getSpaceMembersById((int) $id);
         $referees = [];
-        foreach ($refereeNames as $i => $name) {
-            $name = trim($name);
-            if ($name === '') continue;
+        $rowCount = max(count((array) $refereeNames), count((array) $refereeUserIds), count((array) $refereeEmails));
+        for ($i = 0; $i < $rowCount; $i++) {
+            $userId = (int) ($refereeUserIds[$i] ?? 0);
+            if ($userId > 0 && isset($membersById[$userId])) {
+                $memberUser = $membersById[$userId];
+                $referees[] = [
+                    'user_id' => (int) $memberUser['id'],
+                    'name' => (string) $memberUser['username'],
+                    'email' => (string) ($memberUser['email'] ?? ''),
+                ];
+                continue;
+            }
+
+            $name = trim((string) ($refereeNames[$i] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+
             $referees[] = [
-                'name'  => $name,
-                'email' => trim($refereeEmails[$i] ?? ''),
+                'user_id' => 0,
+                'name' => $name,
+                'email' => trim((string) ($refereeEmails[$i] ?? '')),
             ];
+        }
+
+        if (empty($referees)) {
+            $this->setFlash('danger', 'Vous devez ajouter au moins une session avec un arbitre (membre ou nom/email).');
+            $this->redirect("/spaces/{$id}/competitions/create");
+            return;
         }
 
         $competitionId = $this->competition->create([
@@ -227,6 +247,7 @@ class CompetitionController extends Controller
         $allowedGameTypes = $this->competition->getAllowedGameTypes((int) $cid);
         $registeredPlayers = $this->competition->getRegisteredPlayers((int) $cid);
         $allSpacePlayers = $this->player->findBySpace((int) $id);
+        $spaceMembers = $this->getSpaceMembers((int) $id);
 
         $currentUserId = (int) ($this->getCurrentUserId() ?? 0);
         $linkedPlayerId = $this->findLinkedPlayerIdInSpace((int) $id, $currentUserId);
@@ -234,6 +255,9 @@ class CompetitionController extends Controller
         $isSelfRegistered = $linkedPlayerId !== null
             ? $this->competition->isPlayerRegistered((int) $cid, $linkedPlayerId)
             : false;
+        $assignedArbitrationSession = $currentUserId > 0
+            ? $this->session->findAssignedSession((int) $cid, $currentUserId)
+            : null;
 
         // Parties de la compétition
         $stmt = $this->pdo->prepare("
@@ -265,9 +289,11 @@ class CompetitionController extends Controller
             'allowedGameTypes' => $allowedGameTypes,
             'registeredPlayers' => $registeredPlayers,
             'allSpacePlayers' => $allSpacePlayers,
+            'spaceMembers' => $spaceMembers,
             'canSelfRegister' => $canSelfRegister,
             'linkedPlayerId' => $linkedPlayerId,
             'isSelfRegistered' => $isSelfRegistered,
+            'assignedArbitrationSession' => $assignedArbitrationSession,
         ]);
     }
 
@@ -583,15 +609,39 @@ class CompetitionController extends Controller
             return;
         }
 
-        $refereeName  = trim($_POST['referee_name'] ?? '');
-        $refereeEmail = trim($_POST['referee_email'] ?? '');
-        if (empty($refereeName)) {
-            $this->setFlash('danger', 'Le nom de l\'arbitre est requis.');
-            $this->redirect("/spaces/{$id}/competitions/{$cid}");
-            return;
+        $refereeUserId = (int) ($_POST['referee_user_id'] ?? 0);
+        $refereeName  = trim((string) ($_POST['referee_name'] ?? ''));
+        $refereeEmail = trim((string) ($_POST['referee_email'] ?? ''));
+
+        $refereePayload = null;
+        if ($refereeUserId > 0) {
+            $membersById = $this->getSpaceMembersById((int) $id);
+            if (!isset($membersById[$refereeUserId])) {
+                $this->setFlash('danger', 'Le membre sélectionné ne fait pas partie de cet espace.');
+                $this->redirect("/spaces/{$id}/competitions/{$cid}");
+                return;
+            }
+
+            $memberUser = $membersById[$refereeUserId];
+            $refereePayload = [
+                'user_id' => (int) $memberUser['id'],
+                'name' => (string) $memberUser['username'],
+                'email' => (string) ($memberUser['email'] ?? ''),
+            ];
+        } else {
+            if (empty($refereeName)) {
+                $this->setFlash('danger', 'Le nom de l\'arbitre est requis si aucun membre n\'est sélectionné.');
+                $this->redirect("/spaces/{$id}/competitions/{$cid}");
+                return;
+            }
+            $refereePayload = [
+                'user_id' => 0,
+                'name' => $refereeName,
+                'email' => $refereeEmail,
+            ];
         }
 
-        $created = $this->session->createBatch((int) $cid, [['name' => $refereeName, 'email' => $refereeEmail]]);
+        $created = $this->session->createBatch((int) $cid, [$refereePayload]);
 
         ActivityLog::logCompetition((int) $cid, 'session.add', $this->getCurrentUserId(), 'competition_session', null, null, ['referee' => $refereeName]);
 
@@ -884,5 +934,34 @@ class CompetitionController extends Controller
 
         $value = $stmt->fetchColumn();
         return $value !== false ? (int) $value : null;
+    }
+
+    /**
+     * Liste des membres d'un espace (utilisateurs) pour assignation arbitre.
+     */
+    private function getSpaceMembers(int $spaceId): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT u.id, u.username, u.email
+             FROM space_members sm
+             INNER JOIN users u ON u.id = sm.user_id
+             WHERE sm.space_id = :space_id
+             ORDER BY u.username ASC"
+        );
+        $stmt->execute(['space_id' => $spaceId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Indexe les membres d'un espace par id utilisateur.
+     */
+    private function getSpaceMembersById(int $spaceId): array
+    {
+        $rows = $this->getSpaceMembers($spaceId);
+        $indexed = [];
+        foreach ($rows as $row) {
+            $indexed[(int) $row['id']] = $row;
+        }
+        return $indexed;
     }
 }
