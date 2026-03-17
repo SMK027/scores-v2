@@ -31,6 +31,7 @@ export function AutocompleteSelect({
   placeholder,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  const normalizedQuery = query.trim().toLowerCase();
 
   const handleOptionSelect = (id: number) => {
     onSelect(id);
@@ -38,18 +39,17 @@ export function AutocompleteSelect({
   };
 
   const visibleOptions = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) {
+    if (!normalizedQuery) {
       return options.slice(0, 8);
     }
 
     return options
-      .filter((option) => option.label.toLowerCase().includes(normalized))
+      .filter((option) => option.label.toLowerCase().includes(normalizedQuery))
       .slice(0, 8);
-  }, [options, query]);
+  }, [normalizedQuery, options]);
 
   return (
-    <View>
+    <View style={styles.wrapper}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
         value={query}
@@ -60,20 +60,27 @@ export function AutocompleteSelect({
         onFocus={() => setIsOpen(true)}
         onBlur={() => setTimeout(() => setIsOpen(false), 120)}
         placeholder={placeholder}
+        autoCorrect={false}
         style={styles.input}
       />
 
-      {isOpen && visibleOptions.length > 0 ? (
+      {isOpen ? (
         <View style={styles.dropdown}>
-          {visibleOptions.map((option) => (
-            <Pressable
-              key={option.id}
-              style={styles.option}
-              onPressIn={() => handleOptionSelect(option.id)}
-            >
-              <Text style={styles.optionText}>{option.label}</Text>
-            </Pressable>
-          ))}
+          {visibleOptions.length > 0 ? (
+            visibleOptions.map((option) => (
+              <Pressable
+                key={option.id}
+                style={styles.option}
+                onPressIn={() => handleOptionSelect(option.id)}
+              >
+                <Text style={styles.optionText}>{option.label}</Text>
+              </Pressable>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>
+              {normalizedQuery ? "Aucun resultat pour cette recherche." : "Aucune option disponible."}
+            </Text>
+          )}
         </View>
       ) : null}
     </View>
@@ -81,6 +88,9 @@ export function AutocompleteSelect({
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    zIndex: 2,
+  },
   label: {
     color: theme.colors.mutedText,
     fontSize: 13,
@@ -112,5 +122,10 @@ const styles = StyleSheet.create({
   },
   optionText: {
     color: theme.colors.text,
+  },
+  emptyText: {
+    color: theme.colors.mutedText,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
 });

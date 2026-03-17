@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  Share,
   ScrollView,
   StyleSheet,
   Text,
@@ -224,6 +225,16 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
   const selectablePlayers = useMemo(
     () => availablePlayersForGame.filter((player) => !selectedPlayerIds.includes(player.id)),
     [availablePlayersForGame, selectedPlayerIds]
+  );
+
+  const restrictedLinkedPlayersCount = useMemo(
+    () => players.filter((player) => !!player.user_id && restrictedParticipationUserIds.has(player.user_id)).length,
+    [players, restrictedParticipationUserIds]
+  );
+
+  const inviteLinkUrl = useMemo(
+    () => (inviteToken ? `https://scores.leofranz.fr/spaces/join/${inviteToken}` : null),
+    [inviteToken]
   );
 
   useEffect(() => {
@@ -731,6 +742,19 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
     }
   };
 
+  const shareInviteLink = async () => {
+    if (!inviteLinkUrl) {
+      return;
+    }
+    try {
+      await Share.share({
+        message: `Rejoins mon espace sur Scores: ${inviteLinkUrl}`,
+      });
+    } catch {
+      setError("Impossible de partager le lien d'invitation.");
+    }
+  };
+
   const isAdmin = space.user_role === "admin";
   const canManageMembers = isAdmin || space.user_role === "manager";
 
@@ -837,6 +861,18 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
             onSelect={addPlayer}
             placeholder="Rechercher un joueur"
           />
+
+          {restrictedLinkedPlayersCount > 0 ? (
+            <Text style={styles.infoText}>
+              {restrictedLinkedPlayersCount} joueur(s) lie(s) a un compte restreint sont exclus de la selection.
+            </Text>
+          ) : null}
+
+          {selectablePlayers.length === 0 ? (
+            <Text style={styles.infoText}>
+              Aucun joueur supplementaire disponible pour cette partie.
+            </Text>
+          ) : null}
 
           {selectedPlayers.length > 0 ? (
             <View style={styles.chipsContainer}>
@@ -1411,8 +1447,11 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
               <View style={styles.inviteLinkBox}>
                 <Text style={styles.inviteLinkLabel}>Lien valable 72h :</Text>
                 <Text style={styles.inviteLinkText} selectable>
-                  {`https://scores.leofranz.fr/spaces/join/${inviteToken}`}
+                  {inviteLinkUrl}
                 </Text>
+                <Pressable style={styles.shareLinkButton} onPress={shareInviteLink}>
+                  <Text style={styles.shareLinkButtonText}>Partager le lien</Text>
+                </Pressable>
               </View>
             ) : null}
           </View>
@@ -1544,6 +1583,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: theme.colors.success,
     fontWeight: "600",
+  },
+  infoText: {
+    marginTop: 8,
+    color: theme.colors.mutedText,
+    fontSize: 13,
   },
   spacer: {
     height: 12,
@@ -1770,5 +1814,17 @@ const styles = StyleSheet.create({
   inviteLinkText: {
     color: theme.colors.primary,
     fontWeight: "600",
+  },
+  shareLinkButton: {
+    marginTop: 10,
+    alignSelf: "flex-start",
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  shareLinkButtonText: {
+    color: theme.colors.primary,
+    fontWeight: "700",
   },
 });
