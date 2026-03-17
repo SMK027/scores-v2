@@ -90,6 +90,67 @@ export async function fetchGameTypes(token: string, spaceId: number): Promise<Ga
   return response.game_types;
 }
 
+export async function createGameType(
+  token: string,
+  spaceId: number,
+  payload: {
+    name: string;
+    description?: string;
+    winCondition: GameType["win_condition"];
+    minPlayers?: number;
+    maxPlayers?: number | null;
+  }
+): Promise<GameType> {
+  const response = await request<{ success: boolean; game_type: GameType }>(`/api/spaces/${spaceId}/game-types`, {
+    method: "POST",
+    body: JSON.stringify({
+      name: payload.name,
+      description: payload.description ?? "",
+      win_condition: payload.winCondition,
+      min_players: payload.minPlayers ?? 1,
+      max_players: payload.maxPlayers ?? null,
+    }),
+  }, token);
+
+  return response.game_type;
+}
+
+export async function updateGameType(
+  token: string,
+  spaceId: number,
+  gameTypeId: number,
+  payload: {
+    name: string;
+    description?: string;
+    winCondition: GameType["win_condition"];
+    minPlayers?: number;
+    maxPlayers?: number | null;
+  }
+): Promise<GameType> {
+  const response = await request<{ success: boolean; game_type: GameType }>(
+    `/api/spaces/${spaceId}/game-types/${gameTypeId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        name: payload.name,
+        description: payload.description ?? "",
+        win_condition: payload.winCondition,
+        min_players: payload.minPlayers ?? 1,
+        max_players: payload.maxPlayers ?? null,
+      }),
+    },
+    token
+  );
+
+  return response.game_type;
+}
+
+export async function deleteGameType(token: string, spaceId: number, gameTypeId: number): Promise<void> {
+  await request<{ success: boolean }>(`/api/spaces/${spaceId}/game-types/${gameTypeId}`, {
+    method: "DELETE",
+  }, token);
+}
+
 export async function fetchSpaceMembers(token: string, spaceId: number): Promise<SpaceMember[]> {
   const response = await request<{ success: boolean; members: SpaceMember[] }>(
     `/api/spaces/${spaceId}/members`,

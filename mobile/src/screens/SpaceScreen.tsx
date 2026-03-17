@@ -13,14 +13,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AutocompleteSelect } from "../components/AutocompleteSelect";
 import {
   ApiError,
+  createGameType,
   createPlayer,
   createGame,
+  deleteGameType,
   deletePlayer,
   fetchGameDetails,
   fetchGameTypes,
   fetchPlayers,
   fetchSpaceMembers,
   fetchSpaceGames,
+  updateGameType,
   updatePlayer,
 } from "../services/api";
 import { theme } from "../styles/theme";
@@ -33,7 +36,7 @@ type Props = {
   onOpenGame: (gameId: number) => void;
 };
 
-type SpaceView = "menu" | "games" | "create" | "stats" | "players";
+type SpaceView = "menu" | "games" | "create" | "stats" | "players" | "gameTypes";
 
 type PlayerStats = {
   playerId: number;
@@ -78,6 +81,21 @@ function getStatusMeta(status: Game["status"]): {
   }
 }
 
+function getWinConditionLabel(winCondition: GameType["win_condition"]): string {
+  switch (winCondition) {
+    case "highest_score":
+      return "Score le plus eleve";
+    case "lowest_score":
+      return "Score le plus bas";
+    case "ranking":
+      return "Classement";
+    case "win_loss":
+      return "Victoire/Defaite";
+    default:
+      return winCondition;
+  }
+}
+
 export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
@@ -109,6 +127,22 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
   const [editPlayerName, setEditPlayerName] = useState("");
   const [editPlayerMemberQuery, setEditPlayerMemberQuery] = useState("");
   const [editPlayerUserId, setEditPlayerUserId] = useState<number | null>(null);
+  const [creatingGameType, setCreatingGameType] = useState(false);
+  const [editingGameTypeId, setEditingGameTypeId] = useState<number | null>(null);
+  const [savingGameType, setSavingGameType] = useState(false);
+  const [deletingGameTypeId, setDeletingGameTypeId] = useState<number | null>(null);
+
+  const [newGameTypeName, setNewGameTypeName] = useState("");
+  const [newGameTypeDescription, setNewGameTypeDescription] = useState("");
+  const [newGameTypeWinCondition, setNewGameTypeWinCondition] = useState<GameType["win_condition"]>("highest_score");
+  const [newGameTypeMinPlayers, setNewGameTypeMinPlayers] = useState("1");
+  const [newGameTypeMaxPlayers, setNewGameTypeMaxPlayers] = useState("");
+
+  const [editGameTypeName, setEditGameTypeName] = useState("");
+  const [editGameTypeDescription, setEditGameTypeDescription] = useState("");
+  const [editGameTypeWinCondition, setEditGameTypeWinCondition] = useState<GameType["win_condition"]>("highest_score");
+  const [editGameTypeMinPlayers, setEditGameTypeMinPlayers] = useState("1");
+  const [editGameTypeMaxPlayers, setEditGameTypeMaxPlayers] = useState("");
 
   const loadData = useCallback(async () => {
     try {
@@ -454,6 +488,148 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
     }
   };
 
+  const parsePlayerCount = (value: string, fallback: number): number => {
+    const parsed = Number(value.trim());
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      return fallback;
+    }
+    return parsed;
+  };
+
+  const parseOptionalPlayerCount = (value: string): number | null => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const parsed = Number(trimmed);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      return null;
+    }
+    return parsed;
+  };
+
+  const createGameTypeSubmit = async () => {
+    const trimmed = newGameTypeName.trim();
+    if (!trimmed) {
+      setError("Le nom du type de jeu est requis.");
+      return;
+    }
+
+    const minPlayers = parsePlayerCount(newGameTypeMinPlayers, 1);
+    const maxPlayers = parseOptionalPlayerCount(newGameTypeMaxPlayers);
+
+    if (maxPlayers !== null && maxPlayers < minPlayers) {
+      setError("Le nombre maximum de joueurs doit etre superieur ou egal au minimum.");
+      return;
+    }
+
+    try {
+      setCreatingGameType(true);
+      setError(null);
+      await createGameType(token, space.id, {
+        name: trimmed,
+        description: newGameTypeDescription,
+        winCondition: newGameTypeWinCondition,
+        minPlayers,
+        maxPlayers,
+      });
+      setNewGameTypeName("");
+      setNewGameTypeDescription("");
+      setNewGameTypeWinCondition("highest_score");
+      setNewGameTypeMinPlayers("1");
+      setNewGameTypeMaxPlayers("");
+      await loadData();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Impossible de creer le type de jeu.");
+      }
+    } finally {
+      setCreatingGameType(false);
+    }
+  };
+
+  const startEditGameType = (gameType: GameType) => {
+    setEditingGameTypeId(gameType.id);
+    setEditGameTypeName(gameType.name);
+    setEditGameTypeDescription(gameType.description ?? "");
+    setEditGameTypeWinCondition(gameType.win_condition);
+    setEditGameTypeMinPlayers(String(gameType.min_players ?? 1));
+    setEditGameTypeMaxPlayers(gameType.max_players ? String(gameType.max_players) : "");
+  };
+
+  const cancelEditGameType = () => {
+    setEditingGameTypeId(null);
+    setEditGameTypeName("");
+    setEditGameTypeDescription("");
+    setEditGameTypeWinCondition("highest_score");
+    setEditGameTypeMinPlayers("1");
+    setEditGameTypeMaxPlayers("");
+  };
+
+  const saveEditGameType = async () => {
+    if (!editingGameTypeId) {
+      return;
+    }
+
+    const trimmed = editGameTypeName.trim();
+    if (!trimmed) {
+      setError("Le nom du type de jeu est requis.");
+      return;
+    }
+
+    const minPlayers = parsePlayerCount(editGameTypeMinPlayers, 1);
+    const maxPlayers = parseOptionalPlayerCount(editGameTypeMaxPlayers);
+
+    if (maxPlayers !== null && maxPlayers < minPlayers) {
+      setError("Le nombre maximum de joueurs doit etre superieur ou egal au minimum.");
+      return;
+    }
+
+    try {
+      setSavingGameType(true);
+      setError(null);
+      await updateGameType(token, space.id, editingGameTypeId, {
+        name: trimmed,
+        description: editGameTypeDescription,
+        winCondition: editGameTypeWinCondition,
+        minPlayers,
+        maxPlayers,
+      });
+      cancelEditGameType();
+      await loadData();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Impossible de mettre a jour le type de jeu.");
+      }
+    } finally {
+      setSavingGameType(false);
+    }
+  };
+
+  const removeGameTypeSubmit = async (gameTypeId: number) => {
+    try {
+      setDeletingGameTypeId(gameTypeId);
+      setError(null);
+      await deleteGameType(token, space.id, gameTypeId);
+      if (editingGameTypeId === gameTypeId) {
+        cancelEditGameType();
+      }
+      await loadData();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Impossible de supprimer le type de jeu.");
+      }
+    } finally {
+      setDeletingGameTypeId(null);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -508,6 +684,11 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
           <Pressable style={styles.menuCard} onPress={() => setCurrentView("players")}>
             <Text style={styles.menuTitle}>Gerer les joueurs</Text>
             <Text style={styles.menuSubtitle}>Afficher, modifier, rattacher un compte, supprimer</Text>
+          </Pressable>
+
+          <Pressable style={styles.menuCard} onPress={() => setCurrentView("gameTypes")}>
+            <Text style={styles.menuTitle}>Gerer les types de jeu</Text>
+            <Text style={styles.menuSubtitle}>Afficher, creer, modifier et supprimer</Text>
           </Pressable>
         </View>
       ) : null}
@@ -767,6 +948,201 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
                       </Pressable>
 
                       <Pressable style={styles.ghostButton} onPress={cancelEditPlayer}>
+                        <Text style={styles.ghostButtonText}>Annuler</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      ) : null}
+
+      {currentView === "gameTypes" ? (
+        <ScrollView contentContainerStyle={styles.formCard} keyboardShouldPersistTaps="handled">
+          <Text style={styles.sectionTitle}>Gerer les types de jeu</Text>
+
+          <View style={styles.playerEditorCard}>
+            <Text style={styles.playerEditorTitle}>Nouveau type de jeu</Text>
+            <TextInput
+              value={newGameTypeName}
+              onChangeText={setNewGameTypeName}
+              placeholder="Nom du type de jeu"
+              style={styles.input}
+            />
+
+            <Text style={styles.label}>Description</Text>
+            <TextInput
+              value={newGameTypeDescription}
+              onChangeText={setNewGameTypeDescription}
+              placeholder="Description optionnelle"
+              style={[styles.input, styles.notes]}
+              multiline
+            />
+
+            <Text style={styles.label}>Condition de victoire</Text>
+            <View style={styles.conditionOptionsRow}>
+              {(["highest_score", "lowest_score", "ranking", "win_loss"] as const).map((condition) => (
+                <Pressable
+                  key={condition}
+                  style={[
+                    styles.conditionOption,
+                    newGameTypeWinCondition === condition ? styles.conditionOptionActive : undefined,
+                  ]}
+                  onPress={() => setNewGameTypeWinCondition(condition)}
+                >
+                  <Text
+                    style={[
+                      styles.conditionOptionText,
+                      newGameTypeWinCondition === condition ? styles.conditionOptionTextActive : undefined,
+                    ]}
+                  >
+                    {getWinConditionLabel(condition)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={styles.countInputsRow}>
+              <View style={styles.countInputBlock}>
+                <Text style={styles.label}>Joueurs min.</Text>
+                <TextInput
+                  value={newGameTypeMinPlayers}
+                  onChangeText={setNewGameTypeMinPlayers}
+                  keyboardType="numeric"
+                  style={styles.input}
+                />
+              </View>
+
+              <View style={styles.countInputBlock}>
+                <Text style={styles.label}>Joueurs max.</Text>
+                <TextInput
+                  value={newGameTypeMaxPlayers}
+                  onChangeText={setNewGameTypeMaxPlayers}
+                  keyboardType="numeric"
+                  placeholder="Illimite"
+                  style={styles.input}
+                />
+              </View>
+            </View>
+
+            <Pressable
+              style={[styles.primaryButton, creatingGameType ? styles.disabledButton : undefined]}
+              disabled={creatingGameType}
+              onPress={createGameTypeSubmit}
+            >
+              <Text style={styles.primaryText}>{creatingGameType ? "Creation..." : "Ajouter le type de jeu"}</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.playerListSection}>
+            {gameTypes.length === 0 ? <Text style={styles.empty}>Aucun type de jeu dans cet espace.</Text> : null}
+
+            {gameTypes.map((gameType) => (
+              <View key={gameType.id} style={styles.playerCard}>
+                <View style={styles.playerCardHeader}>
+                  <View style={styles.playerCardHeaderMain}>
+                    <Text style={styles.playerName}>{gameType.name}</Text>
+                    <Text style={styles.playerLinkInfo}>{getWinConditionLabel(gameType.win_condition)}</Text>
+                    <Text style={styles.playerLinkInfo}>
+                      Joueurs: min {gameType.min_players ?? 1}
+                      {gameType.max_players ? ` / max ${gameType.max_players}` : " / max illimite"}
+                    </Text>
+                    {gameType.description ? <Text style={styles.playerLinkInfo}>{gameType.description}</Text> : null}
+                  </View>
+
+                  <View style={styles.playerActionsRow}>
+                    <Pressable onPress={() => startEditGameType(gameType)}>
+                      <Text style={styles.linkAction}>Modifier</Text>
+                    </Pressable>
+                    <Pressable
+                      disabled={deletingGameTypeId === gameType.id}
+                      onPress={() => removeGameTypeSubmit(gameType.id)}
+                    >
+                      <Text style={styles.deleteAction}>
+                        {deletingGameTypeId === gameType.id ? "Suppression..." : "Supprimer"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                {editingGameTypeId === gameType.id ? (
+                  <View style={styles.inlineEditor}>
+                    <TextInput
+                      value={editGameTypeName}
+                      onChangeText={setEditGameTypeName}
+                      placeholder="Nom du type de jeu"
+                      style={styles.input}
+                    />
+
+                    <Text style={styles.label}>Description</Text>
+                    <TextInput
+                      value={editGameTypeDescription}
+                      onChangeText={setEditGameTypeDescription}
+                      placeholder="Description optionnelle"
+                      style={[styles.input, styles.notes]}
+                      multiline
+                    />
+
+                    <Text style={styles.label}>Condition de victoire</Text>
+                    <View style={styles.conditionOptionsRow}>
+                      {(["highest_score", "lowest_score", "ranking", "win_loss"] as const).map((condition) => (
+                        <Pressable
+                          key={condition}
+                          style={[
+                            styles.conditionOption,
+                            editGameTypeWinCondition === condition ? styles.conditionOptionActive : undefined,
+                          ]}
+                          onPress={() => setEditGameTypeWinCondition(condition)}
+                        >
+                          <Text
+                            style={[
+                              styles.conditionOptionText,
+                              editGameTypeWinCondition === condition ? styles.conditionOptionTextActive : undefined,
+                            ]}
+                          >
+                            {getWinConditionLabel(condition)}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+
+                    <View style={styles.countInputsRow}>
+                      <View style={styles.countInputBlock}>
+                        <Text style={styles.label}>Joueurs min.</Text>
+                        <TextInput
+                          value={editGameTypeMinPlayers}
+                          onChangeText={setEditGameTypeMinPlayers}
+                          keyboardType="numeric"
+                          style={styles.input}
+                        />
+                      </View>
+
+                      <View style={styles.countInputBlock}>
+                        <Text style={styles.label}>Joueurs max.</Text>
+                        <TextInput
+                          value={editGameTypeMaxPlayers}
+                          onChangeText={setEditGameTypeMaxPlayers}
+                          keyboardType="numeric"
+                          placeholder="Illimite"
+                          style={styles.input}
+                        />
+                      </View>
+                    </View>
+
+                    <View style={styles.inlineEditorActions}>
+                      <Pressable
+                        style={[styles.secondaryButton, savingGameType ? styles.disabledButton : undefined]}
+                        disabled={savingGameType}
+                        onPress={saveEditGameType}
+                      >
+                        <Text style={styles.secondaryButtonText}>
+                          {savingGameType ? "Enregistrement..." : "Enregistrer"}
+                        </Text>
+                      </Pressable>
+
+                      <Pressable style={styles.ghostButton} onPress={cancelEditGameType}>
                         <Text style={styles.ghostButtonText}>Annuler</Text>
                       </Pressable>
                     </View>
@@ -1079,5 +1455,38 @@ const styles = StyleSheet.create({
   },
   inlineEditorActions: {
     marginTop: 10,
+  },
+  conditionOptionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 4,
+  },
+  conditionOption: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: theme.colors.card,
+  },
+  conditionOptionActive: {
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: theme.colors.primary,
+  },
+  conditionOptionText: {
+    color: theme.colors.text,
+    fontWeight: "600",
+  },
+  conditionOptionTextActive: {
+    color: theme.colors.primary,
+  },
+  countInputsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 8,
+  },
+  countInputBlock: {
+    flex: 1,
   },
 });
