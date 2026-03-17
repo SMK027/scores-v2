@@ -837,7 +837,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       style={[
         styles.container,
         {
-          paddingTop: Math.max(insets.top, 12) + 8,
+          paddingTop: Math.max(insets.top, 4),
           paddingBottom: Math.max(insets.bottom, 8) + bottomNavExtraHeight,
         },
       ]}
@@ -1596,7 +1596,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   back: {
     color: theme.colors.primary,
@@ -1612,7 +1612,7 @@ const styles = StyleSheet.create({
   },
   secondaryHeaderRow: {
     alignItems: "flex-end",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   profileButton: {
     width: 34,
