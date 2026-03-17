@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -11,6 +12,7 @@ import {
 import { ApiError, fetchSpaces } from "../services/api";
 import { theme } from "../styles/theme";
 import type { Space, User } from "../types/api";
+import { getAvatarUri, getInitials } from "../utils/avatar";
 import { getRoleLabel } from "../utils/roles";
 
 type Props = {
@@ -18,10 +20,11 @@ type Props = {
   user: User;
   onSelectSpace: (space: Space) => void;
   onLogout: () => void;
+  onOpenProfile: () => void;
   onBack: () => void;
 };
 
-export function SpacesScreen({ token, user, onSelectSpace, onLogout, onBack }: Props) {
+export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfile, onBack }: Props) {
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -56,6 +59,8 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onBack }: P
     setRefreshing(false);
   };
 
+  const avatarUri = getAvatarUri(user.avatar);
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -74,9 +79,18 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onBack }: P
           <Text style={styles.title}>Vos espaces</Text>
           <Text style={styles.subtitle}>{user.username}</Text>
         </View>
-        <Pressable onPress={onLogout}>
-          <Text style={styles.logout}>Deconnexion</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable style={styles.profileButton} onPress={onOpenProfile}>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.profileAvatar} />
+            ) : (
+              <Text style={styles.profileAvatarText}>{getInitials(user)}</Text>
+            )}
+          </Pressable>
+          <Pressable onPress={onLogout}>
+            <Text style={styles.logout}>Deconnexion</Text>
+          </Pressable>
+        </View>
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -139,6 +153,28 @@ const styles = StyleSheet.create({
   logout: {
     color: theme.colors.primary,
     fontWeight: "700",
+  },
+  headerActions: {
+    alignItems: "flex-end",
+    gap: 8,
+  },
+  profileButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  profileAvatar: {
+    width: "100%",
+    height: "100%",
+  },
+  profileAvatarText: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+    fontSize: 12,
   },
   error: {
     color: theme.colors.danger,

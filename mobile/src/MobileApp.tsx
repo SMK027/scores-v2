@@ -63,6 +63,7 @@ export function MobileApp() {
           user={user}
           onSelectSpace={(space) => setRoute({ name: "space", space })}
           onLogout={logout}
+          onOpenProfile={() => setRoute({ name: "profile" })}
           onBack={goToDashboard}
         />
       ) : null}
@@ -71,11 +72,13 @@ export function MobileApp() {
         <ProfileScreen token={token} fallbackUser={user} onBack={goToDashboard} />
       ) : null}
 
-      {route.name === "space" && token ? (
+      {route.name === "space" && token && user ? (
         <SpaceScreen
           token={token}
+          user={user}
           space={route.space}
           onBack={goToSpaces}
+          onOpenProfile={() => setRoute({ name: "profile" })}
           onOpenGame={(gameId) => setRoute({ name: "game", space: route.space, gameId })}
         />
       ) : null}

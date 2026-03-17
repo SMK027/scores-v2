@@ -24,6 +24,8 @@ export function DashboardScreen({ user, onOpenSpaces, onOpenProfile, onLogout }:
 
       <Text style={styles.subtitle}>Choisis ce que tu veux faire.</Text>
 
+      <Text style={styles.sectionLabel}>Mon compte</Text>
+
       <Pressable style={styles.avatarCard} onPress={onOpenProfile}>
         <View style={styles.avatarCircle}>
           {avatarUri ? (
@@ -37,6 +39,8 @@ export function DashboardScreen({ user, onOpenSpaces, onOpenProfile, onLogout }:
           <Text style={styles.cardText}>Consulter mes informations via ma photo de profil</Text>
         </View>
       </Pressable>
+
+      <Text style={styles.sectionLabel}>Navigation</Text>
 
       <Pressable style={styles.actionCard} onPress={onOpenSpaces}>
         <Text style={styles.cardTitle}>Mes espaces</Text>
@@ -66,6 +70,12 @@ const styles = StyleSheet.create({
   subtitle: {
     color: theme.colors.mutedText,
     marginBottom: 16,
+  },
+  sectionLabel: {
+    color: theme.colors.mutedText,
+    fontWeight: "600",
+    fontSize: 13,
+    marginBottom: 8,
   },
   logout: {
     color: theme.colors.primary,

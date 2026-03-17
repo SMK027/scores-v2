@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   Share,
   ScrollView,
@@ -32,13 +33,16 @@ import {
   updatePlayer,
 } from "../services/api";
 import { theme } from "../styles/theme";
-import type { Game, GameType, Player, Space, SpaceMember } from "../types/api";
+import type { Game, GameType, Player, Space, SpaceMember, User } from "../types/api";
+import { getAvatarUri, getInitials } from "../utils/avatar";
 import { getRoleLabel } from "../utils/roles";
 
 type Props = {
   token: string;
+  user: User;
   space: Space;
   onBack: () => void;
+  onOpenProfile: () => void;
   onOpenGame: (gameId: number) => void;
 };
 
@@ -104,7 +108,7 @@ function getWinConditionLabel(winCondition: GameType["win_condition"]): string {
   }
 }
 
-export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
+export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenGame }: Props) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [games, setGames] = useState<Game[]>([]);
@@ -236,6 +240,8 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
     () => (inviteToken ? `https://scores.leofranz.fr/spaces/join/${inviteToken}` : null),
     [inviteToken]
   );
+
+  const avatarUri = useMemo(() => getAvatarUri(user.avatar), [user.avatar]);
 
   useEffect(() => {
     const allowedIds = new Set(availablePlayersForGame.map((player) => player.id));
@@ -781,12 +787,22 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
         <Text style={styles.title} numberOfLines={1}>
           {space.name}
         </Text>
-        {currentView === "menu" ? <View style={styles.headerPlaceholder} /> : (
+        <Pressable style={styles.profileButton} onPress={onOpenProfile}>
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.profileAvatar} />
+          ) : (
+            <Text style={styles.profileAvatarText}>{getInitials(user)}</Text>
+          )}
+        </Pressable>
+      </View>
+
+      {currentView !== "menu" ? (
+        <View style={styles.secondaryHeaderRow}>
           <Pressable onPress={loadData}>
             <Text style={styles.back}>Rafraichir</Text>
           </Pressable>
-        )}
-      </View>
+        </View>
+      ) : null}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -1479,9 +1495,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 12,
   },
-  headerPlaceholder: {
-    width: 70,
-  },
   back: {
     color: theme.colors.primary,
     fontWeight: "700",
@@ -1493,6 +1506,28 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: theme.colors.text,
     marginHorizontal: 8,
+  },
+  secondaryHeaderRow: {
+    alignItems: "flex-end",
+    marginBottom: 8,
+  },
+  profileButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: theme.colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  profileAvatar: {
+    width: "100%",
+    height: "100%",
+  },
+  profileAvatarText: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+    fontSize: 11,
   },
   error: {
     color: theme.colors.danger,
