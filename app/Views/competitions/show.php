@@ -441,11 +441,49 @@
 })();
 </script>
 
+<?php
+$formatDuration = static function (int $seconds): string {
+    $seconds = max(0, $seconds);
+    $hours = intdiv($seconds, 3600);
+    $minutes = intdiv($seconds % 3600, 60);
+    $remainingSeconds = $seconds % 60;
+
+    if ($hours > 0) {
+        return sprintf('%dh %02dmin', $hours, $minutes);
+    }
+    if ($minutes > 0) {
+        return sprintf('%dmin %02ds', $minutes, $remainingSeconds);
+    }
+    return sprintf('%ds', $remainingSeconds);
+};
+?>
+
+<?php if (!empty($competitionSummary)): ?>
+<div class="card mb-3">
+    <div class="card-header">
+        <h3>Bilan de fin de compétition</h3>
+    </div>
+    <div class="card-body">
+        <div class="d-flex gap-1 flex-wrap">
+            <span class="badge badge-primary">Parties: <?= (int) $competitionSummary['completed_games'] ?>/<?= (int) $competitionSummary['total_games'] ?></span>
+            <span class="badge badge-info">Manches: <?= (int) $competitionSummary['total_rounds'] ?></span>
+            <span class="badge badge-success">Temps total de jeu: <?= e($formatDuration((int) $competitionSummary['total_play_seconds'])) ?></span>
+            <span class="badge badge-secondary">Joueurs classés: <?= (int) $competitionSummary['player_count'] ?></span>
+            <span class="badge badge-warning">Taux moyen de victoire: <?= (float) $competitionSummary['avg_win_rate'] ?> %</span>
+            <span class="badge badge-info">Moyenne manches/joueur: <?= (float) $competitionSummary['avg_rounds_per_player'] ?></span>
+            <span class="badge badge-primary">Moyenne manches gagnées/joueur: <?= (float) $competitionSummary['avg_round_wins_per_player'] ?></span>
+            <span class="badge badge-secondary">Sessions actives: <?= (int) $competitionSummary['sessions_used'] ?></span>
+            <span class="badge badge-secondary">Types de jeu utilisés: <?= (int) $competitionSummary['game_types_used'] ?></span>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- Classement -->
 <?php if (!empty($rankings)): ?>
 <div class="card mb-3">
     <div class="card-header">
-        <h3>Classement</h3>
+        <h3><?= !empty($competitionSummary) ? 'Classement final' : 'Classement' ?></h3>
     </div>
     <div class="card-body">
         <div class="table-responsive">

@@ -275,6 +275,9 @@ class CompetitionController extends Controller
 
         // Classement de la compétition (manches gagnées)
         $rankings = $this->computeCompetitionRankings((int) $cid, (int) $id);
+        $competitionSummary = $competition['status'] === 'closed'
+            ? $this->computeCompetitionSummary((int) $cid, $rankings)
+            : null;
 
         $this->render('competitions/show', [
             'title'        => $competition['name'],
@@ -285,6 +288,7 @@ class CompetitionController extends Controller
             'sessions'     => $sessions,
             'games'        => $games,
             'rankings'     => $rankings,
+            'competitionSummary' => $competitionSummary,
             'isStaff'      => $isStaff,
             'allowedGameTypes' => $allowedGameTypes,
             'registeredPlayers' => $registeredPlayers,
@@ -909,6 +913,77 @@ class CompetitionController extends Controller
         );
 
         return $result;
+    }
+
+    /**
+     * Calcule un bilan global pour une compétition clôturée.
+     */
+    private function computeCompetitionSummary(int $competitionId, array $rankings): array
+    {
+        $gameStmt = $this->pdo->prepare(
+            "SELECT
+                COUNT(*) AS total_games,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_games,
+                COUNT(DISTINCT session_id) AS sessions_used,
+                COUNT(DISTINCT game_type_id) AS game_types_used
+             FROM games
+             WHERE competition_id = :cid"
+        );
+        $gameStmt->execute(['cid' => $competitionId]);
+        $gameStats = $gameStmt->fetch() ?: [];
+
+        $roundStmt = $this->pdo->prepare(
+            "SELECT
+                COUNT(*) AS total_rounds,
+                COALESCE(SUM(
+                    GREATEST(
+                        0,
+                        TIMESTAMPDIFF(SECOND, r.started_at, COALESCE(r.ended_at, NOW())) - COALESCE(rp.pause_seconds, 0)
+                    )
+                ), 0) AS total_play_seconds
+             FROM rounds r
+             INNER JOIN games g ON g.id = r.game_id
+             LEFT JOIN (
+                SELECT
+                    round_id,
+                    COALESCE(SUM(
+                        CASE
+                            WHEN duration_seconds IS NOT NULL THEN duration_seconds
+                            WHEN resumed_at IS NOT NULL THEN TIMESTAMPDIFF(SECOND, paused_at, resumed_at)
+                            ELSE TIMESTAMPDIFF(SECOND, paused_at, NOW())
+                        END
+                    ), 0) AS pause_seconds
+                FROM round_pauses
+                GROUP BY round_id
+             ) rp ON rp.round_id = r.id
+             WHERE g.competition_id = :cid
+               AND r.status = 'completed'"
+        );
+        $roundStmt->execute(['cid' => $competitionId]);
+        $roundStats = $roundStmt->fetch() ?: [];
+
+        $playerCount = count($rankings);
+        $roundsPlayedTotal = 0;
+        $winsTotal = 0;
+        $winRateTotal = 0.0;
+        foreach ($rankings as $row) {
+            $roundsPlayedTotal += (int) ($row['rounds_played'] ?? 0);
+            $winsTotal += (int) ($row['rounds_won'] ?? 0);
+            $winRateTotal += (float) ($row['win_rate'] ?? 0);
+        }
+
+        return [
+            'total_games' => (int) ($gameStats['total_games'] ?? 0),
+            'completed_games' => (int) ($gameStats['completed_games'] ?? 0),
+            'sessions_used' => (int) ($gameStats['sessions_used'] ?? 0),
+            'game_types_used' => (int) ($gameStats['game_types_used'] ?? 0),
+            'total_rounds' => (int) ($roundStats['total_rounds'] ?? 0),
+            'total_play_seconds' => (int) ($roundStats['total_play_seconds'] ?? 0),
+            'player_count' => $playerCount,
+            'avg_rounds_per_player' => $playerCount > 0 ? round($roundsPlayedTotal / $playerCount, 2) : 0.0,
+            'avg_win_rate' => $playerCount > 0 ? round($winRateTotal / $playerCount, 1) : 0.0,
+            'avg_round_wins_per_player' => $playerCount > 0 ? round($winsTotal / $playerCount, 2) : 0.0,
+        ];
     }
 
     /**
