@@ -148,4 +148,29 @@ export async function completeGame(token: string, spaceId: number, gameId: numbe
   }, token);
 }
 
+export async function updateGameStatus(
+  token: string,
+  spaceId: number,
+  gameId: number,
+  status: "pending" | "in_progress" | "paused" | "completed"
+): Promise<void> {
+  await request<{ success: boolean }>(`/api/spaces/${spaceId}/games/${gameId}/status`, {
+    method: "PUT",
+    body: JSON.stringify({ status }),
+  }, token);
+}
+
+export async function updateRoundStatus(
+  token: string,
+  spaceId: number,
+  gameId: number,
+  roundId: number,
+  status: "in_progress" | "paused" | "completed"
+): Promise<void> {
+  await request<{ success: boolean }>(`/api/spaces/${spaceId}/games/${gameId}/rounds/${roundId}/status`, {
+    method: "PUT",
+    body: JSON.stringify({ status }),
+  }, token);
+}
+
 export { ApiError };

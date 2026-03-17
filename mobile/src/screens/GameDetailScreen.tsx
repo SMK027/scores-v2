@@ -14,6 +14,8 @@ import {
   completeGame,
   createRound,
   fetchGameDetails,
+  updateGameStatus,
+  updateRoundStatus,
   updateRoundScores,
 } from "../services/api";
 import { theme } from "../styles/theme";
@@ -80,6 +82,8 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  const [updatingGameStatus, setUpdatingGameStatus] = useState(false);
+  const [updatingRoundId, setUpdatingRoundId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [details, setDetails] = useState<GameDetailsResponse | null>(null);
 
@@ -246,6 +250,57 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
     }
   };
 
+  const toggleGamePause = async () => {
+    if (!details) {
+      return;
+    }
+
+    const current = details.game.status;
+    if (current !== "in_progress" && current !== "paused") {
+      return;
+    }
+
+    const nextStatus = current === "paused" ? "in_progress" : "paused";
+
+    try {
+      setUpdatingGameStatus(true);
+      setError(null);
+      await updateGameStatus(token, space.id, gameId, nextStatus);
+      await loadDetails();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Impossible de mettre a jour le statut de la partie.");
+      }
+    } finally {
+      setUpdatingGameStatus(false);
+    }
+  };
+
+  const toggleRoundPause = async (roundId: number, roundStatus: "in_progress" | "paused" | "completed") => {
+    if (roundStatus === "completed") {
+      return;
+    }
+
+    const nextStatus = roundStatus === "paused" ? "in_progress" : "paused";
+
+    try {
+      setUpdatingRoundId(roundId);
+      setError(null);
+      await updateRoundStatus(token, space.id, gameId, roundId, nextStatus);
+      await loadDetails();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Impossible de mettre a jour le statut de la manche.");
+      }
+    } finally {
+      setUpdatingRoundId(null);
+    }
+  };
+
   if (loading || !details) {
     return (
       <View style={styles.centered}>
@@ -304,6 +359,18 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
                   <Text style={[styles.statusText, { color: statusMeta.textColor }]}>{statusMeta.label}</Text>
                 </View>
               </View>
+
+              {round.status !== "completed" ? (
+                <Pressable
+                  style={[styles.secondaryButton, updatingRoundId === round.id ? styles.disabled : undefined]}
+                  disabled={updatingRoundId === round.id}
+                  onPress={() => toggleRoundPause(round.id, round.status)}
+                >
+                  <Text style={styles.secondaryText}>
+                    {round.status === "paused" ? "Reprendre la manche" : "Mettre la manche en pause"}
+                  </Text>
+                </Pressable>
+              ) : null}
 
               {details.players.map((player) => {
                 const scoreValue = extractScoreValue(roundScores[String(player.player_id)]);
@@ -383,15 +450,29 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
         ) : null}
       </View>
 
-      <Pressable
-        style={[styles.finishButton, finishing ? styles.disabled : undefined]}
-        disabled={finishing || details.game.status === "completed"}
-        onPress={finishGame}
-      >
-        <Text style={styles.primaryText}>
-          {details.game.status === "completed" ? "Partie terminee" : "Terminer la partie"}
-        </Text>
-      </Pressable>
+      <View style={styles.gameActionsRow}>
+        {details.game.status !== "completed" && (details.game.status === "in_progress" || details.game.status === "paused") ? (
+          <Pressable
+            style={[styles.secondaryButton, updatingGameStatus ? styles.disabled : undefined]}
+            disabled={updatingGameStatus}
+            onPress={toggleGamePause}
+          >
+            <Text style={styles.secondaryText}>
+              {details.game.status === "paused" ? "Reprendre la partie" : "Mettre la partie en pause"}
+            </Text>
+          </Pressable>
+        ) : null}
+
+        <Pressable
+          style={[styles.finishButton, finishing ? styles.disabled : undefined]}
+          disabled={finishing || details.game.status === "completed"}
+          onPress={finishGame}
+        >
+          <Text style={styles.primaryText}>
+            {details.game.status === "completed" ? "Partie terminee" : "Terminer la partie"}
+          </Text>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -498,14 +579,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   finishButton: {
-    marginTop: 16,
+    marginTop: 8,
     backgroundColor: theme.colors.success,
     borderRadius: theme.radius.md,
     paddingVertical: 12,
     alignItems: "center",
   },
+  gameActionsRow: {
+    marginTop: 8,
+  },
   primaryText: {
     color: "#ffffff",
+    fontWeight: "700",
+  },
+  secondaryButton: {
+    marginTop: 8,
+    borderRadius: theme.radius.md,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: "#f4f7fb",
+  },
+  secondaryText: {
+    color: theme.colors.text,
     fontWeight: "700",
   },
   disabled: {
