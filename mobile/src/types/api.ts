@@ -19,6 +19,7 @@ export type Space = {
   name: string;
   description?: string | null;
   created_by?: number;
+  user_role?: string;
 };
 
 export type SpacesResponse = {

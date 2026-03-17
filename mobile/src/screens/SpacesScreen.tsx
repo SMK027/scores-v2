@@ -11,6 +11,7 @@ import {
 import { ApiError, fetchSpaces } from "../services/api";
 import { theme } from "../styles/theme";
 import type { Space, User } from "../types/api";
+import { getRoleLabel } from "../utils/roles";
 
 type Props = {
   token: string;
@@ -87,7 +88,14 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onBack }: P
         ListEmptyComponent={<Text style={styles.empty}>Aucun espace disponible.</Text>}
         renderItem={({ item }) => (
           <Pressable style={styles.card} onPress={() => onSelectSpace(item)}>
-            <Text style={styles.spaceName}>{item.name}</Text>
+            <View style={styles.cardHeader}>
+              <Text style={styles.spaceName}>{item.name}</Text>
+              {item.user_role ? (
+                <View style={styles.roleBadge}>
+                  <Text style={styles.roleBadgeText}>{getRoleLabel(item.user_role)}</Text>
+                </View>
+              ) : null}
+            </View>
             {item.description ? <Text style={styles.description}>{item.description}</Text> : null}
           </Pressable>
         )}
@@ -149,10 +157,28 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
   },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   spaceName: {
     color: theme.colors.text,
     fontSize: 17,
     fontWeight: "700",
+    flexShrink: 1,
+  },
+  roleBadge: {
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginLeft: 8,
+  },
+  roleBadgeText: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+    fontSize: 12,
   },
   description: {
     marginTop: 4,
