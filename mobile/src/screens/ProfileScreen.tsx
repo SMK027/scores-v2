@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { ApiError, fetchProfile } from "../services/api";
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ApiError, fetchProfile, updateProfile } from "../services/api";
 import { theme } from "../styles/theme";
 import type { User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
@@ -52,13 +52,17 @@ function formatDate(value?: string): string {
 export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
   const [profile, setProfile] = useState<User>(fallbackUser);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingBio, setEditingBio] = useState(false);
+  const [bioDraft, setBioDraft] = useState(fallbackUser.bio ?? "");
 
   const loadProfile = useCallback(async () => {
     try {
       setError(null);
       const user = await fetchProfile(token);
       setProfile(user);
+      setBioDraft(user.bio ?? "");
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -80,6 +84,25 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
   const joinedLabel = useMemo(() => formatDate(profile.created_at), [profile.created_at]);
   const avatarUri = useMemo(() => getAvatarUri(profile.avatar), [profile.avatar]);
   const roleBadgeStyle = useMemo(() => getRoleBadgeStyle(profile.global_role), [profile.global_role]);
+
+  const saveBio = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      const updatedUser = await updateProfile(token, { bio: bioDraft.trim() });
+      setProfile(updatedUser);
+      setBioDraft(updatedUser.bio ?? "");
+      setEditingBio(false);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Impossible de mettre a jour la bio.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -125,8 +148,46 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
           </View>
         </View>
         <Text style={styles.meta}>Inscrit depuis: {joinedLabel}</Text>
-        <Text style={styles.bioLabel}>Bio</Text>
-        <Text style={styles.bio}>{profile.bio?.trim() ? profile.bio : "Aucune bio renseignee."}</Text>
+
+        <View style={styles.bioHeader}>
+          <Text style={styles.bioLabel}>Bio</Text>
+          {!editingBio ? (
+            <Pressable onPress={() => setEditingBio(true)}>
+              <Text style={styles.editLink}>Modifier</Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        {editingBio ? (
+          <>
+            <TextInput
+              value={bioDraft}
+              onChangeText={setBioDraft}
+              placeholder="Parlez un peu de vous"
+              style={styles.bioInput}
+              multiline
+              textAlignVertical="top"
+            />
+            <Pressable
+              style={[styles.primaryButton, saving ? styles.disabledButton : undefined]}
+              disabled={saving}
+              onPress={saveBio}
+            >
+              <Text style={styles.primaryButtonText}>{saving ? "Enregistrement..." : "Enregistrer la bio"}</Text>
+            </Pressable>
+            <Pressable
+              style={styles.cancelButton}
+              onPress={() => {
+                setBioDraft(profile.bio ?? "");
+                setEditingBio(false);
+              }}
+            >
+              <Text style={styles.cancelButtonText}>Annuler</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Text style={styles.bio}>{profile.bio?.trim() ? profile.bio : "Aucune bio renseignee."}</Text>
+        )}
       </View>
     </ScrollView>
   );
@@ -227,13 +288,55 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 13,
   },
-  bioLabel: {
-    color: theme.colors.mutedText,
-    fontWeight: "600",
+  bioHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginTop: 8,
     marginBottom: 4,
   },
+  bioLabel: {
+    color: theme.colors.mutedText,
+    fontWeight: "600",
+  },
+  editLink: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+  },
   bio: {
     color: theme.colors.text,
+  },
+  bioInput: {
+    minHeight: 110,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.card,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: theme.colors.text,
+  },
+  primaryButton: {
+    marginTop: 10,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.md,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  primaryButtonText: {
+    color: "#ffffff",
+    fontWeight: "700",
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  cancelButton: {
+    marginTop: 8,
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  cancelButtonText: {
+    color: theme.colors.mutedText,
+    fontWeight: "600",
   },
 });

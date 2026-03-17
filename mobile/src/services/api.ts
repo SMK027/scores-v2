@@ -67,6 +67,17 @@ export async function fetchProfile(token: string): Promise<User> {
   return response.user;
 }
 
+export async function updateProfile(
+  token: string,
+  payload: { username?: string; email?: string; bio?: string }
+): Promise<User> {
+  const response = await request<{ success: boolean; user: User }>("/api/profile", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  }, token);
+  return response.user;
+}
+
 export async function fetchSpaces(token: string): Promise<Space[]> {
   const response = await request<SpacesResponse>("/api/spaces", {}, token);
   return response.spaces;
