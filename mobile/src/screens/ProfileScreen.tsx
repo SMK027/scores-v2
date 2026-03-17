@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { ApiError, fetchProfile, updateProfile } from "../services/api";
+import { ApiError, fetchProfile, fetchProfileStats, updateProfile } from "../services/api";
 import { theme } from "../styles/theme";
-import type { User } from "../types/api";
+import type { ProfileStats, User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
 import { getRoleLabel } from "../utils/roles";
 
@@ -51,6 +51,7 @@ function formatDate(value?: string): string {
 
 export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
   const [profile, setProfile] = useState<User>(fallbackUser);
+  const [stats, setStats] = useState<ProfileStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,9 +61,13 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
   const loadProfile = useCallback(async () => {
     try {
       setError(null);
-      const user = await fetchProfile(token);
+      const [user, globalStats] = await Promise.all([
+        fetchProfile(token),
+        fetchProfileStats(token),
+      ]);
       setProfile(user);
       setBioDraft(user.bio ?? "");
+      setStats(globalStats);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -148,6 +153,27 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
           </View>
         </View>
         <Text style={styles.meta}>Inscrit depuis: {joinedLabel}</Text>
+
+        {stats ? (
+          <View style={styles.statsRow}>
+            <View style={styles.statBox}>
+              <Text style={styles.statValue}>{stats.total_games}</Text>
+              <Text style={styles.statLabel}>Parties</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statValue}>{stats.total_wins}</Text>
+              <Text style={styles.statLabel}>Victoires</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={[styles.statValue, styles.statValueAccent]}>{stats.win_rate}%</Text>
+              <Text style={styles.statLabel}>Taux de victoire</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statValue}>{stats.total_spaces}</Text>
+              <Text style={styles.statLabel}>Espaces</Text>
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.bioHeader}>
           <Text style={styles.bioLabel}>Bio</Text>
@@ -338,5 +364,33 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: theme.colors.mutedText,
     fontWeight: "600",
+  },
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 12,
+    marginBottom: 8,
+    gap: 8,
+  },
+  statBox: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.radius.md,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  statValue: {
+    color: theme.colors.text,
+    fontWeight: "700",
+    fontSize: 18,
+  },
+  statValueAccent: {
+    color: theme.colors.primary,
+  },
+  statLabel: {
+    color: theme.colors.mutedText,
+    fontSize: 11,
+    marginTop: 2,
+    textAlign: "center",
   },
 });
