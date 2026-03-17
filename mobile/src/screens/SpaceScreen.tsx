@@ -27,6 +27,40 @@ type Props = {
   onOpenGame: (gameId: number) => void;
 };
 
+function getStatusMeta(status: Game["status"]): {
+  label: string;
+  backgroundColor: string;
+  textColor: string;
+} {
+  switch (status) {
+    case "in_progress":
+      return {
+        label: "En cours",
+        backgroundColor: "#caefe5",
+        textColor: "#0b7a61",
+      };
+    case "completed":
+      return {
+        label: "Terminee",
+        backgroundColor: "#dfe0ff",
+        textColor: "#3d4bdf",
+      };
+    case "paused":
+      return {
+        label: "En pause",
+        backgroundColor: "#ffe8c5",
+        textColor: "#8a5a00",
+      };
+    case "pending":
+    default:
+      return {
+        label: "En attente",
+        backgroundColor: "#e9edf5",
+        textColor: "#5b6780",
+      };
+  }
+}
+
 export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
   const [loading, setLoading] = useState(true);
   const [games, setGames] = useState<Game[]>([]);
@@ -226,13 +260,20 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
         data={games}
         keyExtractor={(item) => String(item.id)}
         ListEmptyComponent={<Text style={styles.empty}>Aucune partie pour le moment.</Text>}
-        renderItem={({ item }) => (
-          <Pressable style={styles.gameCard} onPress={() => onOpenGame(item.id)}>
-            <Text style={styles.gameTitle}>{item.game_type_name || "Partie"}</Text>
-            <Text style={styles.gameMeta}>Statut: {item.status}</Text>
-            <Text style={styles.gameMeta}>Joueurs: {item.player_count ?? "-"}</Text>
-          </Pressable>
-        )}
+        renderItem={({ item }) => {
+          const statusMeta = getStatusMeta(item.status);
+          return (
+            <Pressable style={styles.gameCard} onPress={() => onOpenGame(item.id)}>
+              <View style={styles.gameRow}>
+                <Text style={styles.gameTitle}>{item.game_type_name || "Partie"}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: statusMeta.backgroundColor }]}>
+                  <Text style={[styles.statusText, { color: statusMeta.textColor }]}>{statusMeta.label}</Text>
+                </View>
+              </View>
+              <Text style={styles.gameMeta}>Joueurs: {item.player_count ?? "-"}</Text>
+            </Pressable>
+          );
+        }}
       />
     </View>
   );
@@ -361,6 +402,22 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontWeight: "700",
     fontSize: 16,
+    flex: 1,
+    marginRight: 10,
+  },
+  gameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  statusBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  statusText: {
+    fontWeight: "700",
+    fontSize: 13,
   },
   gameMeta: {
     color: theme.colors.mutedText,
