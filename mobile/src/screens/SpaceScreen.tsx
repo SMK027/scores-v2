@@ -330,10 +330,30 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
     [members]
   );
 
+  const linkedUserIds = useMemo(
+    () => new Set(players.map((player) => player.user_id).filter((userId): userId is number => userId !== null && userId !== undefined)),
+    [players]
+  );
+
+  const availableNewPlayerMemberOptions = useMemo(
+    () => memberOptions.filter((option) => !linkedUserIds.has(option.id)),
+    [linkedUserIds, memberOptions]
+  );
+
+  const availableEditMemberOptions = useMemo(
+    () => memberOptions.filter((option) => option.id === editPlayerUserId || !linkedUserIds.has(option.id)),
+    [editPlayerUserId, linkedUserIds, memberOptions]
+  );
+
   const createPlayerSubmit = async () => {
     const trimmed = newPlayerName.trim();
     if (!trimmed) {
       setError("Le nom du joueur est requis.");
+      return;
+    }
+
+    if (newPlayerUserId !== null && linkedUserIds.has(newPlayerUserId)) {
+      setError("Ce compte est deja rattache a un autre joueur de cet espace.");
       return;
     }
 
@@ -381,6 +401,17 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
     if (!trimmed) {
       setError("Le nom du joueur est requis.");
       return;
+    }
+
+    if (editPlayerUserId !== null) {
+      const conflictingPlayer = players.find(
+        (player) => player.id !== editingPlayerId && player.user_id === editPlayerUserId
+      );
+
+      if (conflictingPlayer) {
+        setError("Ce compte est deja rattache a un autre joueur de cet espace.");
+        return;
+      }
     }
 
     try {
@@ -630,7 +661,7 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
               label="Rattacher a un compte (optionnel)"
               query={newPlayerMemberQuery}
               onQueryChange={setNewPlayerMemberQuery}
-              options={memberOptions}
+              options={availableNewPlayerMemberOptions}
               onSelect={(id) => {
                 const member = members.find((m) => m.user_id === id);
                 setNewPlayerUserId(id);
@@ -704,7 +735,7 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
                       label="Rattacher a un compte (optionnel)"
                       query={editPlayerMemberQuery}
                       onQueryChange={setEditPlayerMemberQuery}
-                      options={memberOptions}
+                      options={availableEditMemberOptions}
                       onSelect={(id) => {
                         const member = members.find((m) => m.user_id === id);
                         setEditPlayerUserId(id);

@@ -64,10 +64,16 @@ class PlayerApiController extends ApiController
             $this->error('Le nom du joueur est requis.');
         }
 
+        $userId = !empty($data['user_id']) ? (int) $data['user_id'] : null;
+
+        if ($userId !== null && $this->model->isUserLinkedInSpace((int) $id, $userId)) {
+            $this->error('Ce compte est déjà rattaché à un autre joueur de cet espace.');
+        }
+
         $playerId = $this->model->create([
             'space_id' => (int) $id,
             'name'     => $name,
-            'user_id'  => !empty($data['user_id']) ? (int) $data['user_id'] : null,
+            'user_id'  => $userId,
         ]);
 
         ActivityLog::logSpace((int) $id, 'player.create', $this->userId, 'player', $playerId, ['name' => $name]);
@@ -96,9 +102,15 @@ class PlayerApiController extends ApiController
             $this->error('Le nom du joueur est requis.');
         }
 
+        $userId = !empty($data['user_id']) ? (int) $data['user_id'] : null;
+
+        if ($userId !== null && $this->model->isUserLinkedInSpace((int) $id, $userId, (int) $pid)) {
+            $this->error('Ce compte est déjà rattaché à un autre joueur de cet espace.');
+        }
+
         $this->model->update((int) $pid, [
             'name'    => $name,
-            'user_id' => !empty($data['user_id']) ? (int) $data['user_id'] : null,
+            'user_id' => $userId,
         ]);
 
         ActivityLog::logSpace((int) $id, 'player.update', $this->userId, 'player', (int) $pid, ['name' => $name]);
