@@ -248,13 +248,22 @@
         <?php if ($isStaff && $competition['status'] !== 'closed'): ?>
             <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/sessions/add" class="d-flex gap-1">
                 <?= csrf_field() ?>
-                <select name="referee_user_id" class="form-control form-control-sm" style="width:250px;">
-                    <option value="">Membre de l'espace (optionnel)</option>
-                    <?php foreach (($spaceMembers ?? []) as $m): ?>
-                        <option value="<?= (int) $m['id'] ?>"><?= e($m['username']) ?> (<?= e($m['email']) ?>)</option>
-                    <?php endforeach; ?>
-                </select>
-                <input type="text" name="referee_name" class="form-control form-control-sm" placeholder="Nom de l'arbitre" required style="width:150px;">
+                <div class="autocomplete-wrapper" style="position:relative;width:250px;">
+                    <input
+                        type="text"
+                        class="form-control form-control-sm"
+                        id="show_referee_member_search"
+                        placeholder="Membre de l'espace (optionnel)"
+                        autocomplete="off"
+                    >
+                    <input type="hidden" name="referee_user_id" id="show_referee_member_id">
+                    <div
+                        id="show_referee_member_options"
+                        class="autocomplete-list"
+                        style="display:none;position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;background:#fff;border:1px solid var(--gray-light);border-radius:var(--radius);margin-top:0.25rem;z-index:1000;box-shadow:0 4px 6px rgba(0,0,0,0.1);"
+                    ></div>
+                </div>
+                <input type="text" name="referee_name" class="form-control form-control-sm" placeholder="Nom de l'arbitre" style="width:150px;">
                 <input type="email" name="referee_email" class="form-control form-control-sm" placeholder="Email (optionnel)" style="width:200px;">
                 <button class="btn btn-sm btn-primary">+ Session</button>
             </form>
@@ -362,6 +371,75 @@
         <?php endif; ?>
     </div>
 </div>
+
+<script>
+(function() {
+    const memberSearch = document.getElementById('show_referee_member_search');
+    const memberHidden = document.getElementById('show_referee_member_id');
+    const memberOptions = document.getElementById('show_referee_member_options');
+
+    if (!memberSearch || !memberHidden || !memberOptions) {
+        return;
+    }
+
+    const members = <?= json_encode(array_map(fn($m) => [
+        'id' => (int) $m['id'],
+        'username' => $m['username'],
+        'email' => $m['email'] ?? '',
+    ], $spaceMembers ?? []), JSON_UNESCAPED_UNICODE) ?>;
+
+    function hideMemberOptions() {
+        memberOptions.style.display = 'none';
+    }
+
+    function renderMemberOptions(items) {
+        if (items.length === 0) {
+            memberOptions.innerHTML = '<div style="padding:0.65rem;color:var(--gray);">Aucun membre correspondant.</div>';
+            memberOptions.style.display = 'block';
+            return;
+        }
+
+        memberOptions.innerHTML = items.map((m) => {
+            const label = (m.username || '') + (m.email ? ' (' + m.email + ')' : '');
+            return '<div class="member-option" data-id="' + m.id + '" data-label="' + label.replace(/"/g, '&quot;') + '" style="padding:0.65rem;border-bottom:1px solid var(--gray-light);cursor:pointer;">'
+                + label
+                + '</div>';
+        }).join('');
+
+        memberOptions.querySelectorAll('.member-option').forEach((el) => {
+            el.addEventListener('click', () => {
+                memberHidden.value = el.dataset.id;
+                memberSearch.value = el.dataset.label;
+                hideMemberOptions();
+            });
+        });
+
+        memberOptions.style.display = 'block';
+    }
+
+    memberSearch.addEventListener('focus', () => {
+        renderMemberOptions(members);
+    });
+
+    memberSearch.addEventListener('input', () => {
+        const query = memberSearch.value.trim().toLowerCase();
+        memberHidden.value = '';
+        const filtered = query === ''
+            ? members
+            : members.filter((m) => {
+                const label = ((m.username || '') + ' ' + (m.email || '')).toLowerCase();
+                return label.includes(query);
+            });
+        renderMemberOptions(filtered);
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('.autocomplete-wrapper')) {
+            hideMemberOptions();
+        }
+    });
+})();
+</script>
 
 <!-- Classement -->
 <?php if (!empty($rankings)): ?>

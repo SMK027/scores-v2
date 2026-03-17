@@ -48,13 +48,12 @@
 
             <div id="sessionsContainer">
                 <div class="d-flex gap-1 mb-2 session-row">
-                    <select name="referee_user_ids[]" class="form-control" style="flex:1;">
-                        <option value="">Membre de l'espace (optionnel)</option>
-                        <?php foreach (($spaceMembers ?? []) as $m): ?>
-                            <option value="<?= (int) $m['id'] ?>"><?= e($m['username']) ?> (<?= e($m['email']) ?>)</option>
-                        <?php endforeach; ?>
-                    </select>
-                    <input type="text" name="referee_names[]" class="form-control" placeholder="Nom de l'arbitre" required style="flex:1;">
+                    <div class="autocomplete-wrapper" style="position:relative;flex:1;min-width:260px;">
+                        <input type="text" class="form-control referee-member-search" placeholder="Membre de l'espace (optionnel)" autocomplete="off">
+                        <input type="hidden" name="referee_user_ids[]" class="referee-user-id">
+                        <div class="autocomplete-list referee-member-options" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;background:#fff;border:1px solid var(--gray-light);border-radius:var(--radius);margin-top:0.25rem;z-index:1000;box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
+                    </div>
+                    <input type="text" name="referee_names[]" class="form-control" placeholder="Nom de l'arbitre (si pas de membre)" style="flex:1;">
                     <input type="email" name="referee_emails[]" class="form-control" placeholder="Email de l'arbitre" style="flex:1;">
                     <button type="button" class="btn btn-sm btn-outline" onclick="this.closest('.session-row').remove()" title="Supprimer">
                         <i class="bi bi-trash"></i>
@@ -74,21 +73,87 @@
 </div>
 
 <script>
+const refereeMembersData = <?= json_encode(array_map(fn($m) => [
+    'id' => (int) $m['id'],
+    'username' => (string) ($m['username'] ?? ''),
+    'email' => (string) ($m['email'] ?? ''),
+], $spaceMembers ?? []), JSON_UNESCAPED_UNICODE) ?>;
+
+function attachRefereeAutocomplete(row) {
+    const input = row.querySelector('.referee-member-search');
+    const hidden = row.querySelector('.referee-user-id');
+    const options = row.querySelector('.referee-member-options');
+    if (!input || !hidden || !options) {
+        return;
+    }
+
+    function hideOptions() {
+        options.style.display = 'none';
+    }
+
+    function renderOptions(items) {
+        if (items.length === 0) {
+            options.innerHTML = '<div style="padding:0.65rem;color:var(--gray);">Aucun membre correspondant.</div>';
+            options.style.display = 'block';
+            return;
+        }
+
+        options.innerHTML = items.map((m) => (
+            '<div class="referee-member-option" data-id="' + m.id + '" data-label="' + (m.username + ' (' + m.email + ')').replace(/"/g, '&quot;') + '" style="padding:0.65rem;border-bottom:1px solid var(--gray-light);cursor:pointer;display:flex;justify-content:space-between;gap:0.5rem;">'
+            + '<span>' + m.username + '</span>'
+            + '<span class="text-muted text-small">' + m.email + '</span>'
+            + '</div>'
+        )).join('');
+
+        options.querySelectorAll('.referee-member-option').forEach((el) => {
+            el.addEventListener('click', () => {
+                hidden.value = el.dataset.id;
+                input.value = el.dataset.label;
+                hideOptions();
+            });
+        });
+
+        options.style.display = 'block';
+    }
+
+    input.addEventListener('focus', () => renderOptions(refereeMembersData));
+    input.addEventListener('input', () => {
+        const query = input.value.trim().toLowerCase();
+        hidden.value = '';
+        const filtered = query === ''
+            ? refereeMembersData
+            : refereeMembersData.filter((m) =>
+                m.username.toLowerCase().includes(query)
+                || m.email.toLowerCase().includes(query)
+            );
+        renderOptions(filtered);
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('.autocomplete-wrapper')) {
+            hideOptions();
+        }
+    });
+}
+
 function addSessionRow() {
     const container = document.getElementById('sessionsContainer');
-    const memberOptionsHtml = <?= json_encode(implode('', array_map(static function ($m): string {
-        return '<option value="' . (int) $m['id'] . '">' . e($m['username']) . ' (' . e($m['email']) . ')</option>';
-    }, $spaceMembers ?? [])), JSON_UNESCAPED_UNICODE) ?>;
     const div = document.createElement('div');
     div.className = 'd-flex gap-1 mb-2 session-row';
-    div.innerHTML = '<select name="referee_user_ids[]" class="form-control" style="flex:1;">' +
-        '<option value="">Membre de l\'espace (optionnel)</option>' + memberOptionsHtml + '</select>' +
-        '<input type="text" name="referee_names[]" class="form-control" placeholder="Nom de l\'arbitre" required style="flex:1;">' +
+    div.innerHTML = '<div class="autocomplete-wrapper" style="position:relative;flex:1;min-width:260px;">' +
+        '<input type="text" class="form-control referee-member-search" placeholder="Membre de l\'espace (optionnel)" autocomplete="off">' +
+        '<input type="hidden" name="referee_user_ids[]" class="referee-user-id">' +
+        '<div class="autocomplete-list referee-member-options" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;background:#fff;border:1px solid var(--gray-light);border-radius:var(--radius);margin-top:0.25rem;z-index:1000;box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>' +
+        '</div>' +
+        '<input type="text" name="referee_names[]" class="form-control" placeholder="Nom de l\'arbitre (si pas de membre)" style="flex:1;">' +
         '<input type="email" name="referee_emails[]" class="form-control" placeholder="Email de l\'arbitre" style="flex:1;">' +
         '<button type="button" class="btn btn-sm btn-outline" onclick="this.closest(\'.session-row\').remove()" title="Supprimer"><i class="bi bi-trash"></i></button>';
     container.appendChild(div);
+    attachRefereeAutocomplete(div);
     div.querySelector('input').focus();
 }
+
+document.querySelectorAll('#sessionsContainer .session-row').forEach(attachRefereeAutocomplete);
 
 (function() {
     const availableGameTypes = <?= json_encode(array_map(fn($gt) => [
