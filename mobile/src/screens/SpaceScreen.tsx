@@ -1390,7 +1390,7 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
               <View style={styles.inviteLinkBox}>
                 <Text style={styles.inviteLinkLabel}>Lien valable 72h :</Text>
                 <Text style={styles.inviteLinkText} selectable>
-                  {`https://scores.leofranz.fr/join/${inviteToken}`}
+                  {`https://scores.leofranz.fr/spaces/join/${inviteToken}`}
                 </Text>
               </View>
             ) : null}
