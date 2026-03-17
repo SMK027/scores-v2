@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -110,6 +111,7 @@ function getWinConditionLabel(winCondition: GameType["win_condition"]): string {
 
 export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenGame }: Props) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
   const [games, setGames] = useState<Game[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -764,11 +766,16 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const isAdmin = space.user_role === "admin";
   const canManageMembers = isAdmin || space.user_role === "manager";
 
-  const navigationActions = [
+  const navigationActions: Array<{
+    key: Exclude<SpaceView, "menu">;
+    label: string;
+    icon: string;
+    onPress: () => void;
+  }> = [
     {
       key: "games",
       label: "Parties",
-      icon: "J",
+      icon: "#",
       onPress: () => setCurrentView("games" as const),
     },
     {
@@ -780,7 +787,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     {
       key: "stats",
       label: "Stats",
-      icon: "%",
+      icon: "=",
       onPress: () => setCurrentView("stats" as const),
     },
     {
@@ -795,22 +802,27 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       icon: "T",
       onPress: () => setCurrentView("gameTypes" as const),
     },
-    ...(canManageMembers
-      ? [
-          {
-            key: "members",
-            label: "Membres",
-            icon: "M",
-            onPress: () => {
-              setInviteToken(null);
-              setError(null);
-              setEditingMemberId(null);
-              setCurrentView("members");
-            },
-          },
-        ]
-      : []),
   ];
+
+  if (canManageMembers) {
+    navigationActions.push({
+      key: "members",
+      label: "Membres",
+      icon: "M",
+      onPress: () => {
+        setInviteToken(null);
+        setError(null);
+        setEditingMemberId(null);
+        setCurrentView("members");
+      },
+    });
+  }
+
+  const compactNav = width < 380;
+  const largeNav = width >= 720;
+  const estimatedItemWidth = compactNav ? 62 : 76;
+  const shouldScrollBottomNav = navigationActions.length * estimatedItemWidth > width - 24;
+  const bottomNavExtraHeight = compactNav ? 66 : 76;
 
   if (loading) {
     return (
@@ -821,7 +833,15 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   }
 
   return (
-    <View style={[styles.container, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingTop: Math.max(insets.top, 12) + 8,
+          paddingBottom: Math.max(insets.bottom, 8) + bottomNavExtraHeight,
+        },
+      ]}
+    >
       <View style={styles.header}>
         {currentView === "menu" ? (
           <Pressable onPress={onBack}>
@@ -1493,6 +1513,69 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
           </View>
         </ScrollView>
       ) : null}
+
+      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+        {shouldScrollBottomNav ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.bottomNavContent}
+          >
+            {navigationActions.map((action) => {
+              const active = currentView === action.key;
+              return (
+                <Pressable
+                  key={action.key}
+                  style={[
+                    styles.bottomNavItem,
+                    compactNav ? styles.bottomNavItemCompact : undefined,
+                    active ? styles.bottomNavItemActive : undefined,
+                  ]}
+                  onPress={action.onPress}
+                >
+                  <Text style={[styles.bottomNavIcon, active ? styles.bottomNavIconActive : undefined]}>
+                    {action.icon}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.bottomNavLabel,
+                      compactNav ? styles.bottomNavLabelCompact : undefined,
+                      active ? styles.bottomNavLabelActive : undefined,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {action.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        ) : (
+          <View style={[styles.bottomNavRow, largeNav ? styles.bottomNavRowLarge : undefined]}>
+            {navigationActions.map((action) => {
+              const active = currentView === action.key;
+              return (
+                <Pressable
+                  key={action.key}
+                  style={[
+                    styles.bottomNavItem,
+                    styles.bottomNavItemFluid,
+                    active ? styles.bottomNavItemActive : undefined,
+                  ]}
+                  onPress={action.onPress}
+                >
+                  <Text style={[styles.bottomNavIcon, active ? styles.bottomNavIconActive : undefined]}>
+                    {action.icon}
+                  </Text>
+                  <Text style={[styles.bottomNavLabel, active ? styles.bottomNavLabelActive : undefined]} numberOfLines={1}>
+                    {action.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -1591,6 +1674,72 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: "800",
     fontSize: 18,
+  },
+  bottomNav: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+  },
+  bottomNavContent: {
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 6,
+    gap: 8,
+  },
+  bottomNavRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 6,
+    gap: 8,
+  },
+  bottomNavRowLarge: {
+    justifyContent: "center",
+  },
+  bottomNavItem: {
+    minWidth: 74,
+    borderRadius: theme.radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  bottomNavItemCompact: {
+    minWidth: 62,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+  },
+  bottomNavItemFluid: {
+    flex: 1,
+    minWidth: 0,
+  },
+  bottomNavItemActive: {
+    backgroundColor: theme.colors.primarySoft,
+  },
+  bottomNavIcon: {
+    color: theme.colors.mutedText,
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  bottomNavIconActive: {
+    color: theme.colors.primary,
+  },
+  bottomNavLabel: {
+    marginTop: 2,
+    color: theme.colors.mutedText,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  bottomNavLabelCompact: {
+    fontSize: 10,
+  },
+  bottomNavLabelActive: {
+    color: theme.colors.primary,
   },
   menuCard: {
     backgroundColor: theme.colors.card,
