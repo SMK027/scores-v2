@@ -52,10 +52,23 @@
 <div class="card mb-3">
     <div class="card-header d-flex justify-between align-center">
         <h3>Manches (<?= count($rounds) ?>)</h3>
+        <?php
+        $hasActiveRound = false;
+        foreach ($rounds as $rCheck) {
+            if (($rCheck['status'] ?? '') !== 'completed') {
+                $hasActiveRound = true;
+                break;
+            }
+        }
+        ?>
         <?php if ($game['status'] !== 'completed'): ?>
             <form method="POST" action="/competition/games/<?= $game['id'] ?>/rounds/create">
                 <?= csrf_field() ?>
-                <button class="btn btn-sm btn-primary"><i class="bi bi-plus-circle"></i> Manche</button>
+                <button
+                    class="btn btn-sm btn-primary"
+                    <?= $hasActiveRound ? 'disabled' : '' ?>
+                    title="<?= $hasActiveRound ? 'Terminez la manche en cours avant d\'en créer une nouvelle.' : 'Ajouter une manche' ?>"
+                ><i class="bi bi-plus-circle"></i> Manche</button>
             </form>
         <?php endif; ?>
     </div>
