@@ -63,6 +63,12 @@ export async function login(email: string, password: string): Promise<{ token: s
   });
 }
 
+export async function refreshAuthToken(token: string): Promise<{ token: string; user: User }> {
+  return request<{ success: boolean; token: string; user: User }>("/api/refresh-token", {
+    method: "POST",
+  }, token);
+}
+
 export async function fetchProfile(token: string): Promise<User> {
   const response = await request<{ success: boolean; user: User }>("/api/profile", {}, token);
   return response.user;

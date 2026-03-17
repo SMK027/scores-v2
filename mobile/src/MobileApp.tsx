@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { SafeAreaView, StyleSheet } from "react-native";
+import { useEffect, useState } from "react";
+import { AppState, SafeAreaView, StyleSheet, View, ActivityIndicator } from "react-native";
+import { refreshAuthToken } from "./services/api";
+import { clearSession, loadSession, saveSession } from "./services/session";
 import { GameDetailScreen } from "./screens/GameDetailScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
@@ -22,6 +24,7 @@ export function MobileApp() {
   const [user, setUser] = useState<User | null>(null);
   const [route, setRoute] = useState<Route>({ name: "welcome" });
   const [previousRoute, setPreviousRoute] = useState<Route>({ name: "spaces" });
+  const [bootstrapping, setBootstrapping] = useState(true);
 
   const goToSpaces = () => setRoute({ name: "spaces" });
 
@@ -29,7 +32,79 @@ export function MobileApp() {
     setToken(null);
     setUser(null);
     setRoute({ name: "welcome" });
+    void clearSession();
   };
+
+  useEffect(() => {
+    const restore = async () => {
+      try {
+        const persisted = await loadSession();
+        if (!persisted) {
+          return;
+        }
+
+        const refreshed = await refreshAuthToken(persisted.token);
+        setToken(refreshed.token);
+        setUser(refreshed.user);
+        setRoute({ name: "spaces" });
+        await saveSession(refreshed.token, refreshed.user);
+      } catch {
+        await clearSession();
+      } finally {
+        setBootstrapping(false);
+      }
+    };
+
+    void restore();
+  }, []);
+
+  useEffect(() => {
+    if (bootstrapping) {
+      return;
+    }
+
+    const persist = async () => {
+      if (token && user) {
+        await saveSession(token, user);
+      }
+    };
+
+    void persist();
+  }, [bootstrapping, token, user]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active" || !token) {
+        return;
+      }
+
+      void (async () => {
+        try {
+          const refreshed = await refreshAuthToken(token);
+          setToken(refreshed.token);
+          setUser(refreshed.user);
+          await saveSession(refreshed.token, refreshed.user);
+        } catch {
+          setToken(null);
+          setUser(null);
+          setRoute({ name: "welcome" });
+          await clearSession();
+        }
+      })();
+    });
+
+    return () => subscription.remove();
+  }, [token]);
+
+  if (bootstrapping) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centered}>
+          <ActivityIndicator />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -42,6 +117,7 @@ export function MobileApp() {
             setToken(authToken);
             setUser(authUser);
             setRoute({ name: "spaces" });
+            void saveSession(authToken, authUser);
           }}
         />
       ) : null}
@@ -93,5 +169,10 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  centered: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
