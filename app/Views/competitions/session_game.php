@@ -119,11 +119,42 @@
                             </div>
                         </div>
 
-                        <form method="POST" action="/competition/games/<?= $game['id'] ?>/rounds/<?= $rid ?>/delete" class="mb-1" style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
-                            <?= csrf_field() ?>
-                            <input type="text" name="reason" class="form-control form-control-sm" placeholder="Motif obligatoire pour supprimer la manche" maxlength="255" required style="max-width:340px;">
-                            <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Supprimer cette manche et ses scores ? Le motif sera journalise.">🗑 Supprimer</button>
-                        </form>
+                        <div class="mb-1">
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-danger round-delete-open"
+                                data-dialog-id="delete-round-modal-<?= $rid ?>"
+                            >🗑 Supprimer</button>
+                        </div>
+
+                        <dialog id="delete-round-modal-<?= $rid ?>" class="round-delete-dialog" style="max-width:460px;width:calc(100% - 2rem);border:1px solid var(--gray-light);border-radius:var(--radius);padding:0;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+                            <form method="dialog" style="margin:0;">
+                                <div style="padding:1rem 1rem 0.5rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;">
+                                    <h3 style="margin:0;font-size:1.05rem;">Supprimer la manche <?= (int) $round['round_number'] ?></h3>
+                                    <button type="submit" class="btn btn-sm btn-outline" aria-label="Fermer">×</button>
+                                </div>
+                            </form>
+                            <form method="POST" action="/competition/games/<?= $game['id'] ?>/rounds/<?= $rid ?>/delete" style="padding:0 1rem 1rem;">
+                                <?= csrf_field() ?>
+                                <p class="text-muted text-small" style="margin-top:0;">Indiquez un motif obligatoire. Cette suppression sera enregistree dans les logs.</p>
+                                <div class="form-group">
+                                    <label for="delete-round-reason-<?= $rid ?>" class="form-label">Motif</label>
+                                    <input
+                                        type="text"
+                                        id="delete-round-reason-<?= $rid ?>"
+                                        name="reason"
+                                        class="form-control"
+                                        maxlength="255"
+                                        required
+                                        placeholder="Exemple: erreur de saisie ou manche creee par erreur"
+                                    >
+                                </div>
+                                <div class="d-flex gap-1 justify-between align-center" style="margin-top:1rem;flex-wrap:wrap;">
+                                    <button type="button" class="btn btn-sm btn-outline round-delete-cancel" data-dialog-id="delete-round-modal-<?= $rid ?>">Annuler</button>
+                                    <button type="submit" class="btn btn-sm btn-danger">Confirmer la suppression</button>
+                                </div>
+                            </form>
+                        </dialog>
 
                         <?php if (!$isCompleted): ?>
                             <!-- Formulaire de saisie des scores -->
@@ -189,3 +220,65 @@
         <?php endif; ?>
     </div>
 </div>
+
+<script>
+(function() {
+    const openButtons = document.querySelectorAll('.round-delete-open');
+    const cancelButtons = document.querySelectorAll('.round-delete-cancel');
+
+    openButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const dialogId = button.getAttribute('data-dialog-id');
+            const dialog = dialogId ? document.getElementById(dialogId) : null;
+            if (!dialog) {
+                return;
+            }
+
+            if (typeof dialog.showModal === 'function') {
+                dialog.showModal();
+            } else {
+                dialog.setAttribute('open', 'open');
+            }
+
+            const input = dialog.querySelector('input[name="reason"]');
+            if (input) {
+                window.setTimeout(() => input.focus(), 0);
+            }
+        });
+    });
+
+    cancelButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const dialogId = button.getAttribute('data-dialog-id');
+            const dialog = dialogId ? document.getElementById(dialogId) : null;
+            if (!dialog) {
+                return;
+            }
+
+            if (typeof dialog.close === 'function') {
+                dialog.close();
+            } else {
+                dialog.removeAttribute('open');
+            }
+        });
+    });
+
+    document.querySelectorAll('.round-delete-dialog').forEach((dialog) => {
+        dialog.addEventListener('click', (event) => {
+            const rect = dialog.getBoundingClientRect();
+            const inside = rect.top <= event.clientY
+                && event.clientY <= rect.top + rect.height
+                && rect.left <= event.clientX
+                && event.clientX <= rect.left + rect.width;
+
+            if (!inside) {
+                if (typeof dialog.close === 'function') {
+                    dialog.close();
+                } else {
+                    dialog.removeAttribute('open');
+                }
+            }
+        });
+    });
+})();
+</script>
