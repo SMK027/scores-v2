@@ -764,6 +764,54 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const isAdmin = space.user_role === "admin";
   const canManageMembers = isAdmin || space.user_role === "manager";
 
+  const navigationActions = [
+    {
+      key: "games",
+      label: "Parties",
+      icon: "J",
+      onPress: () => setCurrentView("games" as const),
+    },
+    {
+      key: "create",
+      label: "Nouvelle",
+      icon: "+",
+      onPress: () => setCurrentView("create" as const),
+    },
+    {
+      key: "stats",
+      label: "Stats",
+      icon: "%",
+      onPress: () => setCurrentView("stats" as const),
+    },
+    {
+      key: "players",
+      label: "Joueurs",
+      icon: "P",
+      onPress: () => setCurrentView("players" as const),
+    },
+    {
+      key: "gameTypes",
+      label: "Types",
+      icon: "T",
+      onPress: () => setCurrentView("gameTypes" as const),
+    },
+    ...(canManageMembers
+      ? [
+          {
+            key: "members",
+            label: "Membres",
+            icon: "M",
+            onPress: () => {
+              setInviteToken(null);
+              setError(null);
+              setEditingMemberId(null);
+              setCurrentView("members");
+            },
+          },
+        ]
+      : []),
+  ];
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -808,47 +856,19 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
       {currentView === "menu" ? (
         <View style={styles.menuContainer}>
-          <Text style={styles.sectionTitle}>Que souhaites-tu faire ?</Text>
+          <Text style={styles.sectionTitle}>Navigation</Text>
+          <Text style={styles.menuSubtitle}>Accede directement a chaque section de l'espace.</Text>
 
-          <Pressable style={styles.menuCard} onPress={() => setCurrentView("games")}>
-            <Text style={styles.menuTitle}>Consulter les parties</Text>
-            <Text style={styles.menuSubtitle}>Voir toutes les parties de cet espace</Text>
-          </Pressable>
-
-          <Pressable style={styles.menuCard} onPress={() => setCurrentView("create")}>
-            <Text style={styles.menuTitle}>Creer une partie</Text>
-            <Text style={styles.menuSubtitle}>Ouvrir le formulaire de creation</Text>
-          </Pressable>
-
-          <Pressable style={styles.menuCard} onPress={() => setCurrentView("stats")}>
-            <Text style={styles.menuTitle}>Consulter les statistiques</Text>
-            <Text style={styles.menuSubtitle}>Activite des joueurs et taux de victoire</Text>
-          </Pressable>
-
-          <Pressable style={styles.menuCard} onPress={() => setCurrentView("players")}>
-            <Text style={styles.menuTitle}>Gerer les joueurs</Text>
-            <Text style={styles.menuSubtitle}>Afficher, modifier, rattacher un compte, supprimer</Text>
-          </Pressable>
-
-          <Pressable style={styles.menuCard} onPress={() => setCurrentView("gameTypes")}>
-            <Text style={styles.menuTitle}>Gerer les types de jeu</Text>
-            <Text style={styles.menuSubtitle}>Afficher, creer, modifier et supprimer</Text>
-          </Pressable>
-
-          {canManageMembers ? (
-            <Pressable
-              style={styles.menuCard}
-              onPress={() => {
-                setInviteToken(null);
-                setError(null);
-                setEditingMemberId(null);
-                setCurrentView("members");
-              }}
-            >
-              <Text style={styles.menuTitle}>Gerer les membres</Text>
-              <Text style={styles.menuSubtitle}>Liste, roles, invitations et liens d\'acces</Text>
-            </Pressable>
-          ) : null}
+          <View style={styles.navGrid}>
+            {navigationActions.map((action) => (
+              <Pressable key={action.key} style={styles.navItem} onPress={action.onPress}>
+                <View style={styles.navIconCircle}>
+                  <Text style={styles.navIconGlyph}>{action.icon}</Text>
+                </View>
+                <Text style={styles.navLabel}>{action.label}</Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
       ) : null}
 
@@ -1535,6 +1555,42 @@ const styles = StyleSheet.create({
   },
   menuContainer: {
     gap: 10,
+  },
+  navGrid: {
+    marginTop: 6,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  navItem: {
+    width: "31%",
+    minWidth: 96,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.card,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  navIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: theme.colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  navLabel: {
+    color: theme.colors.text,
+    fontWeight: "700",
+    fontSize: 13,
+    textAlign: "center",
+  },
+  navIconGlyph: {
+    color: theme.colors.primary,
+    fontWeight: "800",
+    fontSize: 18,
   },
   menuCard: {
     backgroundColor: theme.colors.card,
