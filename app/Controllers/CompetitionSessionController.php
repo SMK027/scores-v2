@@ -271,10 +271,10 @@ class CompetitionSessionController extends Controller
         $games = $stmt->fetchAll();
 
         // Types de jeu de l'espace
-        $gameTypes = $this->gameType->findBy(['space_id' => $data['space_id']], 'name');
+        $gameTypes = $this->competition->getAllowedGameTypes((int) $data['competition_id']);
 
-        // Joueurs de l'espace
-        $players = $this->player->findBy(['space_id' => $data['space_id']], 'name');
+        // Joueurs inscrits à la compétition
+        $players = $this->competition->getRegisteredPlayers((int) $data['competition_id']);
         $restrictedPlayerIds = $this->getRestrictedCompetitionPlayerIds((int) $data['space_id']);
 
         $this->renderMinimal('competitions/session_dashboard', [
@@ -315,10 +315,17 @@ class CompetitionSessionController extends Controller
             return;
         }
 
-        // Vérifier que le type de jeu appartient bien à l'espace
+        // Vérifier que le type de jeu est autorisé pour cette compétition
+        $allowedTypeIds = $this->competition->getAllowedGameTypeIds((int) $data['competition_id']);
+        if (!in_array($gameTypeId, $allowedTypeIds, true)) {
+            $this->setFlash('danger', 'Type de jeu non autorisé pour cette compétition.');
+            $this->redirect('/competition/dashboard');
+            return;
+        }
+
         $gameType = $this->gameType->find($gameTypeId);
-        if (!$gameType || (int) $gameType['space_id'] !== $data['space_id']) {
-            $this->setFlash('danger', 'Type de jeu invalide.');
+        if (!$gameType || (int) $gameType['space_id'] !== (int) $data['space_id']) {
+            $this->setFlash('danger', 'Type de jeu invalide pour cet espace.');
             $this->redirect('/competition/dashboard');
             return;
         }
@@ -354,6 +361,18 @@ class CompetitionSessionController extends Controller
             $this->setFlash('danger', 'Sélection de joueurs invalide pour cette compétition.');
             $this->redirect('/competition/dashboard');
             return;
+        }
+
+        // Vérifier que tous les joueurs sont inscrits à la compétition.
+        $registeredPlayers = $this->competition->getRegisteredPlayers((int) $data['competition_id']);
+        $registeredIds = array_map(static fn(array $p): int => (int) $p['id'], $registeredPlayers);
+        $registeredSet = array_flip($registeredIds);
+        foreach ($playerIds as $pid) {
+            if (!isset($registeredSet[(int) $pid])) {
+                $this->setFlash('danger', 'Tous les joueurs doivent être inscrits à la compétition.');
+                $this->redirect('/competition/dashboard');
+                return;
+            }
         }
 
         // Bloquer les joueurs liés à des comptes restreints pour les compétitions.

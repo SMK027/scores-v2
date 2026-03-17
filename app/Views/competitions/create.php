@@ -29,6 +29,22 @@
                 </div>
             </div>
 
+            <div class="form-group">
+                <label class="form-label">Types de jeu autorisés *</label>
+                <div class="d-flex gap-1 flex-wrap">
+                    <?php foreach (($gameTypes ?? []) as $gt): ?>
+                        <label style="display:flex;align-items:center;gap:0.45rem;cursor:pointer;border:1px solid var(--gray-light);padding:0.35rem 0.55rem;border-radius:8px;">
+                            <input type="checkbox" name="allowed_game_type_ids[]" value="<?= (int) $gt['id'] ?>">
+                            <span>
+                                <strong><?= e($gt['name']) ?></strong>
+                                <span class="text-muted text-small">(<?= win_condition_label($gt['win_condition']) ?>)</span>
+                            </span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+                <span class="form-hint">Seuls ces types seront proposés aux arbitres pendant la compétition.</span>
+            </div>
+
             <hr>
             <h3>Sessions (tables / arbitres)</h3>
             <p class="text-muted text-small">

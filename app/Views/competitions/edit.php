@@ -33,6 +33,23 @@
             </div>
 
             <div class="form-group">
+                <label class="form-label">Types de jeu autorisés *</label>
+                <div class="d-flex gap-1 flex-wrap">
+                    <?php $selected = array_map('intval', $selectedGameTypeIds ?? []); ?>
+                    <?php foreach (($gameTypes ?? []) as $gt): ?>
+                        <?php $checked = in_array((int) $gt['id'], $selected, true); ?>
+                        <label style="display:flex;align-items:center;gap:0.45rem;cursor:pointer;border:1px solid var(--gray-light);padding:0.35rem 0.55rem;border-radius:8px;">
+                            <input type="checkbox" name="allowed_game_type_ids[]" value="<?= (int) $gt['id'] ?>" <?= $checked ? 'checked' : '' ?>>
+                            <span>
+                                <strong><?= e($gt['name']) ?></strong>
+                                <span class="text-muted text-small">(<?= win_condition_label($gt['win_condition']) ?>)</span>
+                            </span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <div class="form-group">
                 <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
             </div>
         </form>

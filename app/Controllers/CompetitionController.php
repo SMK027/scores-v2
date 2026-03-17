@@ -10,6 +10,7 @@ use App\Core\Middleware;
 use App\Models\Competition;
 use App\Models\CompetitionSession;
 use App\Models\Space;
+use App\Models\User;
 use App\Models\Game;
 use App\Models\GamePlayer;
 use App\Models\Player;
@@ -28,6 +29,7 @@ class CompetitionController extends Controller
     private Competition $competition;
     private CompetitionSession $session;
     private Space $spaceModel;
+    private Player $player;
     private \PDO $pdo;
 
     public function __construct()
@@ -35,6 +37,7 @@ class CompetitionController extends Controller
         $this->competition = new Competition();
         $this->session     = new CompetitionSession();
         $this->spaceModel  = new Space();
+        $this->player      = new Player();
         $this->pdo         = Database::getInstance()->getConnection();
     }
 
@@ -94,12 +97,14 @@ class CompetitionController extends Controller
             $this->redirect('/spaces');
         }
         $member = Middleware::checkSpaceAccess((int) $id, $this->getCurrentUserId());
+        $gameTypes = (new GameType())->findBySpace((int) $id);
 
         $this->render('competitions/create', [
             'title'        => 'Nouvelle compétition',
             'currentSpace' => $space,
             'spaceRole'    => $member['role'] ?? 'admin',
             'activeMenu'   => 'competitions',
+            'gameTypes'    => $gameTypes,
         ]);
     }
 
@@ -119,6 +124,7 @@ class CompetitionController extends Controller
         }
 
         $data = $this->getPostData(['name', 'description', 'starts_at', 'ends_at']);
+        $allowedGameTypeIds = array_values(array_unique(array_map('intval', (array) ($_POST['allowed_game_type_ids'] ?? []))));
         $refereeNames  = $_POST['referee_names'] ?? [];
         $refereeEmails = $_POST['referee_emails'] ?? [];
 
@@ -130,6 +136,12 @@ class CompetitionController extends Controller
 
         if (empty($refereeNames) || count(array_filter($refereeNames, fn($n) => trim($n) !== '')) === 0) {
             $this->setFlash('danger', 'Vous devez ajouter au moins une session avec un nom d\'arbitre.');
+            $this->redirect("/spaces/{$id}/competitions/create");
+            return;
+        }
+
+        if (empty($allowedGameTypeIds)) {
+            $this->setFlash('danger', 'Vous devez sélectionner au moins un type de jeu autorisé.');
             $this->redirect("/spaces/{$id}/competitions/create");
             return;
         }
@@ -154,6 +166,15 @@ class CompetitionController extends Controller
             'ends_at'     => $data['ends_at'],
             'created_by'  => $this->getCurrentUserId(),
         ]);
+
+        try {
+            $this->competition->syncAllowedGameTypes($competitionId, (int) $id, $allowedGameTypeIds);
+        } catch (\InvalidArgumentException $e) {
+            $this->competition->delete((int) $competitionId);
+            $this->setFlash('danger', $e->getMessage());
+            $this->redirect("/spaces/{$id}/competitions/create");
+            return;
+        }
 
         // Créer les sessions
         $created = $this->session->createBatch($competitionId, $referees);
@@ -203,6 +224,16 @@ class CompetitionController extends Controller
 
         $sessions = $this->session->findByCompetition((int) $cid);
         $isStaff = Middleware::isGlobalStaff();
+        $allowedGameTypes = $this->competition->getAllowedGameTypes((int) $cid);
+        $registeredPlayers = $this->competition->getRegisteredPlayers((int) $cid);
+        $allSpacePlayers = $this->player->findBySpace((int) $id);
+
+        $currentUserId = (int) ($this->getCurrentUserId() ?? 0);
+        $linkedPlayerId = $this->findLinkedPlayerIdInSpace((int) $id, $currentUserId);
+        $canSelfRegister = $linkedPlayerId !== null;
+        $isSelfRegistered = $linkedPlayerId !== null
+            ? $this->competition->isPlayerRegistered((int) $cid, $linkedPlayerId)
+            : false;
 
         // Parties de la compétition
         $stmt = $this->pdo->prepare("
@@ -231,6 +262,12 @@ class CompetitionController extends Controller
             'games'        => $games,
             'rankings'     => $rankings,
             'isStaff'      => $isStaff,
+            'allowedGameTypes' => $allowedGameTypes,
+            'registeredPlayers' => $registeredPlayers,
+            'allSpacePlayers' => $allSpacePlayers,
+            'canSelfRegister' => $canSelfRegister,
+            'linkedPlayerId' => $linkedPlayerId,
+            'isSelfRegistered' => $isSelfRegistered,
         ]);
     }
 
@@ -255,12 +292,17 @@ class CompetitionController extends Controller
             return;
         }
 
+        $gameTypes = (new GameType())->findBySpace((int) $id);
+        $selectedGameTypeIds = $this->competition->getAllowedGameTypeIds((int) $cid);
+
         $this->render('competitions/edit', [
             'title'        => 'Modifier la compétition',
             'currentSpace' => $space,
             'spaceRole'    => $member['role'] ?? 'admin',
             'activeMenu'   => 'competitions',
             'competition'  => $competition,
+            'gameTypes'    => $gameTypes,
+            'selectedGameTypeIds' => $selectedGameTypeIds,
         ]);
     }
 
@@ -280,9 +322,16 @@ class CompetitionController extends Controller
         }
 
         $data = $this->getPostData(['name', 'description', 'starts_at', 'ends_at']);
+        $allowedGameTypeIds = array_values(array_unique(array_map('intval', (array) ($_POST['allowed_game_type_ids'] ?? []))));
 
         if (empty($data['name']) || empty($data['starts_at']) || empty($data['ends_at'])) {
             $this->setFlash('danger', 'Le nom, la date de début et la date de fin sont requis.');
+            $this->redirect("/spaces/{$id}/competitions/{$cid}/edit");
+            return;
+        }
+
+        if (empty($allowedGameTypeIds)) {
+            $this->setFlash('danger', 'Vous devez sélectionner au moins un type de jeu autorisé.');
             $this->redirect("/spaces/{$id}/competitions/{$cid}/edit");
             return;
         }
@@ -294,9 +343,124 @@ class CompetitionController extends Controller
             'ends_at'     => $data['ends_at'],
         ]);
 
+        try {
+            $this->competition->syncAllowedGameTypes((int) $cid, (int) $id, $allowedGameTypeIds);
+        } catch (\InvalidArgumentException $e) {
+            $this->setFlash('danger', $e->getMessage());
+            $this->redirect("/spaces/{$id}/competitions/{$cid}/edit");
+            return;
+        }
+
         ActivityLog::logCompetition((int) $cid, 'competition.update', $this->getCurrentUserId(), 'competition', (int) $cid, null, ['name' => $data['name']]);
 
         $this->setFlash('success', 'Compétition mise à jour.');
+        $this->redirect("/spaces/{$id}/competitions/{$cid}");
+    }
+
+    /**
+     * Inscription volontaire de l'utilisateur connecté à une compétition.
+     */
+    public function registerSelf(string $id, string $cid): void
+    {
+        $this->requireAuth();
+        $this->validateCSRF();
+        $this->checkUserRestriction('competitions_participation', null, "/spaces/{$id}/competitions/{$cid}");
+
+        $competition = $this->competition->find((int) $cid);
+        if (!$competition || (int) $competition['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Compétition introuvable.');
+            $this->redirect("/spaces/{$id}/competitions");
+            return;
+        }
+
+        if ((string) $competition['status'] === 'closed') {
+            $this->setFlash('danger', 'Cette compétition est clôturée.');
+            $this->redirect("/spaces/{$id}/competitions/{$cid}");
+            return;
+        }
+
+        $playerId = $this->findLinkedPlayerIdInSpace((int) $id, (int) $this->getCurrentUserId());
+        if ($playerId === null) {
+            $this->setFlash('danger', 'Aucun joueur lié à votre compte n\'est disponible dans cet espace.');
+            $this->redirect("/spaces/{$id}/competitions/{$cid}");
+            return;
+        }
+
+        $this->competition->registerPlayer((int) $cid, (int) $playerId, (int) $this->getCurrentUserId());
+
+        ActivityLog::logCompetition((int) $cid, 'competition.player_register_self', (int) $this->getCurrentUserId(), 'player', (int) $playerId, null);
+
+        $this->setFlash('success', 'Vous êtes inscrit à la compétition.');
+        $this->redirect("/spaces/{$id}/competitions/{$cid}");
+    }
+
+    /**
+     * Inscription d'un joueur par un membre de l'équipe de gestion.
+     */
+    public function addParticipant(string $id, string $cid): void
+    {
+        $this->requireStaff();
+        $this->validateCSRF();
+
+        $competition = $this->competition->find((int) $cid);
+        if (!$competition || (int) $competition['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Compétition introuvable.');
+            $this->redirect("/spaces/{$id}/competitions");
+            return;
+        }
+
+        $playerId = (int) ($_POST['player_id'] ?? 0);
+        if ($playerId <= 0) {
+            $this->setFlash('danger', 'Sélection de joueur invalide.');
+            $this->redirect("/spaces/{$id}/competitions/{$cid}");
+            return;
+        }
+
+        $player = $this->player->find($playerId);
+        if (!$player || (int) $player['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Joueur introuvable dans cet espace.');
+            $this->redirect("/spaces/{$id}/competitions/{$cid}");
+            return;
+        }
+
+        if (!empty($player['user_id'])) {
+            $linkedUserId = (int) $player['user_id'];
+            $userModel = new User();
+            if ($userModel->isRestricted($linkedUserId, 'competitions_participation') || $userModel->isRestricted($linkedUserId, 'games_participation')) {
+                $this->setFlash('danger', 'Ce joueur lié à un compte est restreint pour la participation aux compétitions/parties.');
+                $this->redirect("/spaces/{$id}/competitions/{$cid}");
+                return;
+            }
+        }
+
+        $this->competition->registerPlayer((int) $cid, $playerId, (int) $this->getCurrentUserId());
+
+        ActivityLog::logCompetition((int) $cid, 'competition.player_register_staff', (int) $this->getCurrentUserId(), 'player', $playerId, null);
+
+        $this->setFlash('success', 'Joueur inscrit à la compétition.');
+        $this->redirect("/spaces/{$id}/competitions/{$cid}");
+    }
+
+    /**
+     * Désinscription d'un joueur de la compétition.
+     */
+    public function removeParticipant(string $id, string $cid, string $pid): void
+    {
+        $this->requireStaff();
+        $this->validateCSRF();
+
+        $competition = $this->competition->find((int) $cid);
+        if (!$competition || (int) $competition['space_id'] !== (int) $id) {
+            $this->setFlash('danger', 'Compétition introuvable.');
+            $this->redirect("/spaces/{$id}/competitions");
+            return;
+        }
+
+        $this->competition->unregisterPlayer((int) $cid, (int) $pid);
+
+        ActivityLog::logCompetition((int) $cid, 'competition.player_unregister', (int) $this->getCurrentUserId(), 'player', (int) $pid, null);
+
+        $this->setFlash('success', 'Joueur désinscrit de la compétition.');
         $this->redirect("/spaces/{$id}/competitions/{$cid}");
     }
 
@@ -695,5 +859,30 @@ class CompetitionController extends Controller
         );
 
         return $result;
+    }
+
+    /**
+     * Retourne l'ID du joueur lié à un utilisateur dans un espace, ou null.
+     */
+    private function findLinkedPlayerIdInSpace(int $spaceId, int $userId): ?int
+    {
+        if ($userId <= 0) {
+            return null;
+        }
+
+        $stmt = $this->pdo->prepare(
+            "SELECT id
+             FROM players
+             WHERE space_id = :space_id
+               AND user_id = :user_id
+             LIMIT 1"
+        );
+        $stmt->execute([
+            'space_id' => $spaceId,
+            'user_id' => $userId,
+        ]);
+
+        $value = $stmt->fetchColumn();
+        return $value !== false ? (int) $value : null;
     }
 }

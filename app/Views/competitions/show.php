@@ -71,6 +71,92 @@
     </div>
 </div>
 
+<div class="card mb-3">
+    <div class="card-header">
+        <h3>Types de jeu autorisés (<?= count($allowedGameTypes ?? []) ?>)</h3>
+    </div>
+    <div class="card-body">
+        <?php if (empty($allowedGameTypes)): ?>
+            <p class="text-muted">Aucun type de jeu autorisé.</p>
+        <?php else: ?>
+            <div class="d-flex gap-1 flex-wrap">
+                <?php foreach ($allowedGameTypes as $gt): ?>
+                    <span class="badge badge-primary"><?= e($gt['name']) ?></span>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header d-flex justify-between align-center">
+        <h3>Compétiteurs inscrits (<?= count($registeredPlayers ?? []) ?>)</h3>
+        <?php if (!empty($canSelfRegister) && !$isSelfRegistered && $competition['status'] !== 'closed'): ?>
+            <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/register" style="display:inline;">
+                <?= csrf_field() ?>
+                <button class="btn btn-sm btn-success" data-confirm="Confirmer votre inscription à cette compétition ?">Je m'inscris</button>
+            </form>
+        <?php elseif (!empty($isSelfRegistered)): ?>
+            <span class="badge badge-success">Vous êtes inscrit</span>
+        <?php endif; ?>
+    </div>
+    <div class="card-body">
+        <?php if ($isStaff && $competition['status'] !== 'closed'): ?>
+            <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/participants/add" class="d-flex gap-1 mb-2 flex-wrap">
+                <?= csrf_field() ?>
+                <select name="player_id" class="form-control form-control-sm" required style="max-width:320px;">
+                    <option value="">Ajouter un joueur inscrit à l'espace...</option>
+                    <?php foreach (($allSpacePlayers ?? []) as $p): ?>
+                        <option value="<?= (int) $p['id'] ?>"><?= e($p['name']) ?><?= !empty($p['linked_username']) ? ' (compte: ' . e($p['linked_username']) . ')' : '' ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <button class="btn btn-sm btn-outline">+ Inscrire</button>
+            </form>
+            <p class="text-muted text-small">Un joueur sans compte lié doit être inscrit ici par un membre de l'équipe.</p>
+        <?php endif; ?>
+
+        <?php if (empty($registeredPlayers)): ?>
+            <p class="text-muted">Aucun compétiteur inscrit pour le moment.</p>
+        <?php else: ?>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Joueur</th>
+                            <th>Compte lié</th>
+                            <th>Inscription</th>
+                            <?php if ($isStaff): ?><th></th><?php endif; ?>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($registeredPlayers as $rp): ?>
+                            <tr>
+                                <td><strong><?= e($rp['name']) ?></strong></td>
+                                <td>
+                                    <?php if (!empty($rp['linked_username'])): ?>
+                                        <span class="badge badge-info"><?= e($rp['linked_username']) ?></span>
+                                    <?php else: ?>
+                                        <span class="text-muted">Aucun</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-muted text-small"><?= !empty($rp['registered_at']) ? date('d/m/Y H:i', strtotime($rp['registered_at'])) : '—' ?></td>
+                                <?php if ($isStaff): ?>
+                                    <td>
+                                        <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/competitions/<?= $competition['id'] ?>/participants/<?= (int) $rp['id'] ?>/remove" style="display:inline;">
+                                            <?= csrf_field() ?>
+                                            <button class="btn btn-sm btn-outline" data-confirm="Désinscrire ce joueur de la compétition ?">Retirer</button>
+                                        </form>
+                                    </td>
+                                <?php endif; ?>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
 <!-- Sessions -->
 <div class="card mb-3">
     <div class="card-header d-flex justify-between align-center">
