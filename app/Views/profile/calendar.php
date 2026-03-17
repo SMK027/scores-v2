@@ -290,7 +290,7 @@ $queryBase = [
     function getToolbar(mobile) {
         return mobile
             ? { left: 'prev,next', center: 'title', right: 'today' }
-            : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,dayGridWeek,listMonth' };
+            : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listMonth' };
     }
 
     calendar = new FullCalendar.Calendar(calendarEl, {
@@ -298,6 +298,16 @@ $queryBase = [
         initialView: isMobile ? 'listMonth' : 'dayGridMonth',
         headerToolbar: getToolbar(isMobile),
         buttonText: { today: "Aujourd'hui", month: 'Mois', week: 'Semaine', list: 'Liste' },
+        views: {
+            timeGridWeek: {
+                allDaySlot: true,
+                slotMinTime: '06:00:00',
+                slotMaxTime: '23:00:00',
+                expandRows: true
+            }
+        },
+        eventOrder: 'start,-duration,allDay,title',
+        displayEventEnd: true,
         height: 'auto',
         events: {
             url: '/profile/calendar/events?' + filterParams.toString(),
