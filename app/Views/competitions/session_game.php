@@ -81,9 +81,10 @@
                 $rid = $round['id'];
                 $rScores = $roundScores[$rid] ?? [];
                 $isCompleted = $round['status'] === 'completed';
+                $isPaused = $round['status'] === 'paused';
                 $dur = $roundDurations[$rid] ?? ['play' => 0, 'pause' => 0];
                 ?>
-                <div class="card mb-2" style="border-left:3px solid <?= $isCompleted ? 'var(--success)' : 'var(--primary)' ?>;">
+                <div class="card mb-2" style="border-left:3px solid <?= $isCompleted ? 'var(--success)' : ($isPaused ? 'var(--warning)' : 'var(--primary)') ?>;">
                     <div class="card-body">
                         <div class="d-flex justify-between align-center mb-1">
                             <strong>Manche <?= (int) $round['round_number'] ?></strong>
@@ -93,13 +94,36 @@
                                         <?= gmdate('H:i:s', $dur['play']) ?>
                                     </span>
                                 <?php endif; ?>
+                                <?php if (!$isCompleted): ?>
+                                    <?php if (($round['status'] ?? '') === 'in_progress'): ?>
+                                        <form method="POST" action="/competition/games/<?= $game['id'] ?>/rounds/<?= $rid ?>/status" style="display:inline;">
+                                            <?= csrf_field() ?>
+                                            <input type="hidden" name="status" value="paused">
+                                            <button type="submit" class="btn btn-sm btn-warning" data-confirm="Mettre cette manche en pause ?" title="Pause">⏸</button>
+                                        </form>
+                                    <?php elseif (($round['status'] ?? '') === 'paused'): ?>
+                                        <form method="POST" action="/competition/games/<?= $game['id'] ?>/rounds/<?= $rid ?>/status" style="display:inline;">
+                                            <?= csrf_field() ?>
+                                            <input type="hidden" name="status" value="in_progress">
+                                            <button type="submit" class="btn btn-sm btn-success" data-confirm="Reprendre cette manche ?" title="Reprendre">▶</button>
+                                        </form>
+                                    <?php endif; ?>
+                                <?php endif; ?>
                                 <?php if ($isCompleted): ?>
                                     <span class="badge badge-success">Terminée</span>
                                 <?php else: ?>
-                                    <span class="badge badge-primary">En cours</span>
+                                    <span class="badge <?= ($round['status'] ?? '') === 'paused' ? 'badge-warning' : 'badge-primary' ?>">
+                                        <?= ($round['status'] ?? '') === 'paused' ? 'En pause' : 'En cours' ?>
+                                    </span>
                                 <?php endif; ?>
                             </div>
                         </div>
+
+                        <form method="POST" action="/competition/games/<?= $game['id'] ?>/rounds/<?= $rid ?>/delete" class="mb-1" style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+                            <?= csrf_field() ?>
+                            <input type="text" name="reason" class="form-control form-control-sm" placeholder="Motif obligatoire pour supprimer la manche" maxlength="255" required style="max-width:340px;">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Supprimer cette manche et ses scores ? Le motif sera journalise.">🗑 Supprimer</button>
+                        </form>
 
                         <?php if (!$isCompleted): ?>
                             <!-- Formulaire de saisie des scores -->

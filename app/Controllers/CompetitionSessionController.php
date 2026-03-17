@@ -726,6 +726,140 @@ class CompetitionSessionController extends Controller
     }
 
     /**
+     * Met à jour le statut d'une manche depuis la session arbitre.
+     */
+    public function updateRoundStatus(string $gid, string $rid): void
+    {
+        $data = $this->requireSession();
+
+        if (!CSRF::validate($_POST['csrf_token'] ?? '')) {
+            $this->setFlash('danger', 'Token de sécurité invalide.');
+            $this->redirect("/competition/games/{$gid}");
+            return;
+        }
+
+        $game = $this->game->find((int) $gid);
+        if (!$game || (int) $game['session_id'] !== (int) $data['session_id']) {
+            $this->setFlash('danger', 'Partie introuvable.');
+            $this->redirect('/competition/dashboard');
+            return;
+        }
+
+        $round = $this->round->find((int) $rid);
+        if (!$round || (int) $round['game_id'] !== (int) $gid) {
+            $this->setFlash('danger', 'Manche introuvable.');
+            $this->redirect("/competition/games/{$gid}");
+            return;
+        }
+
+        $status = trim((string) ($_POST['status'] ?? ''));
+        $allowed = ['in_progress', 'paused', 'completed'];
+        if (!in_array($status, $allowed, true)) {
+            $this->setFlash('danger', 'Statut invalide.');
+            $this->redirect("/competition/games/{$gid}");
+            return;
+        }
+
+        if ($status === 'paused' && $round['status'] !== 'in_progress') {
+            $this->setFlash('warning', 'Seule une manche en cours peut être mise en pause.');
+            $this->redirect("/competition/games/{$gid}");
+            return;
+        }
+
+        if ($status === 'in_progress' && $round['status'] !== 'paused') {
+            $this->setFlash('warning', 'Seule une manche en pause peut être reprise.');
+            $this->redirect("/competition/games/{$gid}");
+            return;
+        }
+
+        if ($status === 'paused') {
+            $this->roundPause->startPause((int) $rid);
+        } elseif ($status === 'in_progress') {
+            $this->roundPause->endPause((int) $rid);
+        } elseif ($status === 'completed') {
+            $this->roundPause->endAllOpenPauses((int) $rid);
+        }
+
+        $this->round->updateStatus((int) $rid, $status);
+
+        if ($status === 'completed') {
+            $this->game->recalculateTotals((int) $gid);
+        }
+
+        ActivityLog::logCompetition(
+            (int) $data['competition_id'],
+            'session.round_status_change',
+            null,
+            'round',
+            (int) $rid,
+            (int) $data['session_id'],
+            ['game_id' => (int) $gid, 'status' => $status]
+        );
+
+        $labels = [
+            'in_progress' => 'reprise',
+            'paused' => 'mise en pause',
+            'completed' => 'terminée',
+        ];
+        $this->setFlash('success', 'Manche ' . ($labels[$status] ?? $status) . '.');
+        $this->redirect("/competition/games/{$gid}");
+    }
+
+    /**
+     * Supprime une manche depuis la session arbitre avec motif obligatoire.
+     */
+    public function deleteRound(string $gid, string $rid): void
+    {
+        $data = $this->requireSession();
+
+        if (!CSRF::validate($_POST['csrf_token'] ?? '')) {
+            $this->setFlash('danger', 'Token de sécurité invalide.');
+            $this->redirect("/competition/games/{$gid}");
+            return;
+        }
+
+        $game = $this->game->find((int) $gid);
+        if (!$game || (int) $game['session_id'] !== (int) $data['session_id']) {
+            $this->setFlash('danger', 'Partie introuvable.');
+            $this->redirect('/competition/dashboard');
+            return;
+        }
+
+        $round = $this->round->find((int) $rid);
+        if (!$round || (int) $round['game_id'] !== (int) $gid) {
+            $this->setFlash('danger', 'Manche introuvable.');
+            $this->redirect("/competition/games/{$gid}");
+            return;
+        }
+
+        $reason = trim((string) ($_POST['reason'] ?? ''));
+        if ($reason === '') {
+            $this->setFlash('danger', 'Un motif est obligatoire pour supprimer une manche.');
+            $this->redirect("/competition/games/{$gid}");
+            return;
+        }
+
+        $roundNumber = (int) ($round['round_number'] ?? 0);
+        $this->roundPause->endAllOpenPauses((int) $rid);
+        $this->round->deleteWithScores((int) $rid);
+        $this->round->renumberRounds((int) $gid);
+        $this->game->recalculateTotals((int) $gid);
+
+        ActivityLog::logCompetition(
+            (int) $data['competition_id'],
+            'session.round_delete',
+            null,
+            'round',
+            (int) $rid,
+            (int) $data['session_id'],
+            ['game_id' => (int) $gid, 'round_number' => $roundNumber, 'reason' => $reason]
+        );
+
+        $this->setFlash('success', 'Manche supprimée.');
+        $this->redirect("/competition/games/{$gid}");
+    }
+
+    /**
      * Terminer une partie.
      */
     public function completeGame(string $gid): void

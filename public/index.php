@@ -334,7 +334,9 @@ $router->post('/competition/session/close', CompetitionSessionController::class,
 $router->post('/competition/games/create', CompetitionSessionController::class, 'createGame');
 $router->get('/competition/games/{gid}', CompetitionSessionController::class, 'showGame');
 $router->post('/competition/games/{gid}/rounds/create', CompetitionSessionController::class, 'createRound');
+$router->post('/competition/games/{gid}/rounds/{rid}/status', CompetitionSessionController::class, 'updateRoundStatus');
 $router->post('/competition/games/{gid}/rounds/{rid}/scores', CompetitionSessionController::class, 'updateScores');
+$router->post('/competition/games/{gid}/rounds/{rid}/delete', CompetitionSessionController::class, 'deleteRound');
 $router->post('/competition/games/{gid}/complete', CompetitionSessionController::class, 'completeGame');
 
 // ============================================================
