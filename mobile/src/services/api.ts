@@ -182,6 +182,62 @@ export async function fetchSpaceMembers(token: string, spaceId: number): Promise
   return response.members;
 }
 
+export async function inviteMember(
+  token: string,
+  spaceId: number,
+  username: string,
+  role: SpaceMember["role"] = "member"
+): Promise<void> {
+  await request<{ success: boolean }>(
+    `/api/spaces/${spaceId}/members`,
+    {
+      method: "POST",
+      body: JSON.stringify({ username, role }),
+    },
+    token
+  );
+}
+
+export async function updateMemberRole(
+  token: string,
+  spaceId: number,
+  memberId: number,
+  role: SpaceMember["role"]
+): Promise<void> {
+  await request<{ success: boolean }>(
+    `/api/spaces/${spaceId}/members/${memberId}/role`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ role }),
+    },
+    token
+  );
+}
+
+export async function removeSpaceMember(
+  token: string,
+  spaceId: number,
+  memberId: number
+): Promise<void> {
+  await request<{ success: boolean }>(
+    `/api/spaces/${spaceId}/members/${memberId}`,
+    { method: "DELETE" },
+    token
+  );
+}
+
+export async function createInviteLink(
+  token: string,
+  spaceId: number
+): Promise<string> {
+  const response = await request<{ success: boolean; token: string }>(
+    `/api/spaces/${spaceId}/invite-link`,
+    { method: "POST" },
+    token
+  );
+  return response.token;
+}
+
 export async function createGame(
   token: string,
   spaceId: number,

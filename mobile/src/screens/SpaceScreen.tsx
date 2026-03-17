@@ -16,6 +16,7 @@ import {
   createGameType,
   createPlayer,
   createGame,
+  createInviteLink,
   deleteGameType,
   deletePlayer,
   fetchGameDetails,
@@ -23,11 +24,15 @@ import {
   fetchPlayers,
   fetchSpaceMembers,
   fetchSpaceGames,
+  inviteMember,
+  removeSpaceMember,
   updateGameType,
+  updateMemberRole,
   updatePlayer,
 } from "../services/api";
 import { theme } from "../styles/theme";
 import type { Game, GameType, Player, Space, SpaceMember } from "../types/api";
+import { getRoleLabel } from "../utils/roles";
 
 type Props = {
   token: string;
@@ -36,7 +41,9 @@ type Props = {
   onOpenGame: (gameId: number) => void;
 };
 
-type SpaceView = "menu" | "games" | "create" | "stats" | "players" | "gameTypes";
+type SpaceView = "menu" | "games" | "create" | "stats" | "players" | "gameTypes" | "members";
+
+const MEMBER_ROLES: SpaceMember["role"][] = ["admin", "manager", "member", "guest"];
 
 type PlayerStats = {
   playerId: number;
@@ -143,6 +150,17 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
   const [editGameTypeWinCondition, setEditGameTypeWinCondition] = useState<GameType["win_condition"]>("highest_score");
   const [editGameTypeMinPlayers, setEditGameTypeMinPlayers] = useState("1");
   const [editGameTypeMaxPlayers, setEditGameTypeMaxPlayers] = useState("");
+
+  // ─── Members state ───────────────────────────────────────────────────────
+  const [editingMemberId, setEditingMemberId] = useState<number | null>(null);
+  const [editMemberRole, setEditMemberRole] = useState<SpaceMember["role"]>("member");
+  const [savingMemberRole, setSavingMemberRole] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState<number | null>(null);
+  const [inviteUsername, setInviteUsername] = useState("");
+  const [inviteRole, setInviteRole] = useState<SpaceMember["role"]>("member");
+  const [inviting, setInviting] = useState(false);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -630,6 +648,71 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
     }
   };
 
+  // ─── Members handlers ───────────────────────────────────────────────────
+  const saveEditMemberRole = async (memberId: number) => {
+    try {
+      setSavingMemberRole(true);
+      setError(null);
+      await updateMemberRole(token, space.id, memberId, editMemberRole);
+      setEditingMemberId(null);
+      await loadData();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Impossible de modifier le role.");
+    } finally {
+      setSavingMemberRole(false);
+    }
+  };
+
+  const removeMemberSubmit = async (memberId: number) => {
+    try {
+      setRemovingMemberId(memberId);
+      setError(null);
+      await removeSpaceMember(token, space.id, memberId);
+      if (editingMemberId === memberId) setEditingMemberId(null);
+      await loadData();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Impossible de retirer ce membre.");
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
+
+  const inviteMemberSubmit = async () => {
+    const username = inviteUsername.trim();
+    if (!username) {
+      setError("Le nom d\'utilisateur est requis.");
+      return;
+    }
+    try {
+      setInviting(true);
+      setError(null);
+      await inviteMember(token, space.id, username, inviteRole);
+      setInviteUsername("");
+      setInviteRole("member");
+      await loadData();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Impossible d\'envoyer l\'invitation.");
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleGenerateLink = async () => {
+    try {
+      setGeneratingLink(true);
+      setError(null);
+      const newToken = await createInviteLink(token, space.id);
+      setInviteToken(newToken);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Impossible de generer le lien.");
+    } finally {
+      setGeneratingLink(false);
+    }
+  };
+
+  const isAdmin = space.user_role === "admin";
+  const canManageMembers = isAdmin || space.user_role === "manager";
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -690,6 +773,21 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
             <Text style={styles.menuTitle}>Gerer les types de jeu</Text>
             <Text style={styles.menuSubtitle}>Afficher, creer, modifier et supprimer</Text>
           </Pressable>
+
+          {canManageMembers ? (
+            <Pressable
+              style={styles.menuCard}
+              onPress={() => {
+                setInviteToken(null);
+                setError(null);
+                setEditingMemberId(null);
+                setCurrentView("members");
+              }}
+            >
+              <Text style={styles.menuTitle}>Gerer les membres</Text>
+              <Text style={styles.menuSubtitle}>Liste, roles, invitations et liens d\'acces</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -1153,6 +1251,152 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
           </View>
         </ScrollView>
       ) : null}
+
+      {currentView === "members" ? (
+        <ScrollView contentContainerStyle={styles.formCard} keyboardShouldPersistTaps="handled">
+          <Text style={styles.sectionTitle}>Membres de l'espace</Text>
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          {members.length === 0 ? (
+            <Text style={styles.empty}>Aucun membre.</Text>
+          ) : (
+            members.map((member) => (
+              <View key={member.id} style={styles.playerCard}>
+                <View style={styles.playerCardHeader}>
+                  <View style={styles.playerCardHeaderMain}>
+                    <Text style={styles.playerName}>{member.username}</Text>
+                    <Text style={styles.playerLinkInfo}>{getRoleLabel(member.role)}</Text>
+                  </View>
+
+                  {isAdmin ? (
+                    <View style={styles.playerActionsRow}>
+                      {editingMemberId !== member.id ? (
+                        <Pressable
+                          onPress={() => {
+                            setEditingMemberId(member.id);
+                            setEditMemberRole(member.role);
+                          }}
+                        >
+                          <Text style={styles.linkAction}>Role</Text>
+                        </Pressable>
+                      ) : null}
+                      <Pressable
+                        disabled={removingMemberId === member.id}
+                        onPress={() => removeMemberSubmit(member.id)}
+                      >
+                        <Text style={styles.deleteAction}>
+                          {removingMemberId === member.id ? "Retrait..." : "Retirer"}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                </View>
+
+                {isAdmin && editingMemberId === member.id ? (
+                  <View style={styles.inlineEditor}>
+                    <Text style={styles.label}>Nouveau role</Text>
+                    <View style={styles.conditionOptionsRow}>
+                      {MEMBER_ROLES.map((role) => (
+                        <Pressable
+                          key={role}
+                          style={[
+                            styles.conditionOption,
+                            editMemberRole === role ? styles.conditionOptionActive : undefined,
+                          ]}
+                          onPress={() => setEditMemberRole(role)}
+                        >
+                          <Text
+                            style={[
+                              styles.conditionOptionText,
+                              editMemberRole === role ? styles.conditionOptionTextActive : undefined,
+                            ]}
+                          >
+                            {getRoleLabel(role)}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                    <View style={styles.inlineEditorActions}>
+                      <Pressable
+                        style={[styles.secondaryButton, savingMemberRole ? styles.disabledButton : undefined]}
+                        disabled={savingMemberRole}
+                        onPress={() => saveEditMemberRole(member.id)}
+                      >
+                        <Text style={styles.secondaryButtonText}>
+                          {savingMemberRole ? "Enregistrement..." : "Enregistrer"}
+                        </Text>
+                      </Pressable>
+                      <Pressable style={styles.ghostButton} onPress={() => setEditingMemberId(null)}>
+                        <Text style={styles.ghostButtonText}>Annuler</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+            ))
+          )}
+
+          <View style={[styles.playerEditorCard, { marginTop: 16 }]}>
+            <Text style={styles.playerEditorTitle}>Inviter un utilisateur</Text>
+            <TextInput
+              value={inviteUsername}
+              onChangeText={setInviteUsername}
+              placeholder="Nom d'utilisateur"
+              style={styles.input}
+              autoCapitalize="none"
+            />
+            <Text style={styles.label}>Role attribue</Text>
+            <View style={styles.conditionOptionsRow}>
+              {MEMBER_ROLES.map((role) => (
+                <Pressable
+                  key={role}
+                  style={[
+                    styles.conditionOption,
+                    inviteRole === role ? styles.conditionOptionActive : undefined,
+                  ]}
+                  onPress={() => setInviteRole(role)}
+                >
+                  <Text
+                    style={[
+                      styles.conditionOptionText,
+                      inviteRole === role ? styles.conditionOptionTextActive : undefined,
+                    ]}
+                  >
+                    {getRoleLabel(role)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <Pressable
+              style={[styles.primaryButton, inviting ? styles.disabledButton : undefined]}
+              disabled={inviting}
+              onPress={inviteMemberSubmit}
+            >
+              <Text style={styles.primaryText}>{inviting ? "Envoi..." : "Envoyer l'invitation"}</Text>
+            </Pressable>
+          </View>
+
+          <View style={[styles.playerEditorCard, { marginTop: 16 }]}>
+            <Text style={styles.playerEditorTitle}>Lien d'invitation</Text>
+            <Pressable
+              style={[styles.primaryButton, generatingLink ? styles.disabledButton : undefined]}
+              disabled={generatingLink}
+              onPress={handleGenerateLink}
+            >
+              <Text style={styles.primaryText}>{generatingLink ? "Generation..." : "Generer un lien"}</Text>
+            </Pressable>
+            {inviteToken ? (
+              <View style={styles.inviteLinkBox}>
+                <Text style={styles.inviteLinkLabel}>Lien valable 72h :</Text>
+                <Text style={styles.inviteLinkText} selectable>
+                  {`https://scores.leofranz.fr/join/${inviteToken}`}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </ScrollView>
+      ) : null}
     </View>
   );
 }
@@ -1488,5 +1732,22 @@ const styles = StyleSheet.create({
   },
   countInputBlock: {
     flex: 1,
+  },
+  inviteLinkBox: {
+    marginTop: 14,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.radius.md,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  inviteLinkLabel: {
+    color: theme.colors.mutedText,
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  inviteLinkText: {
+    color: theme.colors.primary,
+    fontWeight: "600",
   },
 });

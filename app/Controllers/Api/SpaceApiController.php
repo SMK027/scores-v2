@@ -153,6 +153,28 @@ class SpaceApiController extends ApiController
 
     /**
      * POST /api/spaces/{id}/leave — Quitter un espace.
+     * POST /api/spaces/{id}/invite-link — Génère un lien d'invitation par token.
+     * Accessible aux admins et managers.
+     */
+    public function createInviteLink(string $id): void
+    {
+        $this->requireAuth();
+        $this->checkSpaceAccess((int) $id, ['admin', 'manager']);
+        $this->checkSpaceRestriction((int) $id, 'members');
+
+        $token = $this->inviteModel->createInvite((int) $id, $this->userId, 72);
+
+        ActivityLog::logSpace((int) $id, 'invite.create_link', $this->userId, 'space', (int) $id);
+
+        $this->json([
+            'success'    => true,
+            'token'      => $token,
+            'expires_in' => '72h',
+        ], 201);
+    }
+
+    /**
+     * POST /api/spaces/{id}/leave — Quitter un espace.
      */
     public function leave(string $id): void
     {

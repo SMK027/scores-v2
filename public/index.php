@@ -403,6 +403,7 @@ $router->get('/api/spaces/{id}', SpaceApiController::class, 'show');
 $router->put('/api/spaces/{id}', SpaceApiController::class, 'update');
 $router->delete('/api/spaces/{id}', SpaceApiController::class, 'delete');
 $router->post('/api/spaces/{id}/leave', SpaceApiController::class, 'leave');
+$router->post('/api/spaces/{id}/invite-link', SpaceApiController::class, 'createInviteLink');
 
 // Membres
 $router->get('/api/spaces/{id}/members', SpaceApiController::class, 'members');
