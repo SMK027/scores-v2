@@ -36,6 +36,7 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
 
   const [editingRoundId, setEditingRoundId] = useState<number | null>(null);
   const [scores, setScores] = useState<Record<number, string>>({});
+  const [winners, setWinners] = useState<Record<number, boolean>>({});
 
   const loadDetails = useCallback(async () => {
     try {
@@ -65,6 +66,17 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
     [details?.players]
   );
 
+  const winCondition = details?.game.win_condition ?? "highest_score";
+
+  const winConditionLabel =
+    winCondition === "highest_score"
+      ? "Score le plus eleve"
+      : winCondition === "lowest_score"
+      ? "Score le plus bas"
+      : winCondition === "ranking"
+      ? "Classement"
+      : "Victoire/Defaite";
+
   const startRoundAndScores = async () => {
     try {
       setSaving(true);
@@ -74,9 +86,15 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
 
       const initial: Record<number, string> = {};
       playerIds.forEach((id) => {
-        initial[id] = "";
+        initial[id] = winCondition === "ranking" ? "1" : "";
       });
       setScores(initial);
+
+      const initialWinners: Record<number, boolean> = {};
+      playerIds.forEach((id) => {
+        initialWinners[id] = false;
+      });
+      setWinners(initialWinners);
       await loadDetails();
     } catch (err) {
       if (err instanceof ApiError) {
@@ -95,20 +113,50 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
     }
 
     const normalizedScores: Record<number, number> = {};
-    for (const playerId of playerIds) {
-      const raw = (scores[playerId] || "").trim();
-      if (!raw) {
-        setError("Merci de renseigner un score pour chaque joueur.");
-        return;
+
+    if (winCondition === "win_loss") {
+      let winnerCount = 0;
+      for (const playerId of playerIds) {
+        const isWinner = !!winners[playerId];
+        normalizedScores[playerId] = isWinner ? 1 : 0;
+        if (isWinner) {
+          winnerCount += 1;
+        }
       }
 
-      const value = Number(raw.replace(",", "."));
-      if (Number.isNaN(value)) {
-        setError("Un score contient une valeur invalide.");
+      if (winnerCount === 0) {
+        setError("Selectionnez au moins un gagnant pour cette manche.");
         return;
       }
+    } else {
+      const usedRanks: number[] = [];
+      for (const playerId of playerIds) {
+        const raw = (scores[playerId] || "").trim();
+        if (!raw) {
+          setError("Merci de renseigner une valeur pour chaque joueur.");
+          return;
+        }
 
-      normalizedScores[playerId] = value;
+        const value = Number(raw.replace(",", "."));
+        if (Number.isNaN(value)) {
+          setError("Une valeur contient un format invalide.");
+          return;
+        }
+
+        if (winCondition === "ranking") {
+          if (!Number.isInteger(value) || value < 1) {
+            setError("Le classement doit etre un entier positif (1, 2, 3...).");
+            return;
+          }
+          if (usedRanks.includes(value)) {
+            setError("Chaque place doit etre unique pour le classement.");
+            return;
+          }
+          usedRanks.push(value);
+        }
+
+        normalizedScores[playerId] = value;
+      }
     }
 
     try {
@@ -117,6 +165,7 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
       await updateRoundScores(token, space.id, gameId, editingRoundId, normalizedScores);
       setEditingRoundId(null);
       setScores({});
+      setWinners({});
       await loadDetails();
     } catch (err) {
       if (err instanceof ApiError) {
@@ -170,6 +219,7 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
 
       <Text style={styles.title}>{details.game.game_type_name || "Partie"}</Text>
       <Text style={styles.meta}>Statut: {details.game.status}</Text>
+      <Text style={styles.meta}>Condition de victoire: {winConditionLabel}</Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -204,21 +254,47 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
 
         {editingRoundId ? (
           <View style={styles.scoreEditor}>
-            <Text style={styles.blockTitle}>Saisir les scores</Text>
-            {details.players.map((player) => (
-              <View key={player.id} style={styles.scoreRow}>
-                <Text style={styles.scoreLabel}>{player.player_name}</Text>
-                <TextInput
-                  value={scores[player.player_id] ?? ""}
-                  onChangeText={(value) =>
-                    setScores((current) => ({ ...current, [player.player_id]: value }))
-                  }
-                  keyboardType="numeric"
-                  style={styles.scoreInput}
-                  placeholder="0"
-                />
-              </View>
-            ))}
+            <Text style={styles.blockTitle}>
+              {winCondition === "ranking"
+                ? "Saisir le classement de la manche"
+                : winCondition === "win_loss"
+                ? "Selectionner le ou les gagnants"
+                : "Saisir les scores"}
+            </Text>
+
+            {winCondition === "win_loss"
+              ? details.players.map((player) => {
+                  const isWinner = !!winners[player.player_id];
+                  return (
+                    <Pressable
+                      key={player.id}
+                      style={[styles.winnerRow, isWinner ? styles.winnerRowActive : undefined]}
+                      onPress={() =>
+                        setWinners((current) => ({
+                          ...current,
+                          [player.player_id]: !current[player.player_id],
+                        }))
+                      }
+                    >
+                      <Text style={styles.scoreLabel}>{player.player_name}</Text>
+                      <Text style={styles.winnerStatus}>{isWinner ? "Gagnant" : "Defaite"}</Text>
+                    </Pressable>
+                  );
+                })
+              : details.players.map((player) => (
+                  <View key={player.id} style={styles.scoreRow}>
+                    <Text style={styles.scoreLabel}>{player.player_name}</Text>
+                    <TextInput
+                      value={scores[player.player_id] ?? ""}
+                      onChangeText={(value) =>
+                        setScores((current) => ({ ...current, [player.player_id]: value }))
+                      }
+                      keyboardType="numeric"
+                      style={styles.scoreInput}
+                      placeholder={winCondition === "ranking" ? "Place" : "0"}
+                    />
+                  </View>
+                ))}
 
             <Pressable
               style={[styles.primaryButton, saving ? styles.disabled : undefined]}
@@ -349,5 +425,25 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     textAlign: "right",
     color: theme.colors.text,
+  },
+  winnerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    marginBottom: 8,
+    backgroundColor: theme.colors.card,
+  },
+  winnerRowActive: {
+    borderColor: theme.colors.success,
+    backgroundColor: "#eaf6ee",
+  },
+  winnerStatus: {
+    color: theme.colors.mutedText,
+    fontWeight: "600",
   },
 });
