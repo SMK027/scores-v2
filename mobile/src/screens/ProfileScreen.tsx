@@ -4,6 +4,7 @@ import { ApiError, fetchProfile } from "../services/api";
 import { theme } from "../styles/theme";
 import type { User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
+import { getRoleLabel } from "../utils/roles";
 
 type Props = {
   token: string;
@@ -94,7 +95,7 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Informations</Text>
-        <Text style={styles.meta}>Role global: {profile.global_role}</Text>
+        <Text style={styles.meta}>Role global: {getRoleLabel(profile.global_role)}</Text>
         <Text style={styles.meta}>Inscrit depuis: {joinedLabel}</Text>
         <Text style={styles.bioLabel}>Bio</Text>
         <Text style={styles.bio}>{profile.bio?.trim() ? profile.bio : "Aucune bio renseignee."}</Text>
