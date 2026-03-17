@@ -119,6 +119,22 @@ class ProfileApiController extends ApiController
     }
 
     /**
+     * GET /api/profile/stats
+     * Retourne les statistiques globales de l'utilisateur connecté.
+     */
+    public function stats(): void
+    {
+        $this->requireAuth();
+
+        $stats = $this->userModel->getGlobalStats($this->userId);
+
+        $this->json([
+            'success' => true,
+            'stats'   => $stats,
+        ]);
+    }
+
+    /**
      * PUT /api/profile/password
      * Body: { current_password, new_password, new_password_confirm }
      */

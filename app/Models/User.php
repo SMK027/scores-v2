@@ -215,6 +215,37 @@ class User extends Model
     }
 
     /**
+     * Retourne les statistiques globales d'un utilisateur (tous espaces confondus).
+     * Agrège les données de tous les profils joueurs rattachés au compte.
+     */
+    public function getGlobalStats(int $userId): array
+    {
+        $stmt = $this->query(
+            "SELECT
+                COUNT(DISTINCT gp.game_id) AS total_games,
+                COALESCE(SUM(CASE WHEN gp.is_winner = 1 THEN 1 ELSE 0 END), 0) AS total_wins,
+                COUNT(DISTINCT p.space_id) AS total_spaces
+             FROM players p
+             LEFT JOIN game_players gp ON gp.player_id = p.id
+             WHERE p.user_id = :user_id",
+            ['user_id' => $userId]
+        );
+
+        $row = $stmt->fetch();
+
+        $totalGames = (int) ($row['total_games'] ?? 0);
+        $totalWins  = (int) ($row['total_wins']  ?? 0);
+        $winRate    = $totalGames > 0 ? round($totalWins / $totalGames * 100, 1) : 0.0;
+
+        return [
+            'total_games'  => $totalGames,
+            'total_wins'   => $totalWins,
+            'win_rate'     => $winRate,
+            'total_spaces' => (int) ($row['total_spaces'] ?? 0),
+        ];
+    }
+
+    /**
      * Met à jour le mot de passe d'un utilisateur.
      */
     public function updatePassword(int $id, string $password): bool

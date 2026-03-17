@@ -6,6 +6,7 @@ import type {
   GameType,
   GamesResponse,
   Player,
+  ProfileStats,
   SpaceMember,
   Space,
   SpacesResponse,
@@ -65,6 +66,11 @@ export async function login(email: string, password: string): Promise<{ token: s
 export async function fetchProfile(token: string): Promise<User> {
   const response = await request<{ success: boolean; user: User }>("/api/profile", {}, token);
   return response.user;
+}
+
+export async function fetchProfileStats(token: string): Promise<ProfileStats> {
+  const response = await request<{ success: boolean; stats: ProfileStats }>("/api/profile/stats", {}, token);
+  return response.stats;
 }
 
 export async function updateProfile(

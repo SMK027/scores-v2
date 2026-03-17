@@ -392,6 +392,7 @@ $router->get('/api/me', AuthApiController::class, 'me');
 
 // Profil
 $router->get('/api/profile', ProfileApiController::class, 'show');
+$router->get('/api/profile/stats', ProfileApiController::class, 'stats');
 $router->put('/api/profile', ProfileApiController::class, 'update');
 $router->put('/api/profile/password', ProfileApiController::class, 'updatePassword');
 

@@ -94,6 +94,13 @@ export type Round = {
   notes?: string | null;
 };
 
+export type ProfileStats = {
+  total_games: number;
+  total_wins: number;
+  win_rate: number;
+  total_spaces: number;
+};
+
 export type GameDetailsResponse = {
   success: boolean;
   game: Game & { win_condition?: string };
