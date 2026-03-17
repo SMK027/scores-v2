@@ -191,10 +191,10 @@ class CompetitionSessionController extends Controller
         $connectedUserId = Session::get('user_id');
         if (!empty($connectedUserId)) {
             $userModel = new User();
-            if ($userModel->isRestricted((int) $connectedUserId, 'competitions_participation')) {
+            if ($userModel->isRestricted((int) $connectedUserId, 'competitions_participation') || $userModel->isRestricted((int) $connectedUserId, 'arbitration_access')) {
                 $user = $userModel->find((int) $connectedUserId);
                 $reason = trim((string) ($user['restriction_reason'] ?? ''));
-                $message = 'Votre compte ne peut pas participer aux compétitions pour le moment.';
+                $message = 'Votre compte n\'est pas autorisé à accéder à l\'arbitrage pour le moment.';
                 if ($reason !== '') {
                     $message .= ' Motif: ' . $reason;
                 }
@@ -283,6 +283,19 @@ class CompetitionSessionController extends Controller
     public function openAssignedSession(string $sid): void
     {
         $this->requireAuth();
+
+        $userModel = new User();
+        if ($userModel->isRestricted((int) $this->getCurrentUserId(), 'arbitration_access')) {
+            $user = $userModel->find((int) $this->getCurrentUserId());
+            $reason = trim((string) ($user['restriction_reason'] ?? ''));
+            $message = 'Votre compte n\'est pas autorisé à accéder à l\'arbitrage pour le moment.';
+            if ($reason !== '') {
+                $message .= ' Motif: ' . $reason;
+            }
+            $this->setFlash('danger', $message);
+            $this->redirect('/spaces');
+            return;
+        }
 
         $sessionId = (int) $sid;
         if ($sessionId <= 0) {

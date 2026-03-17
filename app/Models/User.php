@@ -48,6 +48,7 @@ class User extends Model
         'games_manage'               => 'Création/modification/suppression de parties',
         'games_participation'        => 'Participation aux parties',
         'competitions_participation' => 'Participation aux compétitions',
+        'arbitration_access'         => 'Accès à l\'arbitrage',
         'profile_photo_manage'       => 'Création/modification/suppression de photo de profil',
         'comments_manage'            => 'Création/modification/suppression de commentaires',
     ];
@@ -271,6 +272,36 @@ class User extends Model
             'restricted_by' => empty($active) ? null : $adminId,
             'restricted_at' => empty($active) ? null : date('Y-m-d H:i:s'),
         ]);
+    }
+
+    /**
+     * Retourne les utilisateurs restreints pour une fonctionnalité donnée.
+     */
+    public function getUsersRestrictedBy(string $key): array
+    {
+        $stmt = $this->query(
+            "SELECT id, username, email, restriction_reason, restrictions
+             FROM {$this->table}
+             WHERE restrictions IS NOT NULL
+             ORDER BY username ASC"
+        );
+
+        $rows = $stmt->fetchAll();
+        $result = [];
+        foreach ($rows as $row) {
+            $restrictions = json_decode((string) ($row['restrictions'] ?? ''), true);
+            if (!is_array($restrictions) || empty($restrictions[$key])) {
+                continue;
+            }
+            $result[] = [
+                'id' => (int) $row['id'],
+                'username' => (string) ($row['username'] ?? ''),
+                'email' => (string) ($row['email'] ?? ''),
+                'restriction_reason' => (string) ($row['restriction_reason'] ?? ''),
+            ];
+        }
+
+        return $result;
     }
 
     /**

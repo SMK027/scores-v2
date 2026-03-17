@@ -54,7 +54,10 @@
                         <div class="autocomplete-list referee-member-options" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;background:#fff;border:1px solid var(--gray-light);border-radius:var(--radius);margin-top:0.25rem;z-index:1000;box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
                     </div>
                     <input type="text" name="referee_names[]" class="form-control" placeholder="Nom de l'arbitre (si pas de membre)" style="flex:1;">
-                    <input type="email" name="referee_emails[]" class="form-control" placeholder="Email de l'arbitre" style="flex:1;">
+                    <div style="flex:1;min-width:220px;">
+                        <input type="email" name="referee_emails[]" class="form-control referee-email-input" placeholder="Email de l'arbitre">
+                        <div class="text-danger text-small referee-email-warning" style="display:none;margin-top:0.25rem;"></div>
+                    </div>
                     <button type="button" class="btn btn-sm btn-outline" onclick="this.closest('.session-row').remove()" title="Supprimer">
                         <i class="bi bi-trash"></i>
                     </button>
@@ -77,7 +80,58 @@ const refereeMembersData = <?= json_encode(array_map(fn($m) => [
     'id' => (int) $m['id'],
     'username' => (string) ($m['username'] ?? ''),
     'email' => (string) ($m['email'] ?? ''),
+    'arbitration_restricted' => !empty($m['arbitration_restricted']),
 ], $spaceMembers ?? []), JSON_UNESCAPED_UNICODE) ?>;
+
+const restrictedRefereeEmailsData = <?= json_encode(array_map(fn($u) => [
+    'username' => (string) ($u['username'] ?? ''),
+    'email' => (string) ($u['email'] ?? ''),
+    'normalized_email' => \App\Models\User::normalizeEmail((string) ($u['email'] ?? '')),
+], $restrictedArbitrationUsers ?? []), JSON_UNESCAPED_UNICODE) ?>;
+
+const restrictedRefereeEmailMap = new Map(restrictedRefereeEmailsData.map((item) => [item.normalized_email, item]));
+
+function normalizeRefereeEmail(email) {
+    const trimmed = String(email || '').trim().toLowerCase();
+    const parts = trimmed.split('@');
+    if (parts.length !== 2) {
+        return trimmed;
+    }
+
+    let [local, domain] = parts;
+    if (domain === 'gmail.com' || domain === 'googlemail.com') {
+        local = local.split('+', 1)[0].replace(/\./g, '');
+        domain = 'gmail.com';
+    }
+    return local + '@' + domain;
+}
+
+function attachRefereeEmailValidation(row) {
+    const emailInput = row.querySelector('.referee-email-input');
+    const warning = row.querySelector('.referee-email-warning');
+    if (!emailInput || !warning) {
+        return;
+    }
+
+    const validate = () => {
+        const normalized = normalizeRefereeEmail(emailInput.value);
+        const blocked = normalized ? restrictedRefereeEmailMap.get(normalized) : null;
+        if (blocked) {
+            emailInput.setCustomValidity('Cette adresse email est associée à un compte non autorisé à arbitrer.');
+            warning.textContent = 'Compte non autorisé à arbitrer : ' + blocked.email;
+            warning.style.display = 'block';
+            return;
+        }
+
+        emailInput.setCustomValidity('');
+        warning.textContent = '';
+        warning.style.display = 'none';
+    };
+
+    emailInput.addEventListener('input', validate);
+    emailInput.addEventListener('change', validate);
+    validate();
+}
 
 function attachRefereeAutocomplete(row) {
     const input = row.querySelector('.referee-member-search');
@@ -99,14 +153,18 @@ function attachRefereeAutocomplete(row) {
         }
 
         options.innerHTML = items.map((m) => (
-            '<div class="referee-member-option" data-id="' + m.id + '" data-label="' + (m.username + ' (' + m.email + ')').replace(/"/g, '&quot;') + '" style="padding:0.65rem;border-bottom:1px solid var(--gray-light);cursor:pointer;display:flex;justify-content:space-between;gap:0.5rem;">'
+            '<div class="referee-member-option ' + (m.arbitration_restricted ? 'is-disabled' : '') + '" data-id="' + m.id + '" data-label="' + (m.username + ' (' + m.email + ')').replace(/"/g, '&quot;') + '" style="padding:0.65rem;border-bottom:1px solid var(--gray-light);cursor:' + (m.arbitration_restricted ? 'not-allowed' : 'pointer') + ';display:flex;justify-content:space-between;gap:0.5rem;opacity:' + (m.arbitration_restricted ? '0.65' : '1') + ';">'
             + '<span>' + m.username + '</span>'
-            + '<span class="text-muted text-small">' + m.email + '</span>'
+            + '<span class="text-muted text-small">' + (m.arbitration_restricted ? 'Compte non autorisé à arbitrer' : m.email) + '</span>'
             + '</div>'
         )).join('');
 
         options.querySelectorAll('.referee-member-option').forEach((el) => {
             el.addEventListener('click', () => {
+                const member = refereeMembersData.find((item) => item.id == el.dataset.id);
+                if (!member || member.arbitration_restricted) {
+                    return;
+                }
                 hidden.value = el.dataset.id;
                 input.value = el.dataset.label;
                 hideOptions();
@@ -146,14 +204,21 @@ function addSessionRow() {
         '<div class="autocomplete-list referee-member-options" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;background:#fff;border:1px solid var(--gray-light);border-radius:var(--radius);margin-top:0.25rem;z-index:1000;box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>' +
         '</div>' +
         '<input type="text" name="referee_names[]" class="form-control" placeholder="Nom de l\'arbitre (si pas de membre)" style="flex:1;">' +
-        '<input type="email" name="referee_emails[]" class="form-control" placeholder="Email de l\'arbitre" style="flex:1;">' +
+        '<div style="flex:1;min-width:220px;">' +
+        '<input type="email" name="referee_emails[]" class="form-control referee-email-input" placeholder="Email de l\'arbitre">' +
+        '<div class="text-danger text-small referee-email-warning" style="display:none;margin-top:0.25rem;"></div>' +
+        '</div>' +
         '<button type="button" class="btn btn-sm btn-outline" onclick="this.closest(\'.session-row\').remove()" title="Supprimer"><i class="bi bi-trash"></i></button>';
     container.appendChild(div);
     attachRefereeAutocomplete(div);
+    attachRefereeEmailValidation(div);
     div.querySelector('input').focus();
 }
 
-document.querySelectorAll('#sessionsContainer .session-row').forEach(attachRefereeAutocomplete);
+document.querySelectorAll('#sessionsContainer .session-row').forEach((row) => {
+    attachRefereeAutocomplete(row);
+    attachRefereeEmailValidation(row);
+});
 
 (function() {
     const availableGameTypes = <?= json_encode(array_map(fn($gt) => [

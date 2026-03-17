@@ -264,7 +264,10 @@
                     ></div>
                 </div>
                 <input type="text" name="referee_name" class="form-control form-control-sm" placeholder="Nom de l'arbitre" style="width:150px;">
-                <input type="email" name="referee_email" class="form-control form-control-sm" placeholder="Email (optionnel)" style="width:200px;">
+                <div style="width:200px;">
+                    <input type="email" name="referee_email" id="show_referee_email" class="form-control form-control-sm" placeholder="Email (optionnel)">
+                    <div id="show_referee_email_warning" class="text-danger text-small" style="display:none;margin-top:0.25rem;"></div>
+                </div>
                 <button class="btn btn-sm btn-primary">+ Session</button>
             </form>
         <?php endif; ?>
@@ -377,6 +380,8 @@
     const memberSearch = document.getElementById('show_referee_member_search');
     const memberHidden = document.getElementById('show_referee_member_id');
     const memberOptions = document.getElementById('show_referee_member_options');
+    const emailInput = document.getElementById('show_referee_email');
+    const emailWarning = document.getElementById('show_referee_email_warning');
 
     if (!memberSearch || !memberHidden || !memberOptions) {
         return;
@@ -386,7 +391,49 @@
         'id' => (int) $m['id'],
         'username' => $m['username'],
         'email' => $m['email'] ?? '',
+        'arbitration_restricted' => !empty($m['arbitration_restricted']),
     ], $spaceMembers ?? []), JSON_UNESCAPED_UNICODE) ?>;
+
+    const restrictedRefereeEmailsData = <?= json_encode(array_map(fn($u) => [
+        'username' => (string) ($u['username'] ?? ''),
+        'email' => (string) ($u['email'] ?? ''),
+        'normalized_email' => \App\Models\User::normalizeEmail((string) ($u['email'] ?? '')),
+    ], $restrictedArbitrationUsers ?? []), JSON_UNESCAPED_UNICODE) ?>;
+    const restrictedRefereeEmailMap = new Map(restrictedRefereeEmailsData.map((item) => [item.normalized_email, item]));
+
+    function normalizeRefereeEmail(email) {
+        const trimmed = String(email || '').trim().toLowerCase();
+        const parts = trimmed.split('@');
+        if (parts.length !== 2) {
+            return trimmed;
+        }
+
+        let [local, domain] = parts;
+        if (domain === 'gmail.com' || domain === 'googlemail.com') {
+            local = local.split('+', 1)[0].replace(/\./g, '');
+            domain = 'gmail.com';
+        }
+        return local + '@' + domain;
+    }
+
+    function validateRefereeEmail() {
+        if (!emailInput || !emailWarning) {
+            return;
+        }
+
+        const normalized = normalizeRefereeEmail(emailInput.value);
+        const blocked = normalized ? restrictedRefereeEmailMap.get(normalized) : null;
+        if (blocked) {
+            emailInput.setCustomValidity('Cette adresse email est associée à un compte non autorisé à arbitrer.');
+            emailWarning.textContent = 'Compte non autorisé à arbitrer : ' + blocked.email;
+            emailWarning.style.display = 'block';
+            return;
+        }
+
+        emailInput.setCustomValidity('');
+        emailWarning.textContent = '';
+        emailWarning.style.display = 'none';
+    }
 
     function hideMemberOptions() {
         memberOptions.style.display = 'none';
@@ -401,13 +448,17 @@
 
         memberOptions.innerHTML = items.map((m) => {
             const label = (m.username || '') + (m.email ? ' (' + m.email + ')' : '');
-            return '<div class="member-option" data-id="' + m.id + '" data-label="' + label.replace(/"/g, '&quot;') + '" style="padding:0.65rem;border-bottom:1px solid var(--gray-light);cursor:pointer;">'
-                + label
+            return '<div class="member-option ' + (m.arbitration_restricted ? 'is-disabled' : '') + '" data-id="' + m.id + '" data-label="' + label.replace(/"/g, '&quot;') + '" style="padding:0.65rem;border-bottom:1px solid var(--gray-light);cursor:' + (m.arbitration_restricted ? 'not-allowed' : 'pointer') + ';opacity:' + (m.arbitration_restricted ? '0.65' : '1') + ';">'
+                + (m.arbitration_restricted ? label + ' - Compte non autorisé à arbitrer' : label)
                 + '</div>';
         }).join('');
 
         memberOptions.querySelectorAll('.member-option').forEach((el) => {
             el.addEventListener('click', () => {
+                const member = members.find((item) => item.id == el.dataset.id);
+                if (!member || member.arbitration_restricted) {
+                    return;
+                }
                 memberHidden.value = el.dataset.id;
                 memberSearch.value = el.dataset.label;
                 hideMemberOptions();
@@ -432,6 +483,12 @@
             });
         renderMemberOptions(filtered);
     });
+
+    if (emailInput) {
+        emailInput.addEventListener('input', validateRefereeEmail);
+        emailInput.addEventListener('change', validateRefereeEmail);
+        validateRefereeEmail();
+    }
 
     document.addEventListener('click', (event) => {
         if (!event.target.closest('.autocomplete-wrapper')) {

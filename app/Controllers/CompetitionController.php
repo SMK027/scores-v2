@@ -99,6 +99,7 @@ class CompetitionController extends Controller
         $member = Middleware::checkSpaceAccess((int) $id, $this->getCurrentUserId());
         $gameTypes = (new GameType())->findBySpace((int) $id);
         $spaceMembers = $this->getSpaceMembers((int) $id);
+        $restrictedArbitrationUsers = (new User())->getUsersRestrictedBy('arbitration_access');
 
         $this->render('competitions/create', [
             'title'        => 'Nouvelle compétition',
@@ -107,6 +108,7 @@ class CompetitionController extends Controller
             'activeMenu'   => 'competitions',
             'gameTypes'    => $gameTypes,
             'spaceMembers' => $spaceMembers,
+            'restrictedArbitrationUsers' => $restrictedArbitrationUsers,
         ]);
     }
 
@@ -151,6 +153,11 @@ class CompetitionController extends Controller
             $userId = (int) ($refereeUserIds[$i] ?? 0);
             if ($userId > 0 && isset($membersById[$userId])) {
                 $memberUser = $membersById[$userId];
+                if (!empty($memberUser['arbitration_restricted'])) {
+                    $this->setFlash('danger', 'Le compte ' . $memberUser['username'] . ' n\'est pas autorisé à arbitrer.');
+                    $this->redirect("/spaces/{$id}/competitions/create");
+                    return;
+                }
                 $referees[] = [
                     'user_id' => (int) $memberUser['id'],
                     'name' => (string) $memberUser['username'],
@@ -164,10 +171,18 @@ class CompetitionController extends Controller
                 continue;
             }
 
+            $email = trim((string) ($refereeEmails[$i] ?? ''));
+            $restrictedUser = $this->findArbitrationRestrictedUserByEmail($email);
+            if ($restrictedUser !== null) {
+                $this->setFlash('danger', 'L\'adresse email ' . $restrictedUser['email'] . ' est associée à un compte non autorisé à arbitrer.');
+                $this->redirect("/spaces/{$id}/competitions/create");
+                return;
+            }
+
             $referees[] = [
                 'user_id' => 0,
                 'name' => $name,
-                'email' => trim((string) ($refereeEmails[$i] ?? '')),
+                'email' => $email,
             ];
         }
 
@@ -258,6 +273,7 @@ class CompetitionController extends Controller
         $assignedArbitrationSession = $currentUserId > 0
             ? $this->session->findAssignedSession((int) $cid, $currentUserId)
             : null;
+        $restrictedArbitrationUsers = (new User())->getUsersRestrictedBy('arbitration_access');
 
         // Parties de la compétition
         $stmt = $this->pdo->prepare("
@@ -294,6 +310,7 @@ class CompetitionController extends Controller
             'registeredPlayers' => $registeredPlayers,
             'allSpacePlayers' => $allSpacePlayers,
             'spaceMembers' => $spaceMembers,
+            'restrictedArbitrationUsers' => $restrictedArbitrationUsers,
             'canSelfRegister' => $canSelfRegister,
             'linkedPlayerId' => $linkedPlayerId,
             'isSelfRegistered' => $isSelfRegistered,
@@ -627,6 +644,11 @@ class CompetitionController extends Controller
             }
 
             $memberUser = $membersById[$refereeUserId];
+            if (!empty($memberUser['arbitration_restricted'])) {
+                $this->setFlash('danger', 'Le compte ' . $memberUser['username'] . ' n\'est pas autorisé à arbitrer.');
+                $this->redirect("/spaces/{$id}/competitions/{$cid}");
+                return;
+            }
             $refereePayload = [
                 'user_id' => (int) $memberUser['id'],
                 'name' => (string) $memberUser['username'],
@@ -635,6 +657,12 @@ class CompetitionController extends Controller
         } else {
             if (empty($refereeName)) {
                 $this->setFlash('danger', 'Le nom de l\'arbitre est requis si aucun membre n\'est sélectionné.');
+                $this->redirect("/spaces/{$id}/competitions/{$cid}");
+                return;
+            }
+            $restrictedUser = $this->findArbitrationRestrictedUserByEmail($refereeEmail);
+            if ($restrictedUser !== null) {
+                $this->setFlash('danger', 'L\'adresse email ' . $restrictedUser['email'] . ' est associée à un compte non autorisé à arbitrer.');
                 $this->redirect("/spaces/{$id}/competitions/{$cid}");
                 return;
             }
@@ -1017,14 +1045,22 @@ class CompetitionController extends Controller
     private function getSpaceMembers(int $spaceId): array
     {
         $stmt = $this->pdo->prepare(
-            "SELECT u.id, u.username, u.email
+            "SELECT u.id, u.username, u.email, u.restrictions, u.restriction_reason
              FROM space_members sm
              INNER JOIN users u ON u.id = sm.user_id
              WHERE sm.space_id = :space_id
              ORDER BY u.username ASC"
         );
         $stmt->execute(['space_id' => $spaceId]);
-        return $stmt->fetchAll();
+        $rows = $stmt->fetchAll();
+
+        foreach ($rows as &$row) {
+            $restrictions = json_decode((string) ($row['restrictions'] ?? ''), true);
+            $row['arbitration_restricted'] = is_array($restrictions) && !empty($restrictions['arbitration_access']);
+        }
+        unset($row);
+
+        return $rows;
     }
 
     /**
@@ -1038,5 +1074,24 @@ class CompetitionController extends Controller
             $indexed[(int) $row['id']] = $row;
         }
         return $indexed;
+    }
+
+    /**
+     * Retourne l'utilisateur restreint pour l'arbitrage associé à un email, ou null.
+     */
+    private function findArbitrationRestrictedUserByEmail(string $email): ?array
+    {
+        $email = trim($email);
+        if ($email === '') {
+            return null;
+        }
+
+        $userModel = new User();
+        $user = $userModel->findByEmail($email);
+        if (!$user) {
+            return null;
+        }
+
+        return $userModel->isRestricted((int) $user['id'], 'arbitration_access') ? $user : null;
     }
 }
