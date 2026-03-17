@@ -229,6 +229,51 @@ class CompetitionSession extends Model
     }
 
     /**
+     * Met une session en pause temporaire (désactivation jusqu'à pause_until).
+     */
+    public function pauseTemporarily(int $sessionId, int $minutes): bool
+    {
+        $minutes = max(1, $minutes);
+        $pauseUntil = date('Y-m-d H:i:s', time() + ($minutes * 60));
+
+        return $this->update($sessionId, [
+            'is_active' => 0,
+            'pause_until' => $pauseUntil,
+        ]);
+    }
+
+    /**
+     * Réactive une session uniquement si sa pause est expirée.
+     */
+    public function reactivateIfPauseExpired(int $sessionId): bool
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET is_active = 1,
+                 pause_until = NULL
+             WHERE id = :sid
+               AND is_active = 0
+               AND pause_until IS NOT NULL
+               AND pause_until <= NOW()
+               AND closed_at IS NULL"
+        );
+
+        return $stmt->execute(['sid' => $sessionId]);
+    }
+
+    /**
+     * Ferme définitivement une session arbitre.
+     */
+    public function closePermanently(int $sessionId): bool
+    {
+        return $this->update($sessionId, [
+            'is_active' => 0,
+            'pause_until' => null,
+            'closed_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /**
      * Retourne une session active d'une compétition assignée à un compte arbitre.
      */
     public function findAssignedSession(int $competitionId, int $userId): ?array

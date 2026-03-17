@@ -37,6 +37,17 @@ class CompetitionSessionController extends Controller
     private RoundPause $roundPause;
     private \PDO $pdo;
 
+    private function getConfiguredPauseDurationMinutes(): int
+    {
+        $raw = getenv('COMPETITION_SESSION_PAUSE_MINUTES');
+        if ($raw === false || $raw === '') {
+            return 15;
+        }
+
+        $minutes = (int) $raw;
+        return max(1, min(180, $minutes));
+    }
+
     /**
      * Retourne les IDs de joueurs (dans un espace) liés à des comptes
      * restreints pour la participation aux parties/compétitions.
@@ -104,11 +115,28 @@ class CompetitionSessionController extends Controller
             exit;
         }
 
+        $sessionId = (int) $data['session_id'];
+        $this->sessionModel->reactivateIfPauseExpired($sessionId);
+
         // Revérifier que la session est toujours active
-        $session = $this->sessionModel->find($data['session_id']);
+        $session = $this->sessionModel->find($sessionId);
         if (!$session || !$session['is_active']) {
+            if ($session && !empty($session['pause_until']) && strtotime((string) $session['pause_until']) > time()) {
+                $remainingSeconds = max(1, strtotime((string) $session['pause_until']) - time());
+                $this->renderMinimal('competitions/session_on_break', [
+                    'title' => 'Session en pause',
+                    'session' => $data,
+                    'pauseUntil' => $session['pause_until'],
+                    'remainingSeconds' => $remainingSeconds,
+                ]);
+                exit;
+            }
+
             Session::remove('competition_session');
-            $this->setFlash('warning', 'Cette session a été désactivée.');
+            $message = ($session && !empty($session['closed_at']))
+                ? 'Cette session a été fermée définitivement.'
+                : 'Cette session a été désactivée.';
+            $this->setFlash('warning', $message);
             $this->redirect('/competition/login');
             exit;
         }
@@ -185,8 +213,18 @@ class CompetitionSessionController extends Controller
 
         // Vérifier si la session existe et si elle est verrouillée
         $targetSession = $this->sessionModel->findByCompetitionAndNumber($competitionId, $sessionNumber);
+        if ($targetSession) {
+            $this->sessionModel->reactivateIfPauseExpired((int) $targetSession['id']);
+            $targetSession = $this->sessionModel->findByCompetitionAndNumber($competitionId, $sessionNumber);
+        }
         if ($targetSession && $targetSession['is_locked']) {
             $this->setFlash('danger', 'Cette session est verrouillée suite à trop de tentatives échouées. Contactez un membre de l\'équipe.');
+            $this->redirect('/competition/login');
+            return;
+        }
+
+        if ($targetSession && !empty($targetSession['closed_at'])) {
+            $this->setFlash('danger', 'Cette session est fermée définitivement.');
             $this->redirect('/competition/login');
             return;
         }
@@ -273,6 +311,15 @@ class CompetitionSessionController extends Controller
             return;
         }
 
+        $this->sessionModel->reactivateIfPauseExpired((int) $session['id']);
+        $session = $this->sessionModel->find((int) $session['id']) ?: $session;
+
+        if (!empty($session['closed_at'])) {
+            $this->setFlash('danger', 'Cette session est fermée définitivement.');
+            $this->redirect('/spaces');
+            return;
+        }
+
         if ((int) ($session['is_active'] ?? 0) !== 1 || (int) ($session['is_locked'] ?? 0) === 1) {
             $this->setFlash('danger', 'Cette session est inactive ou verrouillée.');
             $this->redirect('/spaces');
@@ -337,8 +384,69 @@ class CompetitionSessionController extends Controller
             'games'     => $games,
             'gameTypes' => $gameTypes,
             'players'   => $players,
+            'pauseDurationMinutes' => $this->getConfiguredPauseDurationMinutes(),
             'restrictedCompetitionPlayerIds' => $restrictedPlayerIds,
         ]);
+    }
+
+    /**
+     * Met la session arbitre en pause pendant une durée configurable.
+     */
+    public function pauseSession(): void
+    {
+        $data = $this->requireSession();
+
+        if (!CSRF::validate($_POST['csrf_token'] ?? '')) {
+            $this->setFlash('danger', 'Token de sécurité invalide.');
+            $this->redirect('/competition/dashboard');
+            return;
+        }
+
+        $minutes = $this->getConfiguredPauseDurationMinutes();
+        $this->sessionModel->pauseTemporarily((int) $data['session_id'], $minutes);
+
+        ActivityLog::logCompetition(
+            (int) $data['competition_id'],
+            'session.pause.self',
+            null,
+            'competition_session',
+            (int) $data['session_id'],
+            (int) $data['session_id'],
+            ['duration_minutes' => $minutes, 'referee' => $data['referee_name']]
+        );
+
+        $this->setFlash('info', 'Session mise en pause pour ' . $minutes . ' minute(s).');
+        $this->redirect('/competition/dashboard');
+    }
+
+    /**
+     * Ferme définitivement la session arbitre.
+     */
+    public function closeSession(): void
+    {
+        $data = $this->requireSession();
+
+        if (!CSRF::validate($_POST['csrf_token'] ?? '')) {
+            $this->setFlash('danger', 'Token de sécurité invalide.');
+            $this->redirect('/competition/dashboard');
+            return;
+        }
+
+        $this->sessionModel->closePermanently((int) $data['session_id']);
+
+        ActivityLog::logCompetition(
+            (int) $data['competition_id'],
+            'session.close.self',
+            null,
+            'competition_session',
+            (int) $data['session_id'],
+            (int) $data['session_id'],
+            ['referee' => $data['referee_name']]
+        );
+
+        Session::remove('competition_session');
+        $this->setFlash('warning', 'Session fermée définitivement.');
+        $this->redirect('/competition/login');
     }
 
     // ================================================================

@@ -2,6 +2,22 @@
     <div>
         <h1>🏆 <?= e($session['competition_name']) ?> — Session #<?= (int) $session['session_number'] ?></h1>
         <p class="text-muted text-small">Arbitre : <?= e($session['referee_name']) ?></p>
+        <div class="d-flex gap-1 flex-wrap" style="margin-top:0.5rem;">
+            <form method="POST" action="/competition/session/pause" style="display:inline;">
+                <?= csrf_field() ?>
+                <button type="submit" class="btn btn-sm btn-info">⏸ Partir en pause (<?= (int) ($pauseDurationMinutes ?? 15) ?> min)</button>
+            </form>
+            <form method="POST" action="/competition/session/close" style="display:inline;">
+                <?= csrf_field() ?>
+                <button
+                    type="submit"
+                    class="btn btn-sm btn-danger"
+                    data-confirm="Fermer définitivement cette session ? Cette action est irréversible et vous devrez contacter l'équipe pour être réaffecté."
+                >
+                    ⛔ Fermer la session
+                </button>
+            </form>
+        </div>
     </div>
 </div>
 
