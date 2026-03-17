@@ -5,7 +5,7 @@ import { MobileApp } from "./src/MobileApp";
 export default function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
+      <StatusBar hidden />
       <MobileApp />
     </SafeAreaProvider>
   );
