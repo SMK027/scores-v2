@@ -820,9 +820,16 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
   const compactNav = width < 380;
   const largeNav = width >= 720;
-  const estimatedItemWidth = compactNav ? 62 : 76;
+  const estimatedItemWidth = compactNav ? 56 : 76;
   const shouldScrollBottomNav = navigationActions.length * estimatedItemWidth > width - 24;
   const bottomNavExtraHeight = compactNav ? 66 : 76;
+
+  const menuStats = [
+    { label: "Parties", value: games.length },
+    { label: "Joueurs", value: players.length },
+    { label: "Types", value: gameTypes.length },
+    { label: "Membres", value: members.length },
+  ];
 
   if (loading) {
     return (
@@ -877,16 +884,14 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       {currentView === "menu" ? (
         <View style={styles.menuContainer}>
           <Text style={styles.sectionTitle}>Navigation</Text>
-          <Text style={styles.menuSubtitle}>Accede directement a chaque section de l'espace.</Text>
+          <Text style={styles.menuHint}>Utilisez la barre en bas pour changer de section.</Text>
 
-          <View style={styles.navGrid}>
-            {navigationActions.map((action) => (
-              <Pressable key={action.key} style={styles.navItem} onPress={action.onPress}>
-                <View style={styles.navIconCircle}>
-                  <Text style={styles.navIconGlyph}>{action.icon}</Text>
-                </View>
-                <Text style={styles.navLabel}>{action.label}</Text>
-              </Pressable>
+          <View style={styles.quickStatsGrid}>
+            {menuStats.map((entry) => (
+              <View key={entry.label} style={styles.quickStatCard}>
+                <Text style={styles.quickStatValue}>{entry.value}</Text>
+                <Text style={styles.quickStatLabel}>{entry.label}</Text>
+              </View>
             ))}
           </View>
         </View>
@@ -1639,42 +1644,37 @@ const styles = StyleSheet.create({
   menuContainer: {
     gap: 8,
   },
-  navGrid: {
-    marginTop: 6,
+  menuHint: {
+    color: theme.colors.mutedText,
+    fontSize: 13,
+  },
+  quickStatsGrid: {
+    marginTop: 4,
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
   },
-  navItem: {
-    width: "31%",
-    minWidth: 96,
+  quickStatCard: {
+    width: "47%",
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.card,
-    paddingVertical: 12,
-    alignItems: "center",
-    ...theme.shadow.card,
-  },
-  navIconCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: theme.colors.primarySoft,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
   },
-  navLabel: {
+  quickStatValue: {
     color: theme.colors.text,
-    fontWeight: "700",
-    fontSize: 13,
-    textAlign: "center",
-  },
-  navIconGlyph: {
-    color: theme.colors.primary,
     fontWeight: "800",
-    fontSize: 18,
+    fontSize: 22,
+  },
+  quickStatLabel: {
+    marginTop: 2,
+    color: theme.colors.mutedText,
+    fontSize: 12,
+    fontWeight: "600",
   },
   bottomNav: {
     position: "absolute",
@@ -1711,7 +1711,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   bottomNavItemCompact: {
-    minWidth: 62,
+    minWidth: 56,
     paddingHorizontal: 6,
     paddingVertical: 5,
   },
@@ -1753,10 +1753,6 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontWeight: "700",
     fontSize: 17,
-  },
-  menuSubtitle: {
-    color: theme.colors.mutedText,
-    marginTop: 4,
   },
   formCard: {
     backgroundColor: theme.colors.card,
