@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ApiError,
   completeGame,
@@ -26,6 +27,7 @@ type Props = {
 };
 
 export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [finishing, setFinishing] = useState(false);
@@ -153,7 +155,10 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top, 12) + 8 }]}
+    >
       <View style={styles.header}>
         <Pressable onPress={onBack}>
           <Text style={styles.back}>Retour</Text>
