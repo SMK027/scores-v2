@@ -389,6 +389,7 @@ $router->post('/admin/spaces/{id}/cancel-deletion', AdminController::class, 'can
 $router->post('/api/login', AuthApiController::class, 'login');
 $router->post('/api/register', AuthApiController::class, 'register');
 $router->get('/api/me', AuthApiController::class, 'me');
+$router->post('/api/refresh-token', AuthApiController::class, 'refreshToken');
 
 // Profil
 $router->get('/api/profile', ProfileApiController::class, 'show');

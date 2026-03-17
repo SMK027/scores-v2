@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^3.0.1",
     "babel-preset-expo": "~54.0.10",
     "expo": "~54.0.0",
     "expo-status-bar": "~3.0.0",

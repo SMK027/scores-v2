@@ -218,6 +218,39 @@ class AuthApiController extends ApiController
     }
 
     /**
+     * POST /api/refresh-token — Renouvelle le JWT de l'utilisateur connecté.
+     */
+    public function refreshToken(): void
+    {
+        $this->requireAuth();
+
+        $user = $this->userModel->find($this->userId);
+        if (!$user) {
+            $this->error('Utilisateur introuvable.', 404);
+        }
+
+        $token = JWT::encode([
+            'user_id'     => (int) $user['id'],
+            'username'    => $user['username'],
+            'global_role' => $user['global_role'],
+        ]);
+
+        $this->json([
+            'success' => true,
+            'token'   => $token,
+            'user'    => [
+                'id'          => (int) $user['id'],
+                'username'    => $user['username'],
+                'email'       => $user['email'],
+                'global_role' => $user['global_role'],
+                'avatar'      => $user['avatar'] ?? null,
+                'bio'         => $user['bio'] ?? null,
+                'created_at'  => $user['created_at'] ?? null,
+            ],
+        ]);
+    }
+
+    /**
      * Enregistre une tentative échouée et déclenche fail2ban si nécessaire.
      */
     private function recordFailedAttempt(string $clientIp, ?string $email): void
