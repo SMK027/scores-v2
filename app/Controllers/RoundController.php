@@ -100,7 +100,13 @@ class RoundController extends Controller
         $this->validateCSRF();
 
         $data = $this->getPostData(['notes']);
-        $this->round->createForGame((int) $gid, $data['notes'] ?: null);
+        try {
+            $this->round->createForGame((int) $gid, $data['notes'] ?: null);
+        } catch (\DomainException $e) {
+            $this->setFlash('warning', $e->getMessage());
+            $this->redirect("/spaces/{$id}/games/{$gid}");
+            return;
+        }
 
         ActivityLog::logSpace((int) $id, 'round.create', $this->getCurrentUserId(), 'game', (int) $gid);
 

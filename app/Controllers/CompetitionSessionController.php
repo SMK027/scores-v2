@@ -660,7 +660,19 @@ class CompetitionSessionController extends Controller
             return;
         }
 
-        $this->round->createForGame((int) $gid);
+        if ($this->round->hasActiveRound((int) $gid)) {
+            $this->setFlash('warning', 'Terminez la manche en cours avant d\'en créer une nouvelle.');
+            $this->redirect("/competition/games/{$gid}");
+            return;
+        }
+
+        try {
+            $this->round->createForGame((int) $gid);
+        } catch (\DomainException $e) {
+            $this->setFlash('warning', $e->getMessage());
+            $this->redirect("/competition/games/{$gid}");
+            return;
+        }
 
         ActivityLog::logCompetition($data['competition_id'], 'session.round_create', null, 'game', (int) $gid, $data['session_id']);
 

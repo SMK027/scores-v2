@@ -27,6 +27,10 @@ class Round extends Model
      */
     public function createForGame(int $gameId, ?string $notes = null): int
     {
+        if ($this->hasActiveRound($gameId)) {
+            throw new \DomainException('Terminez la manche en cours avant d\'en créer une nouvelle.');
+        }
+
         // Récupérer le prochain numéro de manche
         $stmt = $this->db->prepare("
             SELECT COALESCE(MAX(round_number), 0) + 1 AS next_number
