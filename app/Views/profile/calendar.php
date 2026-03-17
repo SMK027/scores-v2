@@ -9,6 +9,9 @@ $fcVersion = '6.1.15';
 .fc-ev-ongoing{ --fc-event-bg-color:#3b82f6; --fc-event-border-color:#1d4ed8; --fc-event-text-color:#fff; }
 .fc-ev-paused { --fc-event-bg-color:#f59e0b; --fc-event-border-color:#b45309; --fc-event-text-color:#fff; }
 .fc-ev-pending{ --fc-event-bg-color:#94a3b8; --fc-event-border-color:#64748b; --fc-event-text-color:#fff; }
+.fc-ev-comp-player  { --fc-event-bg-color:#0ea5e9; --fc-event-border-color:#0369a1; --fc-event-text-color:#fff; }
+.fc-ev-comp-referee{ --fc-event-bg-color:#10b981; --fc-event-border-color:#047857; --fc-event-text-color:#fff; }
+.fc-ev-comp-both   { --fc-event-bg-color:#f97316; --fc-event-border-color:#c2410c; --fc-event-text-color:#fff; }
 #fc-calendar  { min-height: 320px; }
 .collapsible-toggle {
     margin-left: auto;
@@ -314,8 +317,12 @@ $queryBase = [
         eventDidMount: function (info) {
             var p = info.event.extendedProps;
             var parts = [p.space, p.status];
-            if (p.rank) parts.push('#' + p.rank);
-            parts.push(p.player_count + ' joueur(s)');
+            if (p.entry_type === 'competition') {
+                parts.push('Rôle: ' + p.role);
+            } else {
+                if (p.rank) parts.push('#' + p.rank);
+                parts.push(p.player_count + ' joueur(s)');
+            }
             info.el.title = parts.join(' · ');
         },
         windowResize: function () {

@@ -236,12 +236,104 @@ class ProfileController extends Controller
                 'url'        => '/spaces/' . $g['space_id'] . '/games/' . $g['id'],
                 'classNames' => [$cssClass],
                 'extendedProps' => [
+                    'entry_type'   => 'game',
                     'space'        => $g['space_name'],
                     'game_type'    => $g['game_type_name'],
                     'status'       => $statusLabels[$g['status']] ?? $g['status'],
                     'is_winner'    => $isWinner,
                     'player_count' => (int) $g['player_count'],
                     'rank'         => $g['my_rank'],
+                ],
+            ];
+        }
+
+        $competitionWhere = ['sm.user_id = :uid_member'];
+        $competitionParams = ['uid_member' => $userId, 'uid_referee' => $userId, 'uid_player' => $userId];
+
+        if ($spaceId !== null) {
+            $competitionWhere[] = 'c.space_id = :space_id';
+            $competitionParams['space_id'] = $spaceId;
+        }
+        if ($dateStart !== null) {
+            $competitionWhere[] = 'c.ends_at >= :date_start';
+            $competitionParams['date_start'] = $dateStart;
+        }
+        if ($dateEnd !== null) {
+            $competitionWhere[] = 'c.starts_at <= :date_end';
+            $competitionParams['date_end'] = $dateEnd;
+        }
+
+        $competitionWhereSql = implode(' AND ', $competitionWhere);
+        $competitionSql = "SELECT
+                    c.id,
+                    c.space_id,
+                    c.name,
+                    c.status,
+                    c.starts_at,
+                    c.ends_at,
+                    s.name AS space_name,
+                                        MAX(CASE WHEN p_me.id IS NOT NULL THEN 1 ELSE 0 END) AS as_player,
+                    MAX(CASE WHEN cs.id IS NOT NULL THEN 1 ELSE 0 END) AS as_referee
+                FROM competitions c
+                INNER JOIN spaces s ON s.id = c.space_id
+                INNER JOIN space_members sm ON sm.space_id = c.space_id
+                                LEFT JOIN games g_cp ON g_cp.competition_id = c.id
+                                LEFT JOIN game_players gp_me ON gp_me.game_id = g_cp.id
+                                LEFT JOIN players p_me
+                                        ON p_me.id = gp_me.player_id
+                                        AND p_me.user_id = :uid_player
+                LEFT JOIN competition_sessions cs
+                    ON cs.competition_id = c.id
+                    AND cs.referee_user_id = :uid_referee
+                WHERE {$competitionWhereSql}
+                                    AND (p_me.id IS NOT NULL OR cs.id IS NOT NULL)
+                GROUP BY c.id
+                ORDER BY c.starts_at ASC
+                LIMIT 1000";
+
+        $competitionStmt = $pdo->prepare($competitionSql);
+        $competitionStmt->execute($competitionParams);
+        $competitionRows = $competitionStmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $competitionStatusLabels = [
+            'planned' => 'Planifiée',
+            'active'  => 'Active',
+            'paused'  => 'En pause',
+            'closed'  => 'Clôturée',
+        ];
+
+        foreach ($competitionRows as $c) {
+            $asPlayer = (int) ($c['as_player'] ?? 0) === 1;
+            $asReferee = (int) ($c['as_referee'] ?? 0) === 1;
+
+            $roles = [];
+            if ($asPlayer) {
+                $roles[] = 'joueur';
+            }
+            if ($asReferee) {
+                $roles[] = 'arbitre';
+            }
+            if (empty($roles)) {
+                continue;
+            }
+
+            $roleLabel = implode(' + ', $roles);
+            $cssClass = ($asPlayer && $asReferee)
+                ? 'fc-ev-comp-both'
+                : ($asReferee ? 'fc-ev-comp-referee' : 'fc-ev-comp-player');
+
+            $events[] = [
+                'id'    => 'competition-' . (int) $c['id'] . '-' . str_replace(' ', '-', $roleLabel),
+                'title' => 'Competition: ' . $c['name'] . ' (' . $roleLabel . ')',
+                'start' => $c['starts_at'],
+                'end'   => $c['ends_at'],
+                'url'   => '/spaces/' . $c['space_id'] . '/competitions/' . $c['id'],
+                'classNames' => [$cssClass],
+                'extendedProps' => [
+                    'entry_type' => 'competition',
+                    'space'      => $c['space_name'],
+                    'status'     => $competitionStatusLabels[$c['status']] ?? $c['status'],
+                    'role'       => $roleLabel,
                 ],
             ];
         }
