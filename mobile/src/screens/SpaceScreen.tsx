@@ -165,17 +165,23 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const [gamesData, playersData, gameTypesData, membersData] = await Promise.all([
+      const [gamesData, playersData, gameTypesData] = await Promise.all([
         fetchSpaceGames(token, space.id),
         fetchPlayers(token, space.id),
         fetchGameTypes(token, space.id),
-        fetchSpaceMembers(token, space.id),
       ]);
 
       setGames(gamesData);
       setPlayers(playersData);
       setGameTypes(gameTypesData);
-      setMembers(membersData);
+
+      try {
+        const membersData = await fetchSpaceMembers(token, space.id);
+        setMembers(membersData);
+      } catch {
+        // Ne bloque pas la création de partie si l'API membres est indisponible.
+        setMembers([]);
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);

@@ -40,7 +40,7 @@ export function AutocompleteSelect({
   const visibleOptions = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) {
-      return [];
+      return options.slice(0, 8);
     }
 
     return options
