@@ -26,6 +26,55 @@ type Props = {
   onBack: () => void;
 };
 
+function getStatusMeta(status: "pending" | "in_progress" | "paused" | "completed") {
+  switch (status) {
+    case "in_progress":
+      return { label: "En cours", backgroundColor: "#caefe5", textColor: "#0b7a61" };
+    case "completed":
+      return { label: "Terminee", backgroundColor: "#dfe0ff", textColor: "#3d4bdf" };
+    case "paused":
+      return { label: "En pause", backgroundColor: "#ffe8c5", textColor: "#8a5a00" };
+    case "pending":
+    default:
+      return { label: "En attente", backgroundColor: "#e9edf5", textColor: "#5b6780" };
+  }
+}
+
+function extractScoreValue(entry: unknown): number | null {
+  if (typeof entry === "number") {
+    return entry;
+  }
+
+  if (entry && typeof entry === "object" && "score" in entry) {
+    const raw = (entry as { score?: unknown }).score;
+    if (typeof raw === "number") {
+      return raw;
+    }
+    if (typeof raw === "string") {
+      const parsed = Number(raw);
+      return Number.isNaN(parsed) ? null : parsed;
+    }
+  }
+
+  return null;
+}
+
+function formatRoundValue(value: number | null, winCondition: string): string {
+  if (value === null) {
+    return "Non saisi";
+  }
+
+  if (winCondition === "win_loss") {
+    return value === 1 ? "Gagnant" : "Defaite";
+  }
+
+  if (winCondition === "ranking") {
+    return Number.isInteger(value) && value === 1 ? "1er" : `${value}e`;
+  }
+
+  return String(value);
+}
+
 export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
@@ -76,6 +125,8 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
       : winCondition === "ranking"
       ? "Classement"
       : "Victoire/Defaite";
+
+  const gameStatusMeta = getStatusMeta(details?.game.status ?? "pending");
 
   const startRoundAndScores = async () => {
     try {
@@ -218,7 +269,12 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
       </View>
 
       <Text style={styles.title}>{details.game.game_type_name || "Partie"}</Text>
-      <Text style={styles.meta}>Statut: {details.game.status}</Text>
+      <View style={styles.gameStatusRow}>
+        <Text style={styles.meta}>Statut</Text>
+        <View style={[styles.statusBadge, { backgroundColor: gameStatusMeta.backgroundColor }]}> 
+          <Text style={[styles.statusText, { color: gameStatusMeta.textColor }]}>{gameStatusMeta.label}</Text>
+        </View>
+      </View>
       <Text style={styles.meta}>Condition de victoire: {winConditionLabel}</Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -236,11 +292,31 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
       <View style={styles.block}>
         <Text style={styles.blockTitle}>Manches</Text>
         {details.rounds.length === 0 ? <Text style={styles.meta}>Aucune manche.</Text> : null}
-        {details.rounds.map((round) => (
-          <Text style={styles.meta} key={round.id}>
-            Manche #{round.round_number} - {round.status}
-          </Text>
-        ))}
+        {details.rounds.map((round) => {
+          const statusMeta = getStatusMeta(round.status);
+          const roundScores = (details.round_scores?.[String(round.id)] || {}) as Record<string, unknown>;
+
+          return (
+            <View key={round.id} style={styles.roundCard}>
+              <View style={styles.roundHeader}>
+                <Text style={styles.roundTitle}>Manche #{round.round_number}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: statusMeta.backgroundColor }]}>
+                  <Text style={[styles.statusText, { color: statusMeta.textColor }]}>{statusMeta.label}</Text>
+                </View>
+              </View>
+
+              {details.players.map((player) => {
+                const scoreValue = extractScoreValue(roundScores[String(player.player_id)]);
+                return (
+                  <View style={styles.row} key={`${round.id}-${player.id}`}>
+                    <Text style={styles.rowLabel}>{player.player_name}</Text>
+                    <Text style={styles.rowValue}>{formatRoundValue(scoreValue, winCondition)}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          );
+        })}
       </View>
 
       <View style={styles.block}>
@@ -352,6 +428,12 @@ const styles = StyleSheet.create({
     color: theme.colors.mutedText,
     marginTop: 6,
   },
+  gameStatusRow: {
+    marginTop: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   error: {
     color: theme.colors.danger,
     marginTop: 10,
@@ -369,6 +451,33 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: theme.colors.text,
     marginBottom: 8,
+  },
+  roundCard: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    padding: 10,
+    backgroundColor: "#fafcff",
+  },
+  roundHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  roundTitle: {
+    color: theme.colors.text,
+    fontWeight: "700",
+  },
+  statusBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  statusText: {
+    fontWeight: "700",
+    fontSize: 12,
   },
   row: {
     flexDirection: "row",
