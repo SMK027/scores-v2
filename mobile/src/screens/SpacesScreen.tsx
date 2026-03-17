@@ -100,11 +100,6 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
         </View>
       </View>
 
-      <Pressable style={styles.profileCard} onPress={onOpenProfile}>
-        <Text style={styles.profileCardTitle}>Mon profil</Text>
-        <Text style={styles.profileCardText}>Consulter mes statistiques globales et ma bio</Text>
-      </Pressable>
-
       <TextInput
         value={searchQuery}
         onChangeText={setSearchQuery}
@@ -209,24 +204,6 @@ const styles = StyleSheet.create({
   error: {
     color: theme.colors.danger,
     marginBottom: 8,
-  },
-  profileCard: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.card,
-    padding: 14,
-    marginBottom: 12,
-    ...theme.shadow.card,
-  },
-  profileCardTitle: {
-    color: theme.colors.text,
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  profileCardText: {
-    marginTop: 4,
-    color: theme.colors.mutedText,
   },
   searchInput: {
     backgroundColor: theme.colors.card,
