@@ -27,7 +27,7 @@ class SpaceMember extends Model
     public function findBySpace(int $spaceId): array
     {
         $stmt = $this->query(
-            "SELECT sm.*, u.username, u.email, u.avatar
+            "SELECT sm.*, u.username, u.email, u.avatar, u.restrictions as user_restrictions
              FROM {$this->table} sm
              INNER JOIN users u ON sm.user_id = u.id
              WHERE sm.space_id = :space_id

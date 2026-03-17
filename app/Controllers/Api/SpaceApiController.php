@@ -211,6 +211,12 @@ class SpaceApiController extends ApiController
         $this->checkSpaceAccess((int) $id);
 
         $members = $this->memberModel->findBySpace((int) $id);
+        $members = array_map(static function (array $member): array {
+            $restrictions = json_decode((string) ($member['user_restrictions'] ?? ''), true);
+            $member['games_participation_restricted'] = is_array($restrictions) && !empty($restrictions['games_participation']);
+            unset($member['user_restrictions']);
+            return $member;
+        }, $members);
         $pendingInvitations = $this->invitationModel->findPendingForSpace((int) $id);
 
         $this->json([

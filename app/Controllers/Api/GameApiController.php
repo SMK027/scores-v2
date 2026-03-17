@@ -13,6 +13,7 @@ use App\Models\RoundScore;
 use App\Models\RoundPause;
 use App\Models\Comment;
 use App\Models\ActivityLog;
+use App\Models\User;
 use App\Core\Middleware;
 
 /**
@@ -157,6 +158,20 @@ class GameApiController extends ApiController
         }
         if (count($playerIds) !== count(array_unique($playerIds))) {
             $this->error('Un joueur ne peut pas être ajouté deux fois.');
+        }
+
+        // Filtrer/valider la restriction de participation des comptes liés.
+        $userModel = new User();
+        foreach ($playerIds as $playerId) {
+            $player = $this->playerModel->find((int) $playerId);
+            if (!$player || (int) $player['space_id'] !== (int) $id) {
+                $this->error('Un ou plusieurs joueurs sont invalides pour cet espace.');
+            }
+
+            $linkedUserId = isset($player['user_id']) ? (int) $player['user_id'] : 0;
+            if ($linkedUserId > 0 && $userModel->isRestricted($linkedUserId, 'games_participation')) {
+                $this->error('Un joueur selectionne ne peut pas participer aux parties.', 403);
+            }
         }
 
         $gameId = $this->gameModel->create([
