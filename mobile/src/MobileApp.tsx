@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { SafeAreaView, StyleSheet } from "react-native";
-import { DashboardScreen } from "./screens/DashboardScreen";
 import { GameDetailScreen } from "./screens/GameDetailScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
@@ -13,7 +12,6 @@ import type { Space, User } from "./types/api";
 type Route =
   | { name: "welcome" }
   | { name: "login" }
-  | { name: "dashboard" }
   | { name: "spaces" }
   | { name: "profile" }
   | { name: "space"; space: Space }
@@ -23,8 +21,8 @@ export function MobileApp() {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [route, setRoute] = useState<Route>({ name: "welcome" });
+  const [previousRoute, setPreviousRoute] = useState<Route>({ name: "spaces" });
 
-  const goToDashboard = () => setRoute({ name: "dashboard" });
   const goToSpaces = () => setRoute({ name: "spaces" });
 
   const logout = () => {
@@ -43,17 +41,8 @@ export function MobileApp() {
           onLoginSuccess={({ token: authToken, user: authUser }) => {
             setToken(authToken);
             setUser(authUser);
-            setRoute({ name: "dashboard" });
+            setRoute({ name: "spaces" });
           }}
-        />
-      ) : null}
-
-      {route.name === "dashboard" && token && user ? (
-        <DashboardScreen
-          user={user}
-          onOpenSpaces={() => setRoute({ name: "spaces" })}
-          onOpenProfile={() => setRoute({ name: "profile" })}
-          onLogout={logout}
         />
       ) : null}
 
@@ -63,13 +52,15 @@ export function MobileApp() {
           user={user}
           onSelectSpace={(space) => setRoute({ name: "space", space })}
           onLogout={logout}
-          onOpenProfile={() => setRoute({ name: "profile" })}
-          onBack={goToDashboard}
+          onOpenProfile={() => {
+            setPreviousRoute({ name: "spaces" });
+            setRoute({ name: "profile" });
+          }}
         />
       ) : null}
 
       {route.name === "profile" && token && user ? (
-        <ProfileScreen token={token} fallbackUser={user} onBack={goToDashboard} />
+        <ProfileScreen token={token} fallbackUser={user} onBack={() => setRoute(previousRoute)} />
       ) : null}
 
       {route.name === "space" && token && user ? (
@@ -78,7 +69,10 @@ export function MobileApp() {
           user={user}
           space={route.space}
           onBack={goToSpaces}
-          onOpenProfile={() => setRoute({ name: "profile" })}
+          onOpenProfile={() => {
+            setPreviousRoute({ name: "space", space: route.space });
+            setRoute({ name: "profile" });
+          }}
           onOpenGame={(gameId) => setRoute({ name: "game", space: route.space, gameId })}
         />
       ) : null}
