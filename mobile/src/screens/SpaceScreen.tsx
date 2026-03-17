@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AutocompleteSelect } from "../components/AutocompleteSelect";
 import {
   ApiError,
@@ -62,6 +63,7 @@ function getStatusMeta(status: Game["status"]): {
 }
 
 export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [games, setGames] = useState<Game[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -187,7 +189,7 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
       <View style={styles.header}>
         <Pressable onPress={onBack}>
           <Text style={styles.back}>Retour</Text>
