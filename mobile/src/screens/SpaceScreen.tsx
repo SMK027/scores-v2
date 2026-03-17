@@ -14,6 +14,7 @@ import { AutocompleteSelect } from "../components/AutocompleteSelect";
 import {
   ApiError,
   createGame,
+  fetchGameDetails,
   fetchGameTypes,
   fetchPlayers,
   fetchSpaceGames,
@@ -28,7 +29,16 @@ type Props = {
   onOpenGame: (gameId: number) => void;
 };
 
-type SpaceView = "menu" | "games" | "create";
+type SpaceView = "menu" | "games" | "create" | "stats";
+
+type PlayerStats = {
+  playerId: number;
+  playerName: string;
+  roundsPlayed: number;
+  gamesPlayed: number;
+  wins: number;
+  winRate: number;
+};
 
 function getStatusMeta(status: Game["status"]): {
   label: string;
@@ -79,6 +89,9 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
   const [notes, setNotes] = useState("");
   const [currentView, setCurrentView] = useState<SpaceView>("menu");
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [playerStats, setPlayerStats] = useState<PlayerStats[]>([]);
 
   const loadData = useCallback(async () => {
     try {
@@ -184,6 +197,115 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
     }
   };
 
+  const loadSpaceStats = useCallback(async () => {
+    try {
+      setStatsLoading(true);
+      setStatsError(null);
+
+      const baseByPlayerId = new Map<number, PlayerStats>();
+      players.forEach((player) => {
+        baseByPlayerId.set(player.id, {
+          playerId: player.id,
+          playerName: player.name,
+          roundsPlayed: 0,
+          gamesPlayed: 0,
+          wins: 0,
+          winRate: 0,
+        });
+      });
+
+      if (games.length > 0) {
+        const detailsList = await Promise.all(
+          games.map((game) => fetchGameDetails(token, space.id, game.id))
+        );
+
+        detailsList.forEach((details) => {
+          details.players.forEach((gamePlayer) => {
+            const existing = baseByPlayerId.get(gamePlayer.player_id);
+            if (!existing) {
+              baseByPlayerId.set(gamePlayer.player_id, {
+                playerId: gamePlayer.player_id,
+                playerName: gamePlayer.player_name,
+                roundsPlayed: 0,
+                gamesPlayed: 1,
+                wins: gamePlayer.is_winner ? 1 : 0,
+                winRate: 0,
+              });
+              return;
+            }
+
+            existing.gamesPlayed += 1;
+            if (gamePlayer.is_winner) {
+              existing.wins += 1;
+            }
+          });
+
+          details.rounds.forEach((round) => {
+            const scoresForRound = details.round_scores?.[String(round.id)] || {};
+            Object.keys(scoresForRound).forEach((playerIdRaw) => {
+              const playerId = Number(playerIdRaw);
+              const existing = baseByPlayerId.get(playerId);
+              if (!existing) {
+                return;
+              }
+              existing.roundsPlayed += 1;
+            });
+          });
+        });
+      }
+
+      const computed = Array.from(baseByPlayerId.values()).map((stats) => ({
+        ...stats,
+        winRate: stats.gamesPlayed > 0 ? (stats.wins / stats.gamesPlayed) * 100 : 0,
+      }));
+
+      computed.sort((a, b) => {
+        if (b.winRate !== a.winRate) {
+          return b.winRate - a.winRate;
+        }
+        if (b.wins !== a.wins) {
+          return b.wins - a.wins;
+        }
+        if (b.gamesPlayed !== a.gamesPlayed) {
+          return b.gamesPlayed - a.gamesPlayed;
+        }
+        return a.playerName.localeCompare(b.playerName);
+      });
+
+      setPlayerStats(computed);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setStatsError(err.message);
+      } else {
+        setStatsError("Impossible de charger les statistiques de l'espace.");
+      }
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [games, players, space.id, token]);
+
+  useEffect(() => {
+    if (currentView !== "stats") {
+      return;
+    }
+    void loadSpaceStats();
+  }, [currentView, loadSpaceStats]);
+
+  const mostActivePlayer = useMemo(() => {
+    if (playerStats.length === 0) {
+      return null;
+    }
+
+    const sorted = [...playerStats].sort((a, b) => {
+      if (b.roundsPlayed !== a.roundsPlayed) {
+        return b.roundsPlayed - a.roundsPlayed;
+      }
+      return a.playerName.localeCompare(b.playerName);
+    });
+
+    return sorted[0] || null;
+  }, [playerStats]);
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -228,6 +350,11 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
           <Pressable style={styles.menuCard} onPress={() => setCurrentView("create")}>
             <Text style={styles.menuTitle}>Creer une partie</Text>
             <Text style={styles.menuSubtitle}>Ouvrir le formulaire de creation</Text>
+          </Pressable>
+
+          <Pressable style={styles.menuCard} onPress={() => setCurrentView("stats")}>
+            <Text style={styles.menuTitle}>Consulter les statistiques</Text>
+            <Text style={styles.menuSubtitle}>Activite des joueurs et taux de victoire</Text>
           </Pressable>
         </View>
       ) : null}
@@ -311,6 +438,56 @@ export function SpaceScreen({ token, space, onBack, onOpenGame }: Props) {
           />
         </View>
       ) : null}
+
+      {currentView === "stats" ? (
+        <ScrollView contentContainerStyle={styles.formCard}>
+          <Text style={styles.sectionTitle}>Statistiques de l'espace</Text>
+
+          {statsLoading ? (
+            <View style={styles.statsLoadingContainer}>
+              <ActivityIndicator />
+            </View>
+          ) : null}
+
+          {statsError ? <Text style={styles.error}>{statsError}</Text> : null}
+
+          {!statsLoading && !statsError ? (
+            <>
+              <View style={styles.statsCard}>
+                <Text style={styles.statsCardTitle}>Joueur le plus actif</Text>
+                {mostActivePlayer ? (
+                  <>
+                    <Text style={styles.statsHighlightName}>{mostActivePlayer.playerName}</Text>
+                    <Text style={styles.statsMeta}>Manches jouees: {mostActivePlayer.roundsPlayed}</Text>
+                  </>
+                ) : (
+                  <Text style={styles.statsMeta}>Aucune donnee disponible.</Text>
+                )}
+              </View>
+
+              <View style={styles.statsCard}>
+                <Text style={styles.statsCardTitle}>Classement par taux de victoire</Text>
+
+                {playerStats.length === 0 ? (
+                  <Text style={styles.statsMeta}>Aucune donnee disponible.</Text>
+                ) : (
+                  playerStats.map((stats, index) => (
+                    <View style={styles.statsRow} key={stats.playerId}>
+                      <Text style={styles.statsRank}>{index + 1}.</Text>
+                      <View style={styles.statsRowMain}>
+                        <Text style={styles.statsPlayerName}>{stats.playerName}</Text>
+                        <Text style={styles.statsMeta}>
+                          {stats.winRate.toFixed(1)}% ({stats.wins} victoire{stats.wins > 1 ? "s" : ""} / {stats.gamesPlayed} partie{stats.gamesPlayed > 1 ? "s" : ""})
+                        </Text>
+                      </View>
+                    </View>
+                  ))
+                )}
+              </View>
+            </>
+          ) : null}
+        </ScrollView>
+      ) : null}
     </View>
   );
 }
@@ -381,6 +558,51 @@ const styles = StyleSheet.create({
   },
   gamesContainer: {
     flex: 1,
+  },
+  statsLoadingContainer: {
+    paddingVertical: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statsCard: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    padding: 12,
+    backgroundColor: theme.colors.card,
+  },
+  statsCardTitle: {
+    color: theme.colors.text,
+    fontWeight: "700",
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  statsHighlightName: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+    fontSize: 18,
+  },
+  statsMeta: {
+    color: theme.colors.mutedText,
+    marginTop: 4,
+  },
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 10,
+  },
+  statsRank: {
+    width: 28,
+    color: theme.colors.text,
+    fontWeight: "700",
+  },
+  statsRowMain: {
+    flex: 1,
+  },
+  statsPlayerName: {
+    color: theme.colors.text,
+    fontWeight: "700",
   },
   sectionTitle: {
     color: theme.colors.text,
