@@ -6,6 +6,26 @@ import type { User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
 import { getRoleLabel } from "../utils/roles";
 
+function getRoleBadgeStyle(role?: string): { backgroundColor: string; textColor: string } {
+  switch (role) {
+    case "superadmin":
+      return { backgroundColor: "#ffe3e3", textColor: "#b42318" };
+    case "admin":
+      return { backgroundColor: "#e9f1ff", textColor: "#1f6feb" };
+    case "moderator":
+      return { backgroundColor: "#efe4ff", textColor: "#6f42c1" };
+    case "manager":
+      return { backgroundColor: "#e6f6ec", textColor: "#1a7f37" };
+    case "member":
+      return { backgroundColor: "#eef2f8", textColor: "#5f6b85" };
+    case "guest":
+      return { backgroundColor: "#fff4d6", textColor: "#9a6700" };
+    case "user":
+    default:
+      return { backgroundColor: "#eef2f8", textColor: "#5f6b85" };
+  }
+}
+
 type Props = {
   token: string;
   fallbackUser: User;
@@ -59,6 +79,7 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
 
   const joinedLabel = useMemo(() => formatDate(profile.created_at), [profile.created_at]);
   const avatarUri = useMemo(() => getAvatarUri(profile.avatar), [profile.avatar]);
+  const roleBadgeStyle = useMemo(() => getRoleBadgeStyle(profile.global_role), [profile.global_role]);
 
   if (loading) {
     return (
@@ -95,7 +116,14 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Informations</Text>
-        <Text style={styles.meta}>Role global: {getRoleLabel(profile.global_role)}</Text>
+        <View style={styles.roleRow}>
+          <Text style={styles.metaLabel}>Role global</Text>
+          <View style={[styles.roleBadge, { backgroundColor: roleBadgeStyle.backgroundColor }]}>
+            <Text style={[styles.roleBadgeText, { color: roleBadgeStyle.textColor }]}>
+              {getRoleLabel(profile.global_role)}
+            </Text>
+          </View>
+        </View>
         <Text style={styles.meta}>Inscrit depuis: {joinedLabel}</Text>
         <Text style={styles.bioLabel}>Bio</Text>
         <Text style={styles.bio}>{profile.bio?.trim() ? profile.bio : "Aucune bio renseignee."}</Text>
@@ -179,6 +207,25 @@ const styles = StyleSheet.create({
   meta: {
     color: theme.colors.text,
     marginBottom: 6,
+  },
+  metaLabel: {
+    color: theme.colors.mutedText,
+    fontWeight: "600",
+  },
+  roleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  roleBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  roleBadgeText: {
+    fontWeight: "700",
+    fontSize: 13,
   },
   bioLabel: {
     color: theme.colors.mutedText,
