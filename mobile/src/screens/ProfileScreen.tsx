@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ApiError, fetchProfile } from "../services/api";
 import { theme } from "../styles/theme";
 import type { User } from "../types/api";
+import { getAvatarUri, getInitials } from "../utils/avatar";
 
 type Props = {
   token: string;
@@ -25,11 +26,6 @@ function formatDate(value?: string): string {
     month: "2-digit",
     year: "numeric",
   }).format(date);
-}
-
-function getInitials(user: User): string {
-  const source = user.username || user.email || "?";
-  return source.slice(0, 2).toUpperCase();
 }
 
 export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
@@ -61,6 +57,7 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
   }, [loadProfile]);
 
   const joinedLabel = useMemo(() => formatDate(profile.created_at), [profile.created_at]);
+  const avatarUri = useMemo(() => getAvatarUri(profile.avatar), [profile.avatar]);
 
   if (loading) {
     return (
@@ -85,7 +82,11 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
 
       <View style={styles.card}>
         <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{getInitials(profile)}</Text>
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+          ) : (
+            <Text style={styles.avatarText}>{getInitials(profile)}</Text>
+          )}
         </View>
         <Text style={styles.username}>{profile.username}</Text>
         <Text style={styles.email}>{profile.email}</Text>
@@ -151,6 +152,11 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: "700",
     fontSize: 24,
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 36,
   },
   username: {
     color: theme.colors.text,

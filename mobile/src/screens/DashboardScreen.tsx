@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { theme } from "../styles/theme";
 import type { User } from "../types/api";
+import { getAvatarUri, getInitials } from "../utils/avatar";
 
 type Props = {
   user: User;
@@ -9,12 +10,9 @@ type Props = {
   onLogout: () => void;
 };
 
-function getInitials(user: User): string {
-  const source = user.username || user.email || "?";
-  return source.slice(0, 2).toUpperCase();
-}
-
 export function DashboardScreen({ user, onOpenSpaces, onOpenProfile, onLogout }: Props) {
+  const avatarUri = getAvatarUri(user.avatar);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -28,7 +26,11 @@ export function DashboardScreen({ user, onOpenSpaces, onOpenProfile, onLogout }:
 
       <Pressable style={styles.avatarCard} onPress={onOpenProfile}>
         <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{getInitials(user)}</Text>
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+          ) : (
+            <Text style={styles.avatarText}>{getInitials(user)}</Text>
+          )}
         </View>
         <View style={styles.avatarContent}>
           <Text style={styles.cardTitle}>Mon profil</Text>
@@ -92,6 +94,11 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontSize: 22,
     fontWeight: "700",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 32,
   },
   avatarContent: {
     flex: 1,
