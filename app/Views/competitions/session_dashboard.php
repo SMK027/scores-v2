@@ -5,7 +5,19 @@
         <div class="d-flex gap-1 flex-wrap" style="margin-top:0.5rem;">
             <form method="POST" action="/competition/session/pause" style="display:inline;">
                 <?= csrf_field() ?>
-                <button type="submit" class="btn btn-sm btn-info">⏸ Partir en pause (<?= (int) ($pauseDurationMinutes ?? 15) ?> min)</button>
+                <div class="d-flex gap-1 align-center" style="flex-wrap:wrap;">
+                    <input
+                        type="number"
+                        name="pause_minutes"
+                        min="<?= (int) ($pauseMinMinutes ?? 5) ?>"
+                        max="<?= (int) ($pauseMaxMinutes ?? 30) ?>"
+                        value="<?= (int) ($pauseDurationMinutes ?? 15) ?>"
+                        class="form-control form-control-sm"
+                        style="width:105px;"
+                        required
+                    >
+                    <button type="submit" class="btn btn-sm btn-info">⏸ Partir en pause</button>
+                </div>
             </form>
             <form method="POST" action="/competition/session/close" style="display:inline;">
                 <?= csrf_field() ?>
@@ -18,6 +30,7 @@
                 </button>
             </form>
         </div>
+        <p class="text-muted text-small" style="margin-top:0.35rem;">Pause arbitre: entre 5 et 30 minutes. Au-dela, un membre de l'equipe doit suspendre la session.</p>
     </div>
 </div>
 

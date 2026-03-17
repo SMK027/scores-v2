@@ -26,6 +26,10 @@ use App\Models\ActivityLog;
  */
 class CompetitionSessionController extends Controller
 {
+    private const REFEREE_PAUSE_MIN_MINUTES = 5;
+    private const REFEREE_PAUSE_MAX_MINUTES = 30;
+    private const REFEREE_PAUSE_DEFAULT_MINUTES = 15;
+
     private CompetitionSession $sessionModel;
     private Competition $competition;
     private Game $game;
@@ -36,17 +40,6 @@ class CompetitionSessionController extends Controller
     private RoundScore $roundScore;
     private RoundPause $roundPause;
     private \PDO $pdo;
-
-    private function getConfiguredPauseDurationMinutes(): int
-    {
-        $raw = getenv('COMPETITION_SESSION_PAUSE_MINUTES');
-        if ($raw === false || $raw === '') {
-            return 15;
-        }
-
-        $minutes = (int) $raw;
-        return max(1, min(180, $minutes));
-    }
 
     /**
      * Retourne les IDs de joueurs (dans un espace) liés à des comptes
@@ -384,7 +377,9 @@ class CompetitionSessionController extends Controller
             'games'     => $games,
             'gameTypes' => $gameTypes,
             'players'   => $players,
-            'pauseDurationMinutes' => $this->getConfiguredPauseDurationMinutes(),
+            'pauseDurationMinutes' => self::REFEREE_PAUSE_DEFAULT_MINUTES,
+            'pauseMinMinutes' => self::REFEREE_PAUSE_MIN_MINUTES,
+            'pauseMaxMinutes' => self::REFEREE_PAUSE_MAX_MINUTES,
             'restrictedCompetitionPlayerIds' => $restrictedPlayerIds,
         ]);
     }
@@ -402,7 +397,32 @@ class CompetitionSessionController extends Controller
             return;
         }
 
-        $minutes = $this->getConfiguredPauseDurationMinutes();
+        $rawMinutes = $_POST['pause_minutes'] ?? null;
+        if (!is_string($rawMinutes) && !is_int($rawMinutes)) {
+            $this->setFlash('danger', 'Durée de pause invalide.');
+            $this->redirect('/competition/dashboard');
+            return;
+        }
+
+        $rawMinutes = trim((string) $rawMinutes);
+        if ($rawMinutes === '' || !ctype_digit($rawMinutes)) {
+            $this->setFlash('danger', 'Veuillez saisir une durée de pause en minutes.');
+            $this->redirect('/competition/dashboard');
+            return;
+        }
+
+        $minutes = (int) $rawMinutes;
+        if ($minutes > self::REFEREE_PAUSE_MAX_MINUTES) {
+            $this->setFlash('warning', 'Pour une pause supérieure à 30 minutes, merci de contacter un membre de l\'équipe pour suspendre la session.');
+            $this->redirect('/competition/dashboard');
+            return;
+        }
+        if ($minutes < self::REFEREE_PAUSE_MIN_MINUTES) {
+            $this->setFlash('danger', 'La durée de pause doit être comprise entre 5 et 30 minutes.');
+            $this->redirect('/competition/dashboard');
+            return;
+        }
+
         $this->sessionModel->pauseTemporarily((int) $data['session_id'], $minutes);
 
         ActivityLog::logCompetition(
