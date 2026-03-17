@@ -130,7 +130,12 @@ class ProfileApiController extends ApiController
 
         $this->json([
             'success' => true,
-            'stats'   => $stats,
+            'stats'   => [
+                'total_rounds' => $stats['total_rounds'],
+                'rounds_won'   => $stats['rounds_won'],
+                'win_rate'     => $stats['win_rate'],
+                'total_spaces' => $stats['total_spaces'],
+            ],
         ]);
     }
 

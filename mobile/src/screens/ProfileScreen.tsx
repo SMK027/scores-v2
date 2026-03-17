@@ -157,11 +157,11 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
         {stats ? (
           <View style={styles.statsRow}>
             <View style={styles.statBox}>
-              <Text style={styles.statValue}>{stats.total_games}</Text>
-              <Text style={styles.statLabel}>Parties</Text>
+              <Text style={styles.statValue}>{stats.total_rounds}</Text>
+              <Text style={styles.statLabel}>Manches</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statValue}>{stats.total_wins}</Text>
+              <Text style={styles.statValue}>{stats.rounds_won}</Text>
               <Text style={styles.statLabel}>Victoires</Text>
             </View>
             <View style={styles.statBox}>

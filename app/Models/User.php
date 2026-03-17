@@ -216,32 +216,51 @@ class User extends Model
 
     /**
      * Retourne les statistiques globales d'un utilisateur (tous espaces confondus).
-     * Agrège les données de tous les profils joueurs rattachés au compte.
+     * Le taux de victoire est calculé sur les manches : manches gagnées / manches jouées.
      */
     public function getGlobalStats(int $userId): array
     {
+        // Statistiques de manches
         $stmt = $this->query(
             "SELECT
-                COUNT(DISTINCT gp.game_id) AS total_games,
-                COALESCE(SUM(CASE WHEN gp.is_winner = 1 THEN 1 ELSE 0 END), 0) AS total_wins,
-                COUNT(DISTINCT p.space_id) AS total_spaces
+                COUNT(*) AS total_rounds,
+                COALESCE(SUM(CASE
+                    WHEN gt.win_condition = 'win_loss' AND rs.score = 1 THEN 1
+                    WHEN gt.win_condition = 'highest_score' AND rs.score = (
+                        SELECT MAX(rs2.score) FROM round_scores rs2 WHERE rs2.round_id = rs.round_id
+                    ) THEN 1
+                    WHEN gt.win_condition IN ('lowest_score', 'ranking') AND rs.score = (
+                        SELECT MIN(rs2.score) FROM round_scores rs2 WHERE rs2.round_id = rs.round_id
+                    ) THEN 1
+                    ELSE 0
+                END), 0) AS rounds_won
              FROM players p
-             LEFT JOIN game_players gp ON gp.player_id = p.id
+             INNER JOIN round_scores rs ON rs.player_id = p.id
+             INNER JOIN rounds r ON r.id = rs.round_id AND r.status = 'completed'
+             INNER JOIN games g ON g.id = r.game_id
+             INNER JOIN game_types gt ON gt.id = g.game_type_id
              WHERE p.user_id = :user_id",
             ['user_id' => $userId]
         );
 
         $row = $stmt->fetch();
 
-        $totalGames = (int) ($row['total_games'] ?? 0);
-        $totalWins  = (int) ($row['total_wins']  ?? 0);
-        $winRate    = $totalGames > 0 ? round($totalWins / $totalGames * 100, 1) : 0.0;
+        $totalRounds = (int) ($row['total_rounds'] ?? 0);
+        $roundsWon   = (int) ($row['rounds_won']   ?? 0);
+        $winRate     = $totalRounds > 0 ? round($roundsWon / $totalRounds * 100, 1) : 0.0;
+
+        // Nombre d'espaces où l'utilisateur possède un profil joueur
+        $stmtSpaces = $this->query(
+            "SELECT COUNT(DISTINCT space_id) AS total_spaces FROM players WHERE user_id = :user_id",
+            ['user_id' => $userId]
+        );
+        $totalSpaces = (int) ($stmtSpaces->fetchColumn() ?? 0);
 
         return [
-            'total_games'  => $totalGames,
-            'total_wins'   => $totalWins,
+            'total_rounds' => $totalRounds,
+            'rounds_won'   => $roundsWon,
             'win_rate'     => $winRate,
-            'total_spaces' => (int) ($row['total_spaces'] ?? 0),
+            'total_spaces' => $totalSpaces,
         ];
     }
 

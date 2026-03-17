@@ -96,8 +96,8 @@ export type Round = {
 };
 
 export type ProfileStats = {
-  total_games: number;
-  total_wins: number;
+  total_rounds: number;
+  rounds_won: number;
   win_rate: number;
   total_spaces: number;
 };
