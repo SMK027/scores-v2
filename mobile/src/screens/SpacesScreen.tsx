@@ -293,33 +293,35 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
                 </View>
               </View>
 
-              {item.created_by === user.id ? (
-                <Pressable
-                  style={[styles.deleteSpaceButton, deletingSpaceId === item.id ? styles.disabled : undefined]}
-                  disabled={deletingSpaceId === item.id}
-                  onPress={(event) => {
-                    event.stopPropagation();
-                    confirmAndDeleteSpace(item);
-                  }}
-                >
-                  <Text style={styles.deleteSpaceText}>
-                    {deletingSpaceId === item.id ? "Suppression..." : "Supprimer"}
-                  </Text>
-                </Pressable>
-              ) : (
-                <Pressable
-                  style={[styles.leaveSpaceButton, leavingSpaceId === item.id ? styles.disabled : undefined]}
-                  disabled={leavingSpaceId === item.id}
-                  onPress={(event) => {
-                    event.stopPropagation();
-                    confirmAndLeaveSpace(item);
-                  }}
-                >
-                  <Text style={styles.leaveSpaceText}>
-                    {leavingSpaceId === item.id ? "Départ..." : "Quitter"}
-                  </Text>
-                </Pressable>
-              )}
+              <View style={styles.cardHeaderActions}>
+                {item.created_by === user.id ? (
+                  <Pressable
+                    style={[styles.deleteSpaceButton, deletingSpaceId === item.id ? styles.disabled : undefined]}
+                    disabled={deletingSpaceId === item.id}
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      confirmAndDeleteSpace(item);
+                    }}
+                  >
+                    <Text style={styles.deleteSpaceText}>
+                      {deletingSpaceId === item.id ? "Suppression..." : "Supprimer"}
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    style={[styles.leaveSpaceButton, leavingSpaceId === item.id ? styles.disabled : undefined]}
+                    disabled={leavingSpaceId === item.id}
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      confirmAndLeaveSpace(item);
+                    }}
+                  >
+                    <Text style={styles.leaveSpaceText}>
+                      {leavingSpaceId === item.id ? "Depart..." : "Quitter"}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
             </View>
             {item.description ? <Text style={styles.description}>{item.description}</Text> : null}
             <View style={styles.cardFooter}>
@@ -535,6 +537,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
     marginRight: 10,
+  },
+  cardHeaderActions: {
+    gap: 8,
   },
   cardHeaderTextWrap: {
     flex: 1,
