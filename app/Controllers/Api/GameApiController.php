@@ -263,6 +263,7 @@ class GameApiController extends ApiController
     {
         $this->requireAuth();
         $this->checkUserRestriction('games_manage');
+        $this->checkSpaceRestriction((int) $id, 'games');
         $this->checkSpaceAccess((int) $id, ['admin', 'manager', 'member']);
 
         $game = $this->gameModel->find((int) $gid);
@@ -334,6 +335,7 @@ class GameApiController extends ApiController
     {
         $this->requireAuth();
         $this->checkUserRestriction('comments_manage');
+        $this->checkSpaceAccess((int) $id);
 
         $commentModel = new Comment();
         $comment = $commentModel->find((int) $cid);
@@ -360,6 +362,8 @@ class GameApiController extends ApiController
     public function createRound(string $id, string $gid): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('games_manage');
+        $this->checkSpaceRestriction((int) $id, 'games');
         $this->checkSpaceAccess((int) $id, ['admin', 'manager', 'member']);
 
         $game = $this->gameModel->find((int) $gid);
@@ -389,6 +393,8 @@ class GameApiController extends ApiController
     public function updateScores(string $id, string $gid, string $rid): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('games_manage');
+        $this->checkSpaceRestriction((int) $id, 'games');
         $ctx = $this->checkSpaceAccess((int) $id, ['admin', 'manager', 'member']);
 
         $game = $this->gameModel->findWithDetails((int) $gid);
@@ -443,6 +449,8 @@ class GameApiController extends ApiController
     public function updateRoundStatus(string $id, string $gid, string $rid): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('games_manage');
+        $this->checkSpaceRestriction((int) $id, 'games');
         $this->checkSpaceAccess((int) $id, ['admin', 'manager', 'member']);
 
         $game = $this->gameModel->find((int) $gid);
@@ -494,6 +502,8 @@ class GameApiController extends ApiController
     public function deleteRound(string $id, string $gid, string $rid): void
     {
         $this->requireAuth();
+        $this->checkUserRestriction('games_manage');
+        $this->checkSpaceRestriction((int) $id, 'games');
         $this->checkSpaceAccess((int) $id, ['admin', 'manager']);
 
         $game = $this->gameModel->find((int) $gid);

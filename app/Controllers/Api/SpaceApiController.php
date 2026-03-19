@@ -179,7 +179,7 @@ class SpaceApiController extends ApiController
     {
         $this->requireAuth();
         $this->checkSpaceAccess((int) $id, ['admin', 'manager']);
-        $this->checkSpaceRestriction((int) $id, 'members');
+        $this->checkSpaceRestriction((int) $id, 'invites');
 
         $token = $this->inviteModel->createInvite((int) $id, $this->userId, 72);
 
@@ -306,6 +306,7 @@ class SpaceApiController extends ApiController
     {
         $this->requireAuth();
         $this->checkSpaceAccess((int) $id, ['admin']);
+        $this->checkSpaceRestriction((int) $id, 'members');
 
         $data = $this->getJsonBody();
         $role = $data['role'] ?? 'member';
@@ -324,6 +325,7 @@ class SpaceApiController extends ApiController
     {
         $this->requireAuth();
         $this->checkSpaceAccess((int) $id, ['admin']);
+        $this->checkSpaceRestriction((int) $id, 'members');
 
         $space = $this->spaceModel->find((int) $id);
         $memberToRemove = $this->memberModel->find((int) $mid);
