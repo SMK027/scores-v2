@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { AppState, SafeAreaView, StyleSheet, View, ActivityIndicator } from "react-native";
+import { AppState, SafeAreaView, StyleSheet, View, ActivityIndicator, Platform } from "react-native";
+import { StatusBar } from "expo-status-bar";
+import * as NavigationBar from "expo-navigation-bar";
 import { refreshAuthToken } from "./services/api";
 import { clearSession, loadSession, saveSession } from "./services/session";
 import { GameDetailScreen } from "./screens/GameDetailScreen";
@@ -36,6 +38,21 @@ export function MobileApp() {
     setRoute({ name: "welcome" });
     void clearSession();
   };
+
+  useEffect(() => {
+    void (async () => {
+      if (Platform.OS !== "android") {
+        return;
+      }
+
+      try {
+        await NavigationBar.setBehaviorAsync("overlay-swipe");
+        await NavigationBar.setVisibilityAsync("hidden");
+      } catch {
+        // Ignore les erreurs silencieusement selon le device.
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     const timeout = setTimeout(() => setShowSplash(false), 1500);
@@ -127,6 +144,7 @@ export function MobileApp() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar hidden />
       {route.name === "welcome" ? <WelcomeScreen onLoginPress={() => setRoute({ name: "login" })} /> : null}
 
       {route.name === "login" ? (
