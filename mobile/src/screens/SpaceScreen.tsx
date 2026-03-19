@@ -140,6 +140,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
   const [notes, setNotes] = useState("");
   const [currentView, setCurrentView] = useState<SpaceView>("menu");
+  const [activeGroup, setActiveGroup] = useState<"view" | "manage" | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStats[]>([]);
@@ -935,81 +936,27 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const isAdmin = space.user_role === "admin";
   const canManageMembers = isAdmin || space.user_role === "manager";
 
-  const navigationActions: Array<{
-    key: Exclude<SpaceView, "menu">;
-    label: string;
-    icon: string;
-    onPress: () => void;
-  }> = [
-    {
-      key: "games",
-      label: "Parties",
-      icon: "🎮",
-      onPress: () => setCurrentView("games" as const),
-    },
-    {
-      key: "players",
-      label: "Joueurs",
-      icon: "👥",
-      onPress: () => setCurrentView("players" as const),
-    },
-    {
-      key: "leaderboard",
-      label: "Classement",
-      icon: "🏆",
-      onPress: () => setCurrentView("leaderboard" as const),
-    },
-    {
-      key: "stats",
-      label: "Stats",
-      icon: "📊",
-      onPress: () => setCurrentView("stats" as const),
-    },
-    {
-      key: "gameTypes",
-      label: "Types",
-      icon: "🧩",
-      onPress: () => setCurrentView("gameTypes" as const),
-    },
-    {
-      key: "competitions",
-      label: "Compet.",
-      icon: "🏁",
-      onPress: () => setCurrentView("competitions" as const),
-    },
-    {
-      key: "create",
-      label: "Nouvelle",
-      icon: "➕",
-      onPress: () => setCurrentView("create" as const),
-    },
-    {
-      key: "search",
-      label: "Recherche",
-      icon: "🔍",
-      onPress: () => setCurrentView("search" as const),
-    },
+  const viewGroupItems: Array<{ key: Exclude<SpaceView, "menu">; label: string; icon: string }> = [
+    { key: "leaderboard", label: "Classement", icon: "🏆" },
+    { key: "stats", label: "Stats", icon: "📊" },
+    { key: "competitions", label: "Compét.", icon: "🏁" },
+  ];
+
+  const manageGroupItems: Array<{ key: Exclude<SpaceView, "menu">; label: string; icon: string }> = [
+    { key: "players", label: "Joueurs", icon: "👥" },
+    { key: "gameTypes", label: "Types", icon: "🧩" },
   ];
 
   if (canManageMembers) {
-    navigationActions.push({
-      key: "members",
-      label: "Membres",
-      icon: "🤝",
-      onPress: () => {
-        setInviteToken(null);
-        setError(null);
-        setEditingMemberId(null);
-        setCurrentView("members");
-      },
-    });
+    manageGroupItems.push({ key: "members", label: "Membres", icon: "🤝" });
   }
 
+  const viewGroupKeys = viewGroupItems.map((i) => i.key);
+  const manageGroupKeys = manageGroupItems.map((i) => i.key);
+
   const compactNav = width < 380;
-  const largeNav = width >= 720;
-  const estimatedItemWidth = compactNav ? 56 : 76;
-  const shouldScrollBottomNav = navigationActions.length * estimatedItemWidth > width - 24;
-  const bottomNavExtraHeight = compactNav ? 66 : 76;
+  const subNavHeight = activeGroup ? (compactNav ? 54 : 62) : 0;
+  const bottomNavExtraHeight = (compactNav ? 62 : 72) + subNavHeight;
 
   const menuStats = [
     { label: "Parties", value: games.length },
@@ -1903,66 +1850,119 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       ) : null}
 
       <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-        {shouldScrollBottomNav ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bottomNavContent}
-          >
-            {navigationActions.map((action) => {
-              const active = currentView === action.key;
+        {/* Sous-menu Affichage */}
+        {activeGroup === "view" ? (
+          <View style={styles.subNav}>
+            {viewGroupItems.map((item) => {
+              const active = currentView === item.key;
               return (
                 <Pressable
-                  key={action.key}
-                  style={[
-                    styles.bottomNavItem,
-                    compactNav ? styles.bottomNavItemCompact : undefined,
-                    active ? styles.bottomNavItemActive : undefined,
-                  ]}
-                  onPress={action.onPress}
+                  key={item.key}
+                  style={[styles.subNavItem, active ? styles.subNavItemActive : undefined]}
+                  onPress={() => setCurrentView(item.key)}
                 >
                   <Text style={[styles.bottomNavIcon, active ? styles.bottomNavIconActive : undefined]}>
-                    {action.icon}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.bottomNavLabel,
-                      compactNav ? styles.bottomNavLabelCompact : undefined,
-                      active ? styles.bottomNavLabelActive : undefined,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {action.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        ) : (
-          <View style={[styles.bottomNavRow, largeNav ? styles.bottomNavRowLarge : undefined]}>
-            {navigationActions.map((action) => {
-              const active = currentView === action.key;
-              return (
-                <Pressable
-                  key={action.key}
-                  style={[
-                    styles.bottomNavItem,
-                    styles.bottomNavItemFluid,
-                    active ? styles.bottomNavItemActive : undefined,
-                  ]}
-                  onPress={action.onPress}
-                >
-                  <Text style={[styles.bottomNavIcon, active ? styles.bottomNavIconActive : undefined]}>
-                    {action.icon}
+                    {item.icon}
                   </Text>
                   <Text style={[styles.bottomNavLabel, active ? styles.bottomNavLabelActive : undefined]} numberOfLines={1}>
-                    {action.label}
+                    {item.label}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
-        )}
+        ) : null}
+
+        {/* Sous-menu Gestion */}
+        {activeGroup === "manage" ? (
+          <View style={styles.subNav}>
+            {manageGroupItems.map((item) => {
+              const active = currentView === item.key;
+              return (
+                <Pressable
+                  key={item.key}
+                  style={[styles.subNavItem, active ? styles.subNavItemActive : undefined]}
+                  onPress={() => {
+                    if (item.key === "members") {
+                      setInviteToken(null);
+                      setError(null);
+                      setEditingMemberId(null);
+                    }
+                    setCurrentView(item.key);
+                  }}
+                >
+                  <Text style={[styles.bottomNavIcon, active ? styles.bottomNavIconActive : undefined]}>
+                    {item.icon}
+                  </Text>
+                  <Text style={[styles.bottomNavLabel, active ? styles.bottomNavLabelActive : undefined]} numberOfLines={1}>
+                    {item.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+
+        {/* Barre principale */}
+        <View style={styles.mainNavRow}>
+          {/* Parties */}
+          <Pressable
+            style={[styles.bottomNavItem, styles.bottomNavItemFluid, currentView === "games" ? styles.bottomNavItemActive : undefined]}
+            onPress={() => { setCurrentView("games"); setActiveGroup(null); }}
+          >
+            <Text style={[styles.bottomNavIcon, currentView === "games" ? styles.bottomNavIconActive : undefined]}>🎮</Text>
+            <Text style={[styles.bottomNavLabel, currentView === "games" ? styles.bottomNavLabelActive : undefined]} numberOfLines={1}>Parties</Text>
+          </Pressable>
+
+          {/* Vue */}
+          <Pressable
+            style={[
+              styles.bottomNavItem,
+              styles.bottomNavItemFluid,
+              (activeGroup === "view" || viewGroupKeys.includes(currentView as Exclude<SpaceView, "menu">)) ? styles.bottomNavItemActive : undefined,
+            ]}
+            onPress={() => setActiveGroup(activeGroup === "view" ? null : "view")}
+          >
+            <Text style={[styles.bottomNavIcon, (activeGroup === "view" || viewGroupKeys.includes(currentView as Exclude<SpaceView, "menu">)) ? styles.bottomNavIconActive : undefined]}>📋</Text>
+            <Text style={[styles.bottomNavLabel, (activeGroup === "view" || viewGroupKeys.includes(currentView as Exclude<SpaceView, "menu">)) ? styles.bottomNavLabelActive : undefined]} numberOfLines={1}>
+              Voir {activeGroup === "view" ? "▲" : "▼"}
+            </Text>
+          </Pressable>
+
+          {/* Bouton Créer (FAB central) */}
+          <View style={styles.fabWrapper}>
+            <Pressable
+              style={[styles.fab, currentView === "create" ? styles.fabActive : undefined]}
+              onPress={() => { setCurrentView("create"); setActiveGroup(null); }}
+            >
+              <Text style={styles.fabIcon}>＋</Text>
+            </Pressable>
+          </View>
+
+          {/* Gérer */}
+          <Pressable
+            style={[
+              styles.bottomNavItem,
+              styles.bottomNavItemFluid,
+              (activeGroup === "manage" || manageGroupKeys.includes(currentView as Exclude<SpaceView, "menu">)) ? styles.bottomNavItemActive : undefined,
+            ]}
+            onPress={() => setActiveGroup(activeGroup === "manage" ? null : "manage")}
+          >
+            <Text style={[styles.bottomNavIcon, (activeGroup === "manage" || manageGroupKeys.includes(currentView as Exclude<SpaceView, "menu">)) ? styles.bottomNavIconActive : undefined]}>⚙️</Text>
+            <Text style={[styles.bottomNavLabel, (activeGroup === "manage" || manageGroupKeys.includes(currentView as Exclude<SpaceView, "menu">)) ? styles.bottomNavLabelActive : undefined]} numberOfLines={1}>
+              Gérer {activeGroup === "manage" ? "▲" : "▼"}
+            </Text>
+          </Pressable>
+
+          {/* Recherche */}
+          <Pressable
+            style={[styles.bottomNavItem, styles.bottomNavItemFluid, currentView === "search" ? styles.bottomNavItemActive : undefined]}
+            onPress={() => { setCurrentView("search"); setActiveGroup(null); }}
+          >
+            <Text style={[styles.bottomNavIcon, currentView === "search" ? styles.bottomNavIconActive : undefined]}>🔍</Text>
+            <Text style={[styles.bottomNavLabel, currentView === "search" ? styles.bottomNavLabelActive : undefined]} numberOfLines={1}>Recherche</Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -2068,6 +2068,59 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.card,
   },
+  subNav: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 4,
+    gap: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
+  },
+  subNavItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: theme.radius.md,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
+  subNavItemActive: {
+    backgroundColor: theme.colors.primarySoft,
+  },
+  mainNavRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    paddingBottom: 6,
+    gap: 4,
+  },
+  fabWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+  },
+  fab: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: theme.colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+    ...theme.shadow.card,
+  },
+  fabActive: {
+    backgroundColor: theme.colors.primaryStrong,
+  },
+  fabIcon: {
+    fontSize: 26,
+    color: "#fff",
+    lineHeight: 30,
+  },
   bottomNavContent: {
     paddingHorizontal: 10,
     paddingTop: 8,
@@ -2086,11 +2139,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   bottomNavItem: {
-    minWidth: 74,
+    minWidth: 0,
     borderRadius: theme.radius.md,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
     paddingVertical: 6,
   },
   bottomNavItemCompact: {
