@@ -49,6 +49,7 @@ type Props = {
   onBack: () => void;
   onOpenProfile: () => void;
   onOpenGame: (gameId: number) => void;
+  onOpenCompetition: (competitionId: number) => void;
 };
 
 type SpaceView =
@@ -123,7 +124,7 @@ function getWinConditionLabel(winCondition: GameType["win_condition"]): string {
   }
 }
 
-export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenGame }: Props) {
+export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenGame, onOpenCompetition }: Props) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
@@ -1392,7 +1393,11 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             <Text style={styles.empty}>Aucune competition dans cet espace.</Text>
           ) : (
             competitions.map((competition) => (
-              <View key={competition.id} style={styles.competitionCard}>
+              <Pressable
+                key={competition.id}
+                style={styles.competitionCard}
+                onPress={() => onOpenCompetition(competition.id)}
+              >
                 <View style={styles.gameRow}>
                   <Text style={styles.gameTitle}>{competition.name}</Text>
                   <View
@@ -1418,7 +1423,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                 <Text style={styles.gameMeta}>
                   Periode: {competition.starts_at ? competition.starts_at.slice(0, 10) : "-"} - {competition.ends_at ? competition.ends_at.slice(0, 10) : "-"}
                 </Text>
-              </View>
+              </Pressable>
             ))
           )}
         </ScrollView>

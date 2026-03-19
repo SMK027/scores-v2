@@ -5,6 +5,7 @@ import * as NavigationBar from "expo-navigation-bar";
 import { refreshAuthToken } from "./services/api";
 import { clearSession, loadSession, saveSession } from "./services/session";
 import { GameDetailScreen } from "./screens/GameDetailScreen";
+import { CompetitionDetailScreen } from "./screens/CompetitionDetailScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { SplashScreen } from "./screens/SplashScreen";
@@ -20,7 +21,8 @@ type Route =
   | { name: "spaces" }
   | { name: "profile" }
   | { name: "space"; space: Space }
-  | { name: "game"; space: Space; gameId: number };
+  | { name: "game"; space: Space; gameId: number }
+  | { name: "competition"; space: Space; competitionId: number };
 
 export function MobileApp() {
   const [token, setToken] = useState<string | null>(null);
@@ -187,6 +189,9 @@ export function MobileApp() {
             setRoute({ name: "profile" });
           }}
           onOpenGame={(gameId) => setRoute({ name: "game", space: route.space, gameId })}
+          onOpenCompetition={(competitionId) =>
+            setRoute({ name: "competition", space: route.space, competitionId })
+          }
         />
       ) : null}
 
@@ -195,6 +200,15 @@ export function MobileApp() {
           token={token}
           space={route.space}
           gameId={route.gameId}
+          onBack={() => setRoute({ name: "space", space: route.space })}
+        />
+      ) : null}
+
+      {route.name === "competition" && token ? (
+        <CompetitionDetailScreen
+          token={token}
+          space={route.space}
+          competitionId={route.competitionId}
           onBack={() => setRoute({ name: "space", space: route.space })}
         />
       ) : null}

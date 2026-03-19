@@ -12,6 +12,7 @@ import type {
   SpaceSearchResponse,
   SpaceMember,
   Competition,
+  CompetitionDetailsResponse,
   Space,
   SpacesResponse,
   User,
@@ -429,6 +430,24 @@ export async function fetchCompetitions(token: string, spaceId: number): Promise
     token
   );
   return response.competitions;
+}
+
+export async function fetchCompetitionDetails(
+  token: string,
+  spaceId: number,
+  competitionId: number
+): Promise<Omit<CompetitionDetailsResponse, "success">> {
+  const response = await request<CompetitionDetailsResponse>(
+    `/api/spaces/${spaceId}/competitions/${competitionId}`,
+    {},
+    token
+  );
+
+  return {
+    competition: response.competition,
+    participants: response.participants,
+    stats: response.stats,
+  };
 }
 
 export { ApiError };

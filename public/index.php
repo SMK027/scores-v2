@@ -462,6 +462,7 @@ $router->get('/api/leaderboard', LeaderboardApiController::class, 'index');
 
 // Competitions
 $router->get('/api/spaces/{id}/competitions', CompetitionApiController::class, 'index');
+$router->get('/api/spaces/{id}/competitions/{cid}', CompetitionApiController::class, 'show');
 
 // Dispatcher la requête
 $method = $_SERVER['REQUEST_METHOD'];

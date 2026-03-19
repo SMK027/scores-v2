@@ -169,3 +169,29 @@ export type Competition = {
   creator_name?: string | null;
   session_count: number;
 };
+
+export type CompetitionParticipant = {
+  player_id: number;
+  name: string;
+  linked_username?: string | null;
+  rounds_played: number;
+  rounds_won: number;
+  win_rate: number;
+};
+
+export type CompetitionStats = {
+  total_games: number;
+  completed_games: number;
+  total_rounds: number;
+  total_play_seconds: number;
+  avg_play_seconds_per_game: number;
+  avg_rounds_per_competitor: number;
+  avg_win_rate: number;
+};
+
+export type CompetitionDetailsResponse = {
+  success: boolean;
+  competition: Competition;
+  participants: CompetitionParticipant[];
+  stats: CompetitionStats;
+};
