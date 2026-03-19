@@ -20,11 +20,14 @@ import {
   createPlayer,
   createGame,
   createInviteLink,
+  fetchCompetitions,
+  fetchLeaderboard,
   deleteGameType,
   deletePlayer,
   fetchGameDetails,
   fetchGameTypes,
   fetchPlayers,
+  fetchSpaceSearch,
   fetchSpaceMembers,
   fetchSpaceGames,
   inviteMember,
@@ -34,7 +37,7 @@ import {
   updatePlayer,
 } from "../services/api";
 import { theme } from "../styles/theme";
-import type { Game, GameType, Player, Space, SpaceMember, User } from "../types/api";
+import type { Competition, Game, GameType, LeaderboardEntry, Player, SearchResults, Space, SpaceMember, User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
 import { getRoleLabel } from "../utils/roles";
 
@@ -47,7 +50,17 @@ type Props = {
   onOpenGame: (gameId: number) => void;
 };
 
-type SpaceView = "menu" | "games" | "create" | "stats" | "players" | "gameTypes" | "members";
+type SpaceView =
+  | "menu"
+  | "games"
+  | "create"
+  | "stats"
+  | "players"
+  | "gameTypes"
+  | "members"
+  | "search"
+  | "leaderboard"
+  | "competitions";
 
 const MEMBER_ROLES: SpaceMember["role"][] = ["admin", "manager", "member", "guest"];
 
@@ -168,6 +181,19 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const [inviting, setInviting] = useState(false);
   const [generatingLink, setGeneratingLink] = useState(false);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [searchText, setSearchText] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<SearchResults | null>(null);
+  const [searchFilter, setSearchFilter] = useState<"all" | "players" | "game_types" | "games" | "comments">("all");
+  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState<"all" | "7d" | "30d" | "3m" | "6m" | "1y">("all");
+  const [leaderboardCriteriaLabel, setLeaderboardCriteriaLabel] = useState<string | null>(null);
+  const [competitions, setCompetitions] = useState<Competition[]>([]);
+  const [competitionsLoading, setCompetitionsLoading] = useState(false);
+  const [competitionsError, setCompetitionsError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -249,6 +275,80 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     const allowedIds = new Set(availablePlayersForGame.map((player) => player.id));
     setSelectedPlayerIds((current) => current.filter((id) => allowedIds.has(id)));
   }, [availablePlayersForGame]);
+
+  const loadCompetitions = useCallback(async () => {
+    try {
+      setCompetitionsError(null);
+      setCompetitionsLoading(true);
+      const data = await fetchCompetitions(token, space.id);
+      setCompetitions(data);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setCompetitionsError(err.message);
+      } else {
+        setCompetitionsError("Impossible de charger les competitions.");
+      }
+    } finally {
+      setCompetitionsLoading(false);
+    }
+  }, [space.id, token]);
+
+  const loadLeaderboard = useCallback(async () => {
+    try {
+      setLeaderboardError(null);
+      setLeaderboardLoading(true);
+      const data = await fetchLeaderboard(token, leaderboardPeriod);
+      setLeaderboardEntries(data.entries);
+      setLeaderboardCriteriaLabel(
+        `Eligibilite: min ${data.criteria.min_rounds_played} manches sur ${data.criteria.min_spaces_played} espaces.`
+      );
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setLeaderboardError(err.message);
+      } else {
+        setLeaderboardError("Impossible de charger le leaderboard.");
+      }
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  }, [leaderboardPeriod, token]);
+
+  const submitSearch = useCallback(async () => {
+    const query = searchText.trim();
+    if (query.length < 2) {
+      setSearchError("Entrez au moins 2 caracteres pour rechercher.");
+      setSearchResults(null);
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+      setSearchError(null);
+      const data = await fetchSpaceSearch(token, space.id, query);
+      setSearchResults(data);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setSearchError(err.message);
+      } else {
+        setSearchError("Impossible de lancer la recherche.");
+      }
+      setSearchResults(null);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, [searchText, space.id, token]);
+
+  useEffect(() => {
+    if (currentView === "competitions" && competitions.length === 0 && !competitionsLoading) {
+      void loadCompetitions();
+    }
+  }, [competitions.length, competitionsLoading, currentView, loadCompetitions]);
+
+  useEffect(() => {
+    if (currentView === "leaderboard") {
+      void loadLeaderboard();
+    }
+  }, [currentView, loadLeaderboard]);
 
   const selectGameType = (id: number) => {
     const gameType = gameTypes.find((item) => item.id === id);
@@ -791,6 +891,18 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       onPress: () => setCurrentView("stats" as const),
     },
     {
+      key: "search",
+      label: "Recherche",
+      icon: "?",
+      onPress: () => setCurrentView("search" as const),
+    },
+    {
+      key: "leaderboard",
+      label: "Classement",
+      icon: "L",
+      onPress: () => setCurrentView("leaderboard" as const),
+    },
+    {
       key: "players",
       label: "Joueurs",
       icon: "P",
@@ -801,6 +913,12 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       label: "Types",
       icon: "T",
       onPress: () => setCurrentView("gameTypes" as const),
+    },
+    {
+      key: "competitions",
+      label: "Compet.",
+      icon: "C",
+      onPress: () => setCurrentView("competitions" as const),
     },
   ];
 
@@ -829,6 +947,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     { label: "Joueurs", value: players.length },
     { label: "Types", value: gameTypes.length },
     { label: "Membres", value: members.length },
+    { label: "Compet.", value: competitions.length },
   ];
 
   if (loading) {
@@ -1036,6 +1155,201 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
               </View>
             </>
           ) : null}
+        </ScrollView>
+      ) : null}
+
+      {currentView === "search" ? (
+        <ScrollView contentContainerStyle={styles.formCard} keyboardShouldPersistTaps="handled">
+          <Text style={styles.sectionTitle}>Recherche</Text>
+
+          <View style={styles.searchBarRow}>
+            <TextInput
+              value={searchText}
+              onChangeText={setSearchText}
+              placeholder="Rechercher joueurs, jeux, parties..."
+              style={[styles.input, styles.searchInputField]}
+            />
+            <Pressable
+              style={[styles.primaryButton, styles.searchButton, searchLoading ? styles.disabledButton : undefined]}
+              onPress={() => void submitSearch()}
+              disabled={searchLoading}
+            >
+              <Text style={styles.primaryText}>{searchLoading ? "..." : "Go"}</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.filterChipsRow}>
+            {([
+              ["all", "Tous"],
+              ["players", "Joueurs"],
+              ["game_types", "Types"],
+              ["games", "Parties"],
+              ["comments", "Commentaires"],
+            ] as const).map(([key, label]) => (
+              <Pressable
+                key={key}
+                style={[styles.filterChip, searchFilter === key ? styles.filterChipActive : undefined]}
+                onPress={() => setSearchFilter(key)}
+              >
+                <Text style={[styles.filterChipText, searchFilter === key ? styles.filterChipTextActive : undefined]}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {searchError ? <Text style={styles.error}>{searchError}</Text> : null}
+
+          {searchResults ? (
+            <View style={styles.searchResultsWrap}>
+              {(searchFilter === "all" || searchFilter === "players") && (
+                <View style={styles.searchSection}>
+                  <Text style={styles.searchSectionTitle}>Joueurs ({searchResults.players.length})</Text>
+                  {searchResults.players.map((player) => (
+                    <View key={`player-${player.id}`} style={styles.searchRow}>
+                      <Text style={styles.searchRowTitle}>{player.name}</Text>
+                      <Text style={styles.searchRowMeta}>Joueur</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {(searchFilter === "all" || searchFilter === "game_types") && (
+                <View style={styles.searchSection}>
+                  <Text style={styles.searchSectionTitle}>Types de jeu ({searchResults.game_types.length})</Text>
+                  {searchResults.game_types.map((gameType) => (
+                    <View key={`gt-${gameType.id}`} style={styles.searchRow}>
+                      <Text style={styles.searchRowTitle}>{gameType.name}</Text>
+                      <Text style={styles.searchRowMeta}>Type de jeu</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {(searchFilter === "all" || searchFilter === "games") && (
+                <View style={styles.searchSection}>
+                  <Text style={styles.searchSectionTitle}>Parties ({searchResults.games.length})</Text>
+                  {searchResults.games.map((game) => (
+                    <Pressable key={`game-${game.id}`} style={styles.searchRow} onPress={() => onOpenGame(game.id)}>
+                      <Text style={styles.searchRowTitle}>{game.game_type_name || `Partie #${game.id}`}</Text>
+                      <Text style={styles.searchRowMeta}>Partie</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+
+              {(searchFilter === "all" || searchFilter === "comments") && (
+                <View style={styles.searchSection}>
+                  <Text style={styles.searchSectionTitle}>Commentaires ({searchResults.comments.length})</Text>
+                  {searchResults.comments.map((comment) => (
+                    <View key={`comment-${comment.id}`} style={styles.searchRow}>
+                      <Text style={styles.searchRowTitle} numberOfLines={2}>
+                        {comment.content}
+                      </Text>
+                      <Text style={styles.searchRowMeta}>{comment.username || "Auteur inconnu"}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : (
+            <Text style={styles.infoText}>Entrez au moins 2 caracteres pour lancer une recherche.</Text>
+          )}
+        </ScrollView>
+      ) : null}
+
+      {currentView === "leaderboard" ? (
+        <ScrollView contentContainerStyle={styles.formCard}>
+          <Text style={styles.sectionTitle}>Leaderboard global</Text>
+
+          <View style={styles.filterChipsRow}>
+            {([
+              ["all", "Tout"],
+              ["7d", "7j"],
+              ["30d", "30j"],
+              ["3m", "3m"],
+              ["6m", "6m"],
+              ["1y", "1a"],
+            ] as const).map(([period, label]) => (
+              <Pressable
+                key={period}
+                style={[styles.filterChip, leaderboardPeriod === period ? styles.filterChipActive : undefined]}
+                onPress={() => setLeaderboardPeriod(period)}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    leaderboardPeriod === period ? styles.filterChipTextActive : undefined,
+                  ]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {leaderboardCriteriaLabel ? <Text style={styles.infoText}>{leaderboardCriteriaLabel}</Text> : null}
+          {leaderboardError ? <Text style={styles.error}>{leaderboardError}</Text> : null}
+          {leaderboardLoading ? (
+            <ActivityIndicator />
+          ) : leaderboardEntries.length === 0 ? (
+            <Text style={styles.empty}>Aucune donnee de classement disponible.</Text>
+          ) : (
+            leaderboardEntries.map((entry) => (
+              <View key={entry.user_id} style={styles.rankingRow}>
+                <Text style={styles.rankingRank}>#{entry.rank}</Text>
+                <View style={styles.rankingMain}>
+                  <Text style={styles.rankingName}>{entry.username}</Text>
+                  <Text style={styles.rankingMeta}>
+                    {entry.win_rate.toFixed(1)}% · {entry.rounds_won}/{entry.rounds_played} manches
+                  </Text>
+                </View>
+              </View>
+            ))
+          )}
+        </ScrollView>
+      ) : null}
+
+      {currentView === "competitions" ? (
+        <ScrollView contentContainerStyle={styles.formCard}>
+          <Text style={styles.sectionTitle}>Competitions</Text>
+
+          {competitionsError ? <Text style={styles.error}>{competitionsError}</Text> : null}
+          {competitionsLoading ? (
+            <ActivityIndicator />
+          ) : competitions.length === 0 ? (
+            <Text style={styles.empty}>Aucune competition dans cet espace.</Text>
+          ) : (
+            competitions.map((competition) => (
+              <View key={competition.id} style={styles.competitionCard}>
+                <View style={styles.gameRow}>
+                  <Text style={styles.gameTitle}>{competition.name}</Text>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      {
+                        backgroundColor:
+                          competition.status === "active"
+                            ? "#caefe5"
+                            : competition.status === "paused"
+                              ? "#ffe8c5"
+                              : competition.status === "planned"
+                                ? "#fff3d8"
+                                : "#e9edf5",
+                      },
+                    ]}
+                  >
+                    <Text style={styles.statusText}>{competition.status}</Text>
+                  </View>
+                </View>
+                {competition.description ? <Text style={styles.gameMeta}>{competition.description}</Text> : null}
+                <Text style={styles.gameMeta}>Sessions: {competition.session_count}</Text>
+                <Text style={styles.gameMeta}>
+                  Periode: {competition.starts_at ? competition.starts_at.slice(0, 10) : "-"} - {competition.ends_at ? competition.ends_at.slice(0, 10) : "-"}
+                </Text>
+              </View>
+            ))
+          )}
         </ScrollView>
       ) : null}
 
@@ -2054,6 +2368,111 @@ const styles = StyleSheet.create({
   inviteLinkText: {
     color: theme.colors.primary,
     fontWeight: "600",
+  },
+  searchBarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  searchInputField: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  searchButton: {
+    marginTop: 0,
+    paddingHorizontal: 14,
+  },
+  filterChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  filterChip: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  filterChipActive: {
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: theme.colors.primary,
+  },
+  filterChipText: {
+    color: theme.colors.text,
+    fontWeight: "600",
+    fontSize: 12,
+  },
+  filterChipTextActive: {
+    color: theme.colors.primary,
+  },
+  searchResultsWrap: {
+    gap: 12,
+  },
+  searchSection: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.card,
+    padding: 10,
+  },
+  searchSectionTitle: {
+    color: theme.colors.text,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  searchRow: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingVertical: 8,
+  },
+  searchRowTitle: {
+    color: theme.colors.text,
+    fontWeight: "600",
+  },
+  searchRowMeta: {
+    color: theme.colors.mutedText,
+    marginTop: 2,
+    fontSize: 12,
+  },
+  rankingRow: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.card,
+    padding: 10,
+    marginBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  rankingRank: {
+    width: 42,
+    color: theme.colors.primary,
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  rankingMain: {
+    flex: 1,
+  },
+  rankingName: {
+    color: theme.colors.text,
+    fontWeight: "700",
+  },
+  rankingMeta: {
+    color: theme.colors.mutedText,
+    marginTop: 2,
+  },
+  competitionCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.card,
+    padding: 12,
+    marginBottom: 8,
+    ...theme.shadow.card,
   },
   shareLinkButton: {
     marginTop: 10,
