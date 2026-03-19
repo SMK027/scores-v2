@@ -5,6 +5,7 @@ import { clearSession, loadSession, saveSession } from "./services/session";
 import { GameDetailScreen } from "./screens/GameDetailScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
+import { SplashScreen } from "./screens/SplashScreen";
 import { SpaceScreen } from "./screens/SpaceScreen";
 import { SpacesScreen } from "./screens/SpacesScreen";
 import { WelcomeScreen } from "./screens/WelcomeScreen";
@@ -25,6 +26,7 @@ export function MobileApp() {
   const [route, setRoute] = useState<Route>({ name: "welcome" });
   const [previousRoute, setPreviousRoute] = useState<Route>({ name: "spaces" });
   const [bootstrapping, setBootstrapping] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
 
   const goToSpaces = () => setRoute({ name: "spaces" });
 
@@ -34,6 +36,11 @@ export function MobileApp() {
     setRoute({ name: "welcome" });
     void clearSession();
   };
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setShowSplash(false), 1500);
+    return () => clearTimeout(timeout);
+  }, []);
 
   useEffect(() => {
     const restore = async () => {
@@ -97,11 +104,23 @@ export function MobileApp() {
   }, [token]);
 
   if (bootstrapping) {
-    return (
+    return showSplash ? (
+      <SafeAreaView style={styles.safeArea}>
+        <SplashScreen />
+      </SafeAreaView>
+    ) : (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centered}>
           <ActivityIndicator />
         </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (route.name === "welcome" && showSplash) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <SplashScreen />
       </SafeAreaView>
     );
   }
