@@ -5,9 +5,13 @@ import type {
   GameDetailsResponse,
   GameType,
   GamesResponse,
+  LeaderboardEntry,
+  LeaderboardResponse,
   Player,
   ProfileStats,
+  SpaceSearchResponse,
   SpaceMember,
+  Competition,
   Space,
   SpacesResponse,
   User,
@@ -93,6 +97,24 @@ export async function updateProfile(
 export async function fetchSpaces(token: string): Promise<Space[]> {
   const response = await request<SpacesResponse>("/api/spaces", {}, token);
   return response.spaces;
+}
+
+export async function createSpace(
+  token: string,
+  payload: { name: string; description?: string }
+): Promise<Space> {
+  const response = await request<{ success: boolean; space: Space }>(
+    "/api/spaces",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        name: payload.name,
+        description: payload.description ?? "",
+      }),
+    },
+    token
+  );
+  return response.space;
 }
 
 export async function fetchSpaceGames(token: string, spaceId: number): Promise<Game[]> {
@@ -369,6 +391,39 @@ export async function updateRoundStatus(
     method: "PUT",
     body: JSON.stringify({ status }),
   }, token);
+}
+
+export async function fetchSpaceSearch(
+  token: string,
+  spaceId: number,
+  query: string
+): Promise<SpaceSearchResponse["results"]> {
+  const response = await request<SpaceSearchResponse>(
+    `/api/spaces/${spaceId}/search?q=${encodeURIComponent(query)}`,
+    {},
+    token
+  );
+  return response.results;
+}
+
+export async function fetchLeaderboard(
+  token: string,
+  period: LeaderboardResponse["period"] = "all"
+): Promise<{ entries: LeaderboardEntry[]; criteria: LeaderboardResponse["criteria"] }> {
+  const response = await request<LeaderboardResponse>(`/api/leaderboard?period=${period}`, {}, token);
+  return {
+    entries: response.leaderboard,
+    criteria: response.criteria,
+  };
+}
+
+export async function fetchCompetitions(token: string, spaceId: number): Promise<Competition[]> {
+  const response = await request<{ success: boolean; competitions: Competition[] }>(
+    `/api/spaces/${spaceId}/competitions`,
+    {},
+    token
+  );
+  return response.competitions;
 }
 
 export { ApiError };
