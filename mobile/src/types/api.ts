@@ -117,12 +117,25 @@ export type ProfileStats = {
   total_spaces: number;
 };
 
+export type Comment = {
+  id: number;
+  game_id: number;
+  user_id: number;
+  content: string;
+  created_at: string;
+  updated_at?: string;
+  username: string;
+  avatar?: string | null;
+};
+
 export type GameDetailsResponse = {
   success: boolean;
   game: Game & { win_condition?: string };
   players: GamePlayer[];
   rounds: Round[];
   round_scores: Record<string, Record<string, number>>;
+  comments: Comment[];
+  can_comment: boolean;
 };
 
 export type SearchComment = {

@@ -259,6 +259,7 @@ export function MobileApp() {
       {route.name === "game" && token ? (
         <GameDetailScreen
           token={token}
+          user={user}
           space={route.space}
           gameId={route.gameId}
           onBack={() => setRoute({ name: "space", space: route.space })}

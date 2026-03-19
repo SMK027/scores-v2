@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,18 +13,21 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ApiError,
+  addComment,
   completeGame,
   createRound,
+  deleteComment,
   fetchGameDetails,
   updateGameStatus,
   updateRoundStatus,
   updateRoundScores,
 } from "../services/api";
 import { theme } from "../styles/theme";
-import type { GameDetailsResponse, Space } from "../types/api";
+import type { Comment, GameDetailsResponse, Space, User } from "../types/api";
 
 type Props = {
   token: string;
+  user: User;
   space: Space;
   gameId: number;
   onBack: () => void;
@@ -77,7 +82,7 @@ function formatRoundValue(value: number | null, winCondition: string): string {
   return String(value);
 }
 
-export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
+export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -90,6 +95,12 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
   const [editingRoundId, setEditingRoundId] = useState<number | null>(null);
   const [scores, setScores] = useState<Record<number, string>>({});
   const [winners, setWinners] = useState<Record<number, boolean>>({});
+
+  const [commentText, setCommentText] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState<number | null>(null);
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const commentInputRef = useRef<TextInput>(null);
 
   const loadDetails = useCallback(async () => {
     try {
@@ -120,6 +131,46 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
   );
 
   const winCondition = details?.game.win_condition ?? "highest_score";
+
+  const canComment = details?.can_comment ?? false;
+
+  const handleSubmitComment = useCallback(async () => {
+    const content = commentText.trim();
+    if (!content) return;
+    try {
+      setSubmittingComment(true);
+      setCommentError(null);
+      await addComment(token, space.id, gameId, content);
+      setCommentText("");
+      commentInputRef.current?.blur();
+      await loadDetails();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setCommentError(err.message);
+      } else {
+        setCommentError("Impossible de publier le commentaire.");
+      }
+    } finally {
+      setSubmittingComment(false);
+    }
+  }, [commentText, token, space.id, gameId, loadDetails]);
+
+  const handleDeleteComment = useCallback(async (comment: Comment) => {
+    try {
+      setDeletingCommentId(comment.id);
+      setCommentError(null);
+      await deleteComment(token, space.id, gameId, comment.id);
+      await loadDetails();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setCommentError(err.message);
+      } else {
+        setCommentError("Impossible de supprimer le commentaire.");
+      }
+    } finally {
+      setDeletingCommentId(null);
+    }
+  }, [token, space.id, gameId, loadDetails]);
 
   const winConditionLabel =
     winCondition === "highest_score"
@@ -529,6 +580,77 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
           </Text>
         </Pressable>
       </View>
+
+      <View style={styles.block}>
+        <Text style={styles.blockTitle}>Commentaires ({details.comments.length})</Text>
+
+        {details.comments.length === 0 ? (
+          <Text style={styles.meta}>Aucun commentaire pour l&apos;instant.</Text>
+        ) : null}
+
+        {details.comments.map((comment) => {
+          const isAuthor = comment.user_id === user.id;
+          const canDelete = isAuthor || user.global_role === "admin" || user.global_role === "superadmin" || user.global_role === "moderator";
+          return (
+            <View key={comment.id} style={styles.commentCard}>
+              <View style={styles.commentHeader}>
+                <Text style={styles.commentAuthor}>{comment.username}</Text>
+                <Text style={styles.commentDate}>
+                  {new Date(comment.created_at).toLocaleDateString("fr-FR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </Text>
+              </View>
+              <Text style={styles.commentContent}>{comment.content}</Text>
+              {canDelete ? (
+                <Pressable
+                  style={[styles.commentDeleteBtn, deletingCommentId === comment.id ? styles.disabled : undefined]}
+                  disabled={deletingCommentId === comment.id}
+                  onPress={() => handleDeleteComment(comment)}
+                >
+                  <Text style={styles.commentDeleteText}>
+                    {deletingCommentId === comment.id ? "Suppression..." : "Supprimer"}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          );
+        })}
+
+        {commentError ? <Text style={styles.error}>{commentError}</Text> : null}
+
+        {canComment ? (
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+            <TextInput
+              ref={commentInputRef}
+              style={styles.commentInput}
+              placeholder="Ecrire un commentaire..."
+              placeholderTextColor={theme.colors.mutedText}
+              value={commentText}
+              onChangeText={setCommentText}
+              multiline
+              maxLength={1000}
+            />
+            <Pressable
+              style={[styles.primaryButton, (submittingComment || !commentText.trim()) ? styles.disabled : undefined]}
+              disabled={submittingComment || !commentText.trim()}
+              onPress={handleSubmitComment}
+            >
+              <Text style={styles.primaryText}>
+                {submittingComment ? "Publication..." : "Publier"}
+              </Text>
+            </Pressable>
+          </KeyboardAvoidingView>
+        ) : (
+          <Text style={styles.commentRestricted}>
+            La publication de commentaires est desactivee sur votre compte.
+          </Text>
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -721,5 +843,61 @@ const styles = StyleSheet.create({
   winnerStatus: {
     color: theme.colors.mutedText,
     fontWeight: "600",
+  },
+  commentCard: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    padding: 10,
+    backgroundColor: "#fafcff",
+  },
+  commentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  commentAuthor: {
+    color: theme.colors.text,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  commentDate: {
+    color: theme.colors.mutedText,
+    fontSize: 11,
+  },
+  commentContent: {
+    color: theme.colors.text,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  commentDeleteBtn: {
+    marginTop: 6,
+    alignSelf: "flex-end",
+  },
+  commentDeleteText: {
+    color: theme.colors.danger,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  commentInput: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: theme.colors.text,
+    backgroundColor: theme.colors.card,
+    minHeight: 72,
+    textAlignVertical: "top",
+    fontSize: 14,
+  },
+  commentRestricted: {
+    marginTop: 12,
+    color: theme.colors.mutedText,
+    fontStyle: "italic",
+    fontSize: 13,
   },
 });

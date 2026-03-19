@@ -1,6 +1,7 @@
 import { API_BASE_URL } from "../config/constants";
 import type {
   ApiErrorPayload,
+  Comment,
   Game,
   GameDetailsResponse,
   GameType,
@@ -16,7 +17,7 @@ import type {
   Space,
   SpacesResponse,
   User,
-    Invitation,
+  Invitation,
 } from "../types/api";
 
 class ApiError extends Error {
@@ -393,6 +394,34 @@ export async function fetchGameDetails(
   gameId: number
 ): Promise<GameDetailsResponse> {
   return request<GameDetailsResponse>(`/api/spaces/${spaceId}/games/${gameId}`, {}, token);
+}
+
+export async function addComment(
+  token: string,
+  spaceId: number,
+  gameId: number,
+  content: string
+): Promise<Comment> {
+  const response = await request<{ success: boolean; comment_id: number }>(
+    `/api/spaces/${spaceId}/games/${gameId}/comments`,
+    { method: "POST", body: JSON.stringify({ content }) },
+    token
+  );
+  // Le backend retourne uniquement comment_id; on recharge les détails après
+  return { id: response.comment_id } as Comment;
+}
+
+export async function deleteComment(
+  token: string,
+  spaceId: number,
+  gameId: number,
+  commentId: number
+): Promise<void> {
+  await request<{ success: boolean }>(
+    `/api/spaces/${spaceId}/games/${gameId}/comments/${commentId}`,
+    { method: "DELETE" },
+    token
+  );
 }
 
 export async function createRound(token: string, spaceId: number, gameId: number): Promise<number> {

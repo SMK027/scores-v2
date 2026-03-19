@@ -109,6 +109,11 @@ class GameApiController extends ApiController
         $commentModel = new Comment();
         $comments = $commentModel->findByGame((int) $gid);
 
+        $userModel = new User();
+        $canComment = $this->userId
+            ? !$userModel->isRestricted((int) $this->userId, 'comments_manage')
+            : false;
+
         $this->json([
             'success'          => true,
             'game'             => $game,
@@ -118,6 +123,7 @@ class GameApiController extends ApiController
             'round_durations'  => $roundDurations,
             'total_play_seconds' => $totalPlaySeconds,
             'comments'         => $comments,
+            'can_comment'      => $canComment,
         ]);
     }
 
