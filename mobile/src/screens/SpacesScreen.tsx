@@ -317,7 +317,7 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
                     }}
                   >
                     <Text style={styles.leaveSpaceText}>
-                      {leavingSpaceId === item.id ? "Depart..." : "Quitter"}
+                      {leavingSpaceId === item.id ? "Départ..." : "Quitter"}
                     </Text>
                   </Pressable>
                 )}
