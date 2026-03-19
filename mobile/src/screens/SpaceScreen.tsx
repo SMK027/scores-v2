@@ -879,22 +879,10 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       onPress: () => setCurrentView("games" as const),
     },
     {
-      key: "create",
-      label: "Nouvelle",
-      icon: "➕",
-      onPress: () => setCurrentView("create" as const),
-    },
-    {
-      key: "stats",
-      label: "Stats",
-      icon: "📊",
-      onPress: () => setCurrentView("stats" as const),
-    },
-    {
-      key: "search",
-      label: "Recherche",
-      icon: "🔍",
-      onPress: () => setCurrentView("search" as const),
+      key: "players",
+      label: "Joueurs",
+      icon: "👥",
+      onPress: () => setCurrentView("players" as const),
     },
     {
       key: "leaderboard",
@@ -903,10 +891,10 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       onPress: () => setCurrentView("leaderboard" as const),
     },
     {
-      key: "players",
-      label: "Joueurs",
-      icon: "👥",
-      onPress: () => setCurrentView("players" as const),
+      key: "stats",
+      label: "Stats",
+      icon: "📊",
+      onPress: () => setCurrentView("stats" as const),
     },
     {
       key: "gameTypes",
@@ -919,6 +907,18 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       label: "Compet.",
       icon: "🏁",
       onPress: () => setCurrentView("competitions" as const),
+    },
+    {
+      key: "create",
+      label: "Nouvelle",
+      icon: "➕",
+      onPress: () => setCurrentView("create" as const),
+    },
+    {
+      key: "search",
+      label: "Recherche",
+      icon: "🔍",
+      onPress: () => setCurrentView("search" as const),
     },
   ];
 
