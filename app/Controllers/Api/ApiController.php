@@ -7,6 +7,7 @@ namespace App\Controllers\Api;
 use App\Core\JWT;
 use App\Core\Session;
 use App\Core\Middleware;
+use App\Models\ActivityLog;
 use App\Models\UserBan;
 use App\Models\IpBan;
 
@@ -18,12 +19,14 @@ abstract class ApiController
 {
     protected ?int $userId = null;
     protected ?array $userPayload = null;
+    private bool $apiRequestLogged = false;
 
     /**
      * Retourne une réponse JSON.
      */
     protected function json(array $data, int $status = 200): void
     {
+        $this->logApiRequest($status, $data);
         http_response_code($status);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode($data, JSON_UNESCAPED_UNICODE);
@@ -162,6 +165,57 @@ abstract class ApiController
                 $message .= ' Motif: ' . $reason;
             }
             $this->error($message, 403);
+        }
+    }
+
+    /**
+     * Journalise automatiquement les actions API (succès et échecs).
+     */
+    private function logApiRequest(int $status, array $responseData): void
+    {
+        if ($this->apiRequestLogged) {
+            return;
+        }
+        $this->apiRequestLogged = true;
+
+        try {
+            $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+            $requestUri = (string) ($_SERVER['REQUEST_URI'] ?? '/api');
+            $path = (string) (parse_url($requestUri, PHP_URL_PATH) ?: '/api');
+            $normalizedPath = preg_replace('#/\d+#', '/:id', $path) ?? $path;
+            $normalizedPath = trim($normalizedPath, '/');
+            $normalizedPath = str_replace('/', '.', $normalizedPath);
+            $normalizedPath = $normalizedPath !== '' ? $normalizedPath : 'root';
+            $action = 'api.' . strtolower($method) . '.' . $normalizedPath;
+            if (strlen($action) > 100) {
+                $action = substr($action, 0, 100);
+            }
+            $success = array_key_exists('success', $responseData)
+                ? (bool) $responseData['success']
+                : ($status < 400);
+
+            $details = [
+                'path' => $path,
+                'method' => $method,
+                'status' => $status,
+                'success' => $success,
+                'message' => isset($responseData['message']) ? (string) $responseData['message'] : null,
+                'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? (string) $_SERVER['HTTP_USER_AGENT'] : null,
+            ];
+
+            if (preg_match('#^/api/spaces/(\d+)#', $path, $matches)) {
+                ActivityLog::logSpace((int) $matches[1], $action, $this->userId, 'api', null, $details);
+                return;
+            }
+
+            if (preg_match('#^/api/competitions/(\d+)#', $path, $matches)) {
+                ActivityLog::logCompetition((int) $matches[1], $action, $this->userId, 'api', null, null, $details);
+                return;
+            }
+
+            ActivityLog::logAuth($action, $this->userId, $details);
+        } catch (\Throwable $e) {
+            // Ne jamais casser une réponse API à cause du logging.
         }
     }
 }
