@@ -147,11 +147,21 @@ class SpaceApiController extends ApiController
 
     /**
      * DELETE /api/spaces/{id} — Supprimer un espace.
+     * Réservé au propriétaire de l'espace.
      */
     public function delete(string $id): void
     {
         $this->requireAuth();
         $this->checkSpaceAccess((int) $id, ['admin']);
+
+        $space = $this->spaceModel->find((int) $id);
+        if (!$space) {
+            $this->error('Espace introuvable.', 404);
+        }
+
+        if ((int) ($space['created_by'] ?? 0) !== (int) $this->userId) {
+            $this->error('Seul le propriétaire de l\'espace peut le supprimer.', 403);
+        }
 
         ActivityLog::logSpace((int) $id, 'space.delete', $this->userId, 'space', (int) $id);
         $this->spaceModel->delete((int) $id);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Pressable,
@@ -11,7 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { ApiError, createSpace, fetchSpaces } from "../services/api";
+import { ApiError, createSpace, deleteSpace, fetchSpaces } from "../services/api";
 import { theme } from "../styles/theme";
 import type { Space, User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
@@ -35,6 +36,7 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
   const [newSpaceName, setNewSpaceName] = useState("");
   const [newSpaceDescription, setNewSpaceDescription] = useState("");
   const [creatingSpace, setCreatingSpace] = useState(false);
+  const [deletingSpaceId, setDeletingSpaceId] = useState<number | null>(null);
 
   const loadSpaces = useCallback(async () => {
     try {
@@ -94,6 +96,41 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
     }
   };
 
+  const confirmAndDeleteSpace = (space: Space) => {
+    if (space.created_by !== user.id) {
+      setError("Seul le propriétaire peut supprimer cet espace.");
+      return;
+    }
+
+    Alert.alert(
+      "Supprimer cet espace ?",
+      `Cette action supprimera définitivement \"${space.name}\" et toutes ses données.`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setDeletingSpaceId(space.id);
+              setError(null);
+              await deleteSpace(token, space.id);
+              await loadSpaces();
+            } catch (err) {
+              if (err instanceof ApiError) {
+                setError(err.message);
+              } else {
+                setError("Impossible de supprimer cet espace.");
+              }
+            } finally {
+              setDeletingSpaceId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const avatarUri = getAvatarUri(user.avatar);
 
   const filteredSpaces = useMemo(() => {
@@ -144,27 +181,39 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
 
       {showCreatePanel ? (
         <ScrollView style={styles.createPanel} keyboardShouldPersistTaps="handled">
-          <Text style={styles.createPanelTitle}>Creer un espace</Text>
+          <View style={styles.createPanelHeader}>
+            <Text style={styles.createPanelTitle}>Créer un nouvel espace</Text>
+            <Text style={styles.createPanelHint}>Donne un nom clair pour que les membres le retrouvent facilement.</Text>
+          </View>
+          <Text style={styles.createFieldLabel}>Nom de l'espace</Text>
           <TextInput
             value={newSpaceName}
             onChangeText={setNewSpaceName}
-            placeholder="Nom de l'espace"
+            placeholder="Ex: Soirée belote"
             style={styles.createInput}
+            maxLength={100}
           />
+          <Text style={styles.fieldCounter}>{newSpaceName.trim().length}/100</Text>
+          <Text style={styles.createFieldLabel}>Description (optionnelle)</Text>
           <TextInput
             value={newSpaceDescription}
             onChangeText={setNewSpaceDescription}
-            placeholder="Description (optionnelle)"
+            placeholder="Ex: Parties du vendredi soir"
             style={[styles.createInput, styles.createNotes]}
             multiline
+            maxLength={280}
           />
+          <Text style={styles.fieldCounter}>{newSpaceDescription.trim().length}/280</Text>
           <View style={styles.createActions}>
             <Pressable
-              style={[styles.createPrimary, creatingSpace ? styles.disabled : undefined]}
-              disabled={creatingSpace}
+              style={[
+                styles.createPrimary,
+                (creatingSpace || !newSpaceName.trim()) ? styles.disabled : undefined,
+              ]}
+              disabled={creatingSpace || !newSpaceName.trim()}
               onPress={submitCreateSpace}
             >
-              <Text style={styles.createPrimaryText}>{creatingSpace ? "Creation..." : "Creer"}</Text>
+              <Text style={styles.createPrimaryText}>{creatingSpace ? "Création..." : "Créer l'espace"}</Text>
             </Pressable>
             <Pressable style={styles.createGhost} onPress={() => setShowCreatePanel(false)}>
               <Text style={styles.createGhostText}>Annuler</Text>
@@ -179,6 +228,7 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
         data={filteredSpaces}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.listContent}
+        extraData={deletingSpaceId}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
@@ -212,9 +262,20 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
                 </View>
               </View>
 
-              <Pressable onPress={() => {}}>
-                <Text style={styles.contextMenuIcon}>⋮</Text>
-              </Pressable>
+              {item.created_by === user.id ? (
+                <Pressable
+                  style={[styles.deleteSpaceButton, deletingSpaceId === item.id ? styles.disabled : undefined]}
+                  disabled={deletingSpaceId === item.id}
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    confirmAndDeleteSpace(item);
+                  }}
+                >
+                  <Text style={styles.deleteSpaceText}>
+                    {deletingSpaceId === item.id ? "Suppression..." : "Supprimer"}
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
             {item.description ? <Text style={styles.description}>{item.description}</Text> : null}
             <View style={styles.cardFooter}>
@@ -321,11 +382,31 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 10,
   },
+  createPanelHeader: {
+    marginBottom: 8,
+  },
   createPanelTitle: {
     color: theme.colors.text,
     fontWeight: "700",
-    fontSize: 16,
-    marginBottom: 8,
+    fontSize: 17,
+    marginBottom: 4,
+  },
+  createPanelHint: {
+    color: theme.colors.mutedText,
+    fontSize: 12,
+  },
+  createFieldLabel: {
+    color: theme.colors.mutedText,
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 6,
+    marginBottom: 5,
+  },
+  fieldCounter: {
+    color: theme.colors.mutedText,
+    fontSize: 11,
+    textAlign: "right",
+    marginBottom: 6,
   },
   createInput: {
     backgroundColor: theme.colors.backgroundSoft,
@@ -427,10 +508,18 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: "800",
   },
-  contextMenuIcon: {
-    color: theme.colors.mutedText,
-    fontSize: 20,
+  deleteSpaceButton: {
+    borderWidth: 1,
+    borderColor: "#f2c3c3",
+    backgroundColor: "#fff3f3",
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  deleteSpaceText: {
+    color: theme.colors.danger,
     fontWeight: "700",
+    fontSize: 12,
   },
   cardHeader: {
     flexDirection: "row",

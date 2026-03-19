@@ -118,6 +118,12 @@ export async function createSpace(
   return response.space;
 }
 
+export async function deleteSpace(token: string, spaceId: number): Promise<void> {
+  await request<{ success: boolean; message?: string }>(`/api/spaces/${spaceId}`, {
+    method: "DELETE",
+  }, token);
+}
+
 export async function fetchSpaceGames(
   token: string,
   spaceId: number,
