@@ -96,14 +96,9 @@ export async function updateProfile(
   return response.user;
 }
 
-export async function fetchSpaces(token: string): Promise<Space[]> {
+export async function fetchSpaces(token: string): Promise<SpacesResponse> {
   const response = await request<SpacesResponse>("/api/spaces", {}, token);
-  return response.spaces;
-}
-
-export async function fetchInvitations(token: string): Promise<Invitation[]> {
-  const response = await request<SpacesResponse>("/api/spaces", {}, token);
-  return response.pending_invitations || [];
+  return response;
 }
 
 export async function acceptInvitation(token: string, invitationId: number): Promise<void> {

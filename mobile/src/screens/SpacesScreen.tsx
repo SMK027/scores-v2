@@ -13,7 +13,7 @@ import {
   View,
 } from "react-native";
 import { theme } from "../styles/theme";
-import { ApiError, createSpace, deleteSpace, leaveSpace, fetchSpaces, fetchInvitations, acceptInvitation, declineInvitation } from "../services/api";
+import { ApiError, createSpace, deleteSpace, leaveSpace, fetchSpaces, acceptInvitation, declineInvitation } from "../services/api";
 import type { Space, User, Invitation } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
 import { getRoleLabel } from "../utils/roles";
@@ -44,10 +44,9 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
   const loadSpaces = useCallback(async () => {
     try {
       setError(null);
-      const data = await fetchSpaces(token);
-      setSpaces(data);
-      const pendingInvitations = await fetchInvitations(token);
-      setInvitations(pendingInvitations);
+      const response = await fetchSpaces(token);
+      setSpaces(response.spaces);
+      setInvitations(response.pending_invitations || []);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -72,7 +71,7 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
     setRefreshing(false);
   };
 
-  const handleAcceptInvitation = async (invitation: Invitation) => {
+  const handleAcceptInvitation = useCallback(async (invitation: Invitation) => {
     try {
       setRespondingInvitationId(invitation.id);
       setError(null);
@@ -87,9 +86,9 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
     } finally {
       setRespondingInvitationId(null);
     }
-  };
+  }, [loadSpaces, token]);
 
-  const handleDeclineInvitation = async (invitation: Invitation) => {
+  const handleDeclineInvitation = useCallback((invitation: Invitation) => {
     Alert.alert(
       "Refuser l'invitation ?",
       `Êtes-vous sûr de vouloir refuser l'invitation pour "${invitation.space_name}" ?`,
@@ -117,7 +116,7 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
         },
       ]
     );
-  };
+  }, [loadSpaces, token]);
 
   const submitCreateSpace = async () => {
     const name = newSpaceName.trim();
@@ -223,6 +222,52 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
     return spaces.filter((space) => space.name.toLowerCase().includes(query));
   }, [searchQuery, spaces]);
 
+  const invitationsHeader = useMemo(() => {
+    if (invitations.length === 0) {
+      return null;
+    }
+
+    return (
+      <View style={styles.invitationsPanel}>
+        <Text style={styles.invitationsPanelTitle}>Invitations en attente ({invitations.length})</Text>
+        {invitations.map((invitation) => (
+          <View key={invitation.id} style={styles.invitationCard}>
+            <View style={styles.invitationContent}>
+              <Text style={styles.invitationSpaceName}>{invitation.space_name}</Text>
+              <Text style={styles.invitationMeta}>Invité par {invitation.invited_by_name}</Text>
+            </View>
+            <View style={styles.invitationActions}>
+              <Pressable
+                style={[
+                  styles.invitationAcceptButton,
+                  respondingInvitationId === invitation.id ? styles.disabled : undefined,
+                ]}
+                disabled={respondingInvitationId === invitation.id}
+                onPress={() => handleAcceptInvitation(invitation)}
+              >
+                <Text style={styles.invitationAcceptButtonText}>
+                  {respondingInvitationId === invitation.id ? "..." : "Accepter"}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.invitationDeclineButton,
+                  respondingInvitationId === invitation.id ? styles.disabled : undefined,
+                ]}
+                disabled={respondingInvitationId === invitation.id}
+                onPress={() => handleDeclineInvitation(invitation)}
+              >
+                <Text style={styles.invitationDeclineButtonText}>
+                  {respondingInvitationId === invitation.id ? "..." : "Refuser"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  }, [handleAcceptInvitation, handleDeclineInvitation, invitations, respondingInvitationId]);
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -310,8 +355,9 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
         data={filteredSpaces}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.listContent}
-        extraData={deletingSpaceId}
+        extraData={{ deletingSpaceId, leavingSpaceId, respondingInvitationId }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        ListHeaderComponent={invitationsHeader}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Text style={styles.emptyTitle}>Aucun espace</Text>
@@ -330,48 +376,6 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
         renderItem={({ item }) => (
           <Pressable style={styles.card} onPress={() => onSelectSpace(item)}>
             <View style={styles.cardHeader}>
-              {invitations.length > 0 && (
-                <View style={styles.invitationsPanel}>
-                  <Text style={styles.invitationsPanelTitle}>Invitations en attente ({invitations.length})</Text>
-                  <View>
-                    {invitations.map((invitation) => (
-                      <View key={invitation.id} style={styles.invitationCard}>
-                        <View style={styles.invitationContent}>
-                          <Text style={styles.invitationSpaceName}>{invitation.space_name}</Text>
-                          <Text style={styles.invitationMeta}>Invité par {invitation.invited_by_name}</Text>
-                        </View>
-                        <View style={styles.invitationActions}>
-                          <Pressable
-                            style={[
-                              styles.invitationAcceptButton,
-                              respondingInvitationId === invitation.id ? styles.disabled : undefined,
-                            ]}
-                            disabled={respondingInvitationId === invitation.id}
-                            onPress={() => handleAcceptInvitation(invitation)}
-                          >
-                            <Text style={styles.invitationAcceptButtonText}>
-                              {respondingInvitationId === invitation.id ? "..." : "Accepter"}
-                            </Text>
-                          </Pressable>
-                          <Pressable
-                            style={[
-                              styles.invitationDeclineButton,
-                              respondingInvitationId === invitation.id ? styles.disabled : undefined,
-                            ]}
-                            disabled={respondingInvitationId === invitation.id}
-                            onPress={() => handleDeclineInvitation(invitation)}
-                          >
-                            <Text style={styles.invitationDeclineButtonText}>
-                              {respondingInvitationId === invitation.id ? "..." : "Refuser"}
-                            </Text>
-                          </Pressable>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
-
               <View style={styles.cardHeaderLeft}>
                 <View style={styles.spaceAvatarCircle}>
                   <Text style={styles.spaceAvatarText}>{item.name.slice(0, 2).toUpperCase()}</Text>
