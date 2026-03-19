@@ -422,9 +422,6 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
             </View>
             {item.description ? <Text style={styles.description}>{item.description}</Text> : null}
             <View style={styles.cardFooter}>
-              <View style={styles.statusBadgeActive}>
-                <Text style={styles.statusBadgeActiveText}>Actif</Text>
-              </View>
               <View style={styles.gamesBadge}>
                 <Text style={styles.gamesBadgeText}>Parties en cours: {item.games_count ?? 0}</Text>
               </View>
