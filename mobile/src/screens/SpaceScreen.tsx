@@ -128,6 +128,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const { width } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
   const [games, setGames] = useState<Game[]>([]);
+  const [gamesStatusFilter, setGamesStatusFilter] = useState<"all" | "completed" | "in_progress" | "paused">("all");
   const [players, setPlayers] = useState<Player[]>([]);
   const [members, setMembers] = useState<SpaceMember[]>([]);
   const [gameTypes, setGameTypes] = useState<GameType[]>([]);
@@ -202,7 +203,11 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     try {
       setError(null);
       const [gamesData, playersData, gameTypesData] = await Promise.all([
-        fetchSpaceGames(token, space.id),
+        fetchSpaceGames(
+          token,
+          space.id,
+          gamesStatusFilter === "all" ? undefined : gamesStatusFilter
+        ),
         fetchPlayers(token, space.id),
         fetchGameTypes(token, space.id),
       ]);
@@ -225,7 +230,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
         setError("Impossible de charger cet espace.");
       }
     }
-  }, [space.id, token]);
+  }, [gamesStatusFilter, space.id, token]);
 
   useEffect(() => {
     const run = async () => {
@@ -1102,6 +1107,26 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       {currentView === "games" ? (
         <View style={styles.gamesContainer}>
           <Text style={styles.sectionTitle}>Parties</Text>
+          <View style={styles.filterChipsRow}>
+            {([
+              ["all", "Toutes"],
+              ["in_progress", "En cours"],
+              ["paused", "En pause"],
+              ["completed", "Terminees"],
+            ] as const).map(([status, label]) => (
+              <Pressable
+                key={status}
+                style={[styles.filterChip, gamesStatusFilter === status ? styles.filterChipActive : undefined]}
+                onPress={() => setGamesStatusFilter(status)}
+              >
+                <Text
+                  style={[styles.filterChipText, gamesStatusFilter === status ? styles.filterChipTextActive : undefined]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
           <FlatList
             data={games}
             keyExtractor={(item) => String(item.id)}

@@ -117,8 +117,13 @@ export async function createSpace(
   return response.space;
 }
 
-export async function fetchSpaceGames(token: string, spaceId: number): Promise<Game[]> {
-  const response = await request<GamesResponse>(`/api/spaces/${spaceId}/games`, {}, token);
+export async function fetchSpaceGames(
+  token: string,
+  spaceId: number,
+  status?: "completed" | "in_progress" | "paused"
+): Promise<Game[]> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  const response = await request<GamesResponse>(`/api/spaces/${spaceId}/games${query}`, {}, token);
   return response.data;
 }
 
