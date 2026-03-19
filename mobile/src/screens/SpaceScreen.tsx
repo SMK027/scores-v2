@@ -875,49 +875,49 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     {
       key: "games",
       label: "Parties",
-      icon: "#",
+      icon: "🎮",
       onPress: () => setCurrentView("games" as const),
     },
     {
       key: "create",
       label: "Nouvelle",
-      icon: "+",
+      icon: "➕",
       onPress: () => setCurrentView("create" as const),
     },
     {
       key: "stats",
       label: "Stats",
-      icon: "=",
+      icon: "📊",
       onPress: () => setCurrentView("stats" as const),
     },
     {
       key: "search",
       label: "Recherche",
-      icon: "?",
+      icon: "🔍",
       onPress: () => setCurrentView("search" as const),
     },
     {
       key: "leaderboard",
       label: "Classement",
-      icon: "L",
+      icon: "🏆",
       onPress: () => setCurrentView("leaderboard" as const),
     },
     {
       key: "players",
       label: "Joueurs",
-      icon: "P",
+      icon: "👥",
       onPress: () => setCurrentView("players" as const),
     },
     {
       key: "gameTypes",
       label: "Types",
-      icon: "T",
+      icon: "🧩",
       onPress: () => setCurrentView("gameTypes" as const),
     },
     {
       key: "competitions",
       label: "Compet.",
-      icon: "C",
+      icon: "🏁",
       onPress: () => setCurrentView("competitions" as const),
     },
   ];
@@ -926,7 +926,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     navigationActions.push({
       key: "members",
       label: "Membres",
-      icon: "M",
+      icon: "🤝",
       onPress: () => {
         setInviteToken(null);
         setError(null);
