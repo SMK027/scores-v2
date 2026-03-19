@@ -1,13 +1,16 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { ApiError, login } from "../services/api";
+import { FORGOT_PASSWORD_URL, REGISTER_URL, TERMS_URL } from "../config/constants";
 import type { User } from "../types/api";
 import { theme } from "../styles/theme";
 
@@ -21,6 +24,7 @@ export function LoginScreen({ onBack, onLoginSuccess }: Props) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const submit = async () => {
     try {
@@ -39,33 +43,52 @@ export function LoginScreen({ onBack, onLoginSuccess }: Props) {
     }
   };
 
+  const openForgotPassword = async () => {
+    await Linking.openURL(FORGOT_PASSWORD_URL);
+  };
+
+  const openRegister = async () => {
+    await Linking.openURL(REGISTER_URL);
+  };
+
+  const openTerms = async () => {
+    await Linking.openURL(TERMS_URL);
+  };
+
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View>
-        <Text style={styles.kicker}>Bon retour</Text>
-        <Text style={styles.title}>Connexion</Text>
-        <Text style={styles.subtitle}>Connectez-vous pour accéder à vos espaces et statistiques.</Text>
+        <View style={styles.logoCircle}>
+          <Text style={styles.logoGlyph}>#</Text>
+        </View>
+        <Text style={styles.title}>Scores</Text>
+        <Text style={styles.subtitle}>Connectez-vous pour acceder a vos espaces et vos parties.</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.fieldLabel}>Adresse mail</Text>
+        <Text style={styles.fieldLabel}>Email</Text>
         <TextInput
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
-          placeholder="vous@domaine.com"
+          placeholder="Email"
           style={styles.input}
         />
 
         <Text style={styles.fieldLabel}>Mot de passe</Text>
-        <TextInput
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          placeholder="Votre mot de passe"
-          style={styles.input}
-        />
+        <View style={styles.passwordRow}>
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            placeholder="Mot de passe"
+            style={[styles.input, styles.passwordInput]}
+          />
+          <Pressable style={styles.toggleButton} onPress={() => setShowPassword((current) => !current)}>
+            <Text style={styles.toggleText}>{showPassword ? "Masquer" : "Afficher"}</Text>
+          </Pressable>
+        </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -76,33 +99,61 @@ export function LoginScreen({ onBack, onLoginSuccess }: Props) {
         >
           {loading ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.primaryText}>Se connecter</Text>}
         </Pressable>
+
+        <Pressable style={styles.textLinkButton} onPress={openForgotPassword}>
+          <Text style={styles.textLink}>Mot de passe oublie ?</Text>
+        </Pressable>
+
+        <View style={styles.separatorRow}>
+          <View style={styles.separatorLine} />
+          <Text style={styles.separatorText}>ou</Text>
+          <View style={styles.separatorLine} />
+        </View>
+
+        <Pressable style={styles.secondaryButton} onPress={openRegister}>
+          <Text style={styles.secondaryButtonText}>S'inscrire</Text>
+        </Pressable>
       </View>
 
       <Pressable style={styles.backButton} onPress={onBack}>
         <Text style={styles.backText}>Retour</Text>
       </Pressable>
-    </View>
+
+      <Pressable style={styles.termsButton} onPress={openTerms}>
+        <Text style={styles.termsText}>Conditions d'utilisation</Text>
+      </Pressable>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    justifyContent: "space-between",
     backgroundColor: theme.colors.background,
   },
-  kicker: {
-    marginTop: 18,
-    color: theme.colors.primary,
-    fontWeight: "700",
-    fontSize: 13,
+  content: {
+    padding: 20,
+    paddingBottom: 28,
+  },
+  logoCircle: {
+    marginTop: 10,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "#635bff",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  logoGlyph: {
+    color: "#ffffff",
+    fontSize: 30,
+    fontWeight: "900",
   },
   title: {
-    fontSize: 34,
+    fontSize: 36,
     fontWeight: "800",
     color: theme.colors.text,
-    marginTop: 4,
   },
   subtitle: {
     marginTop: 8,
@@ -111,6 +162,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   card: {
+    marginTop: 18,
     backgroundColor: theme.colors.card,
     borderRadius: theme.radius.xl,
     borderWidth: 1,
@@ -134,6 +186,26 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 10,
   },
+  passwordRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  passwordInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  toggleButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  toggleText: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+    fontSize: 12,
+  },
   error: {
     color: theme.colors.danger,
     marginBottom: 10,
@@ -152,12 +224,57 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontWeight: "700",
   },
+  textLinkButton: {
+    marginTop: 10,
+    alignItems: "center",
+  },
+  textLink: {
+    color: theme.colors.primary,
+    fontWeight: "600",
+  },
+  separatorRow: {
+    marginTop: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.border,
+  },
+  separatorText: {
+    color: theme.colors.mutedText,
+    fontWeight: "600",
+  },
+  secondaryButton: {
+    marginTop: 12,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.card,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  secondaryButtonText: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+  },
   backButton: {
     alignItems: "center",
     paddingVertical: 12,
-    marginBottom: 4,
+    marginTop: 10,
   },
   backText: {
     color: theme.colors.mutedText,
+  },
+  termsButton: {
+    alignItems: "center",
+    paddingVertical: 6,
+  },
+  termsText: {
+    color: theme.colors.mutedText,
+    textDecorationLine: "underline",
+    fontSize: 12,
   },
 });
