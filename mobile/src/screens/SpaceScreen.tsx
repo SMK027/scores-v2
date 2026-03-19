@@ -195,6 +195,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [competitionsLoading, setCompetitionsLoading] = useState(false);
   const [competitionsError, setCompetitionsError] = useState<string | null>(null);
+  const [competitionsLoaded, setCompetitionsLoaded] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -283,6 +284,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       setCompetitionsLoading(true);
       const data = await fetchCompetitions(token, space.id);
       setCompetitions(data);
+      setCompetitionsLoaded(true);
     } catch (err) {
       if (err instanceof ApiError) {
         setCompetitionsError(err.message);
@@ -340,10 +342,10 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   }, [searchText, space.id, token]);
 
   useEffect(() => {
-    if (currentView === "competitions" && competitions.length === 0 && !competitionsLoading) {
+    if (currentView === "competitions" && !competitionsLoaded && !competitionsLoading) {
       void loadCompetitions();
     }
-  }, [competitions.length, competitionsLoading, currentView, loadCompetitions]);
+  }, [competitionsLoaded, competitionsLoading, currentView, loadCompetitions]);
 
   useEffect(() => {
     if (currentView === "leaderboard") {
