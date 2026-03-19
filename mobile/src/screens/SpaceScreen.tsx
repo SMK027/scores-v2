@@ -127,6 +127,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
+  const [gamesLoading, setGamesLoading] = useState(false);
   const [games, setGames] = useState<Game[]>([]);
   const [gamesStatusFilter, setGamesStatusFilter] = useState<"all" | "completed" | "in_progress" | "paused">("all");
   const [players, setPlayers] = useState<Player[]>([]);
@@ -199,20 +200,34 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const [competitionsError, setCompetitionsError] = useState<string | null>(null);
   const [competitionsLoaded, setCompetitionsLoaded] = useState(false);
 
+  const loadGames = useCallback(async () => {
+    try {
+      setGamesLoading(true);
+      const gamesData = await fetchSpaceGames(
+        token,
+        space.id,
+        gamesStatusFilter === "all" ? undefined : gamesStatusFilter
+      );
+      setGames(gamesData);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Impossible de charger les parties.");
+      }
+    } finally {
+      setGamesLoading(false);
+    }
+  }, [gamesStatusFilter, space.id, token]);
+
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const [gamesData, playersData, gameTypesData] = await Promise.all([
-        fetchSpaceGames(
-          token,
-          space.id,
-          gamesStatusFilter === "all" ? undefined : gamesStatusFilter
-        ),
+      const [playersData, gameTypesData] = await Promise.all([
         fetchPlayers(token, space.id),
         fetchGameTypes(token, space.id),
       ]);
 
-      setGames(gamesData);
       setPlayers(playersData);
       setGameTypes(gameTypesData);
 
@@ -223,6 +238,8 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
         // Ne bloque pas la création de partie si l'API membres est indisponible.
         setMembers([]);
       }
+
+      await loadGames();
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -230,7 +247,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
         setError("Impossible de charger cet espace.");
       }
     }
-  }, [gamesStatusFilter, space.id, token]);
+  }, [loadGames, space.id, token]);
 
   useEffect(() => {
     const run = async () => {
@@ -241,6 +258,14 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
     void run();
   }, [loadData]);
+
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    void loadGames();
+  }, [gamesStatusFilter, loadGames, loading]);
 
   const selectedGameType = useMemo(
     () => gameTypes.find((item) => item.id === selectedGameTypeId) || null,
@@ -1127,6 +1152,11 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
               </Pressable>
             ))}
           </View>
+          {gamesLoading ? (
+            <View style={styles.gamesLoadingInline}>
+              <ActivityIndicator />
+            </View>
+          ) : null}
           <FlatList
             data={games}
             keyExtractor={(item) => String(item.id)}
@@ -2226,6 +2256,10 @@ const styles = StyleSheet.create({
   },
   gamesContainer: {
     flex: 1,
+  },
+  gamesLoadingInline: {
+    paddingVertical: 6,
+    alignItems: "center",
   },
   statsLoadingContainer: {
     paddingVertical: 20,
