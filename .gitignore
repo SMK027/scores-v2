@@ -38,3 +38,7 @@ composer.lock
 coverage/
 
 Prompt.md
+
+# Mobile APK build artifacts (Expo prebuild/local Android build)
+mobile/android/
+mobile/eas.json

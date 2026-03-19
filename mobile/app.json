@@ -17,6 +17,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.smk.scoresmobile",
       "statusBar": {
         "hidden": true
       },
