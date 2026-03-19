@@ -18,15 +18,15 @@ class Competition extends Model
      */
     public function findBySpace(int $spaceId): array
     {
-        $stmt = $this->db->prepare("
-            SELECT c.*, u.username AS creator_name,
+        $stmt = $this->query(
+            "SELECT c.*, u.username AS creator_name,
                    (SELECT COUNT(*) FROM competition_sessions cs WHERE cs.competition_id = c.id) AS session_count
             FROM {$this->table} c
             LEFT JOIN users u ON u.id = c.created_by
             WHERE c.space_id = :space_id
-            ORDER BY c.starts_at DESC
-        ");
-        $stmt->execute(['space_id' => $spaceId]);
+            ORDER BY c.starts_at DESC",
+            ['space_id' => $spaceId]
+        );
         return $stmt->fetchAll();
     }
 
@@ -35,8 +35,8 @@ class Competition extends Model
      */
     public function findNextBySpace(int $spaceId): ?array
     {
-        $stmt = $this->db->prepare("
-            SELECT c.*, u.username AS creator_name,
+        $stmt = $this->query(
+            "SELECT c.*, u.username AS creator_name,
                    (SELECT COUNT(*) FROM competition_sessions cs WHERE cs.competition_id = c.id) AS session_count
             FROM {$this->table} c
             LEFT JOIN users u ON u.id = c.created_by
@@ -44,9 +44,9 @@ class Competition extends Model
               AND c.status = 'planned'
               AND c.starts_at >= NOW()
             ORDER BY c.starts_at ASC
-            LIMIT 1
-        ");
-        $stmt->execute(['space_id' => $spaceId]);
+            LIMIT 1",
+            ['space_id' => $spaceId]
+        );
         $result = $stmt->fetch();
         return $result ?: null;
     }
@@ -56,8 +56,8 @@ class Competition extends Model
      */
     public function findWithDetails(int $id): ?array
     {
-        $stmt = $this->db->prepare("
-            SELECT c.*, u.username AS creator_name, s.name AS space_name,
+        $stmt = $this->query(
+            "SELECT c.*, u.username AS creator_name, s.name AS space_name,
                    (SELECT COUNT(*) FROM competition_sessions cs WHERE cs.competition_id = c.id) AS session_count,
                    (SELECT COUNT(*) FROM games g WHERE g.competition_id = c.id) AS game_count,
                    (SELECT COUNT(*) FROM competition_game_types cgt WHERE cgt.competition_id = c.id) AS allowed_game_type_count,
@@ -65,9 +65,9 @@ class Competition extends Model
             FROM {$this->table} c
             LEFT JOIN users u ON u.id = c.created_by
             LEFT JOIN spaces s ON s.id = c.space_id
-            WHERE c.id = :id
-        ");
-        $stmt->execute(['id' => $id]);
+            WHERE c.id = :id",
+            ['id' => $id]
+        );
         $result = $stmt->fetch();
         return $result ?: null;
     }
@@ -77,9 +77,10 @@ class Competition extends Model
      */
     public function closeCompetition(int $id): void
     {
-        $this->db->prepare("
-            UPDATE competition_sessions SET is_active = 0 WHERE competition_id = :id
-        ")->execute(['id' => $id]);
+        $this->query(
+            "UPDATE competition_sessions SET is_active = 0 WHERE competition_id = :id",
+            ['id' => $id]
+        );
 
         $this->update($id, ['status' => 'closed']);
     }
