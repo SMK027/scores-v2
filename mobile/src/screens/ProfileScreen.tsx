@@ -49,6 +49,17 @@ function formatDate(value?: string): string {
   }).format(date);
 }
 
+function maskEmail(email: string): string {
+  const [localPart, domain] = email.split("@");
+  if (!localPart || !domain) {
+    return email;
+  }
+  if (localPart.length <= 2) {
+    return `${localPart[0] ?? "*"}***@${domain}`;
+  }
+  return `${localPart.slice(0, 3)}***@${domain}`;
+}
+
 export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
   const [profile, setProfile] = useState<User>(fallbackUser);
   const [stats, setStats] = useState<ProfileStats | null>(null);
@@ -140,7 +151,7 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
           )}
         </View>
         <Text style={styles.username}>{profile.username}</Text>
-        <Text style={styles.email}>{profile.email}</Text>
+        <Text style={styles.email}>{maskEmail(profile.email)}</Text>
       </View>
 
       <View style={styles.card}>
@@ -215,6 +226,19 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
         ) : (
           <Text style={styles.bio}>{profile.bio?.trim() ? profile.bio : "Aucune bio renseignee."}</Text>
         )}
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Actions rapides</Text>
+        <Pressable style={styles.quickActionButton} onPress={loadProfile}>
+          <Text style={styles.quickActionText}>Parametres du compte</Text>
+        </Pressable>
+        <Pressable style={styles.quickActionButton} onPress={loadProfile}>
+          <Text style={styles.quickActionText}>Aide et FAQ</Text>
+        </Pressable>
+        <Pressable style={styles.quickActionDanger} onPress={onBack}>
+          <Text style={styles.quickActionDangerText}>Retour a l'application</Text>
+        </Pressable>
       </View>
     </ScrollView>
   );
@@ -400,6 +424,32 @@ const styles = StyleSheet.create({
     color: theme.colors.mutedText,
     fontSize: 11,
     marginTop: 2,
+    textAlign: "center",
+  },
+  quickActionButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    backgroundColor: theme.colors.background,
+  },
+  quickActionText: {
+    color: theme.colors.text,
+    fontWeight: "600",
+  },
+  quickActionDanger: {
+    borderWidth: 1,
+    borderColor: "#f2c7c3",
+    borderRadius: theme.radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: "#fff1f0",
+  },
+  quickActionDangerText: {
+    color: theme.colors.danger,
+    fontWeight: "700",
     textAlign: "center",
   },
 });
