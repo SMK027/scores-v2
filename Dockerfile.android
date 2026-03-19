@@ -1,0 +1,43 @@
+FROM node:20-alpine as builder
+
+# Install additional dependencies
+RUN apk add --no-cache openjdk17 wget unzip bash
+
+# Set environment variables for Android SDK
+ENV ANDROID_HOME=/opt/android-sdk \
+    PATH=${PATH}:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/build-tools/34.0.0
+
+# Install Android SDK
+RUN mkdir -p /opt/android-sdk && \
+    cd /opt/android-sdk && \
+    wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip && \
+    unzip -q commandlinetools-linux-11076708_latest.zip && \
+    rm commandlinetools-linux-11076708_latest.zip && \
+    mv cmdline-tools latest && \
+    mkdir -p cmdline-tools && \
+    mv latest cmdline-tools/
+
+# Accept licenses and install SDK components
+RUN yes | sdkmanager --licenses && \
+    sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125"
+
+# Set working directory
+WORKDIR /app
+
+# Copy mobile app
+COPY mobile/ /app/
+
+# Install npm dependencies
+RUN npm ci
+
+# Generate Android native code with Expo
+RUN npx expo prebuild --platform android --clean || true
+
+# Build APK using Gradle
+RUN cd android && \
+    ./gradlew assembleRelease || ./gradlew assembleDebug
+
+# Output stage
+FROM scratch as output
+COPY --from=builder /app/android/app/build/outputs/apk/ /
+
