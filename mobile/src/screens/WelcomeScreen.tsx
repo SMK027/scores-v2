@@ -1,5 +1,5 @@
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
-import { REGISTER_URL } from "../config/constants";
+import { REGISTER_URL, TERMS_URL } from "../config/constants";
 import { theme } from "../styles/theme";
 
 type Props = {
@@ -11,20 +11,18 @@ export function WelcomeScreen({ onLoginPress }: Props) {
     await Linking.openURL(REGISTER_URL);
   };
 
+  const openTerms = async () => {
+    await Linking.openURL(TERMS_URL);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.heroCard}>
-        <Text style={styles.badge}>Application mobile</Text>
-        <Text style={styles.title}>Scores</Text>
-        <Text style={styles.subtitle}>
-          Gérez vos espaces, joueurs et parties avec une interface mobile fluide.
-        </Text>
-
-        <View style={styles.benefits}>
-          <Text style={styles.benefit}>• Création de parties en quelques secondes</Text>
-          <Text style={styles.benefit}>• Suivi des performances en direct</Text>
-          <Text style={styles.benefit}>• Gestion collaborative des espaces</Text>
+        <View style={styles.logoCircle}>
+          <Text style={styles.logoGlyph}>#</Text>
         </View>
+        <Text style={styles.title}>Scores</Text>
+        <Text style={styles.subtitle}>Gerez vos parties de jeux en toute simplicite.</Text>
       </View>
 
       <View style={styles.actions}>
@@ -34,6 +32,10 @@ export function WelcomeScreen({ onLoginPress }: Props) {
 
         <Pressable style={styles.secondaryButton} onPress={openRegister}>
           <Text style={styles.secondaryButtonText}>S'inscrire</Text>
+        </Pressable>
+
+        <Pressable style={styles.termsButton} onPress={openTerms}>
+          <Text style={styles.termsText}>Conditions d'utilisation</Text>
         </Pressable>
       </View>
     </View>
@@ -48,45 +50,44 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   heroCard: {
-    marginTop: 36,
+    marginTop: 28,
     backgroundColor: theme.colors.card,
     borderRadius: theme.radius.xl,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    padding: 20,
+    padding: 22,
+    alignItems: "center",
     ...theme.shadow.card,
   },
-  badge: {
-    alignSelf: "flex-start",
-    backgroundColor: theme.colors.primarySoft,
-    color: theme.colors.primary,
-    fontWeight: "700",
-    fontSize: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: theme.radius.pill,
-    marginBottom: 12,
+  logoCircle: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: "#635bff",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  logoGlyph: {
+    color: "#ffffff",
+    fontSize: 34,
+    fontWeight: "900",
   },
   title: {
-    fontSize: 38,
+    fontSize: 34,
     fontWeight: "800",
     color: theme.colors.text,
+    textAlign: "center",
   },
   subtitle: {
-    marginTop: 12,
-    marginBottom: 16,
-    fontSize: 17,
-    lineHeight: 24,
+    marginTop: 10,
+    fontSize: 15,
+    lineHeight: 22,
     color: theme.colors.mutedText,
-  },
-  benefits: {
-    gap: 8,
-  },
-  benefit: {
-    color: theme.colors.text,
-    fontSize: 14,
+    textAlign: "center",
   },
   actions: {
+    marginTop: 20,
     marginBottom: 8,
   },
   primaryButton: {
@@ -111,5 +112,15 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: "700",
     fontSize: 16,
+  },
+  termsButton: {
+    marginTop: 12,
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  termsText: {
+    color: theme.colors.mutedText,
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
 });
