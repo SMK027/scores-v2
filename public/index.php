@@ -392,6 +392,8 @@ $router->post('/api/login', AuthApiController::class, 'login');
 $router->post('/api/register', AuthApiController::class, 'register');
 $router->get('/api/me', AuthApiController::class, 'me');
 $router->post('/api/refresh-token', AuthApiController::class, 'refreshToken');
+$router->post('/api/me/push-token', AuthApiController::class, 'registerPushToken');
+$router->delete('/api/me/push-token', AuthApiController::class, 'unregisterPushToken');
 
 // Profil
 $router->get('/api/profile', ProfileApiController::class, 'show');

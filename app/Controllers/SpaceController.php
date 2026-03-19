@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Core\ExpoPushNotifier;
 use App\Core\Middleware;
 use App\Models\ActivityLog;
 use App\Models\Space;
@@ -336,7 +337,17 @@ class SpaceController extends Controller
             return;
         }
 
-        $this->invitationModel->invite((int) $id, $user['id'], $this->getCurrentUserId(), $role);
+        $invitationId = $this->invitationModel->invite((int) $id, $user['id'], $this->getCurrentUserId(), $role);
+
+        $space = $this->spaceModel->find((int) $id);
+        $currentUser = (new User())->find($this->getCurrentUserId());
+        (new ExpoPushNotifier())->sendSpaceInvitation(
+            (int) $user['id'],
+            (int) $id,
+            $invitationId,
+            (string) ($space['name'] ?? 'Scores'),
+            (string) ($currentUser['username'] ?? 'Un membre')
+        );
 
         ActivityLog::logSpace((int) $id, 'member.invite', $this->getCurrentUserId(), 'user', $user['id'], ['username' => $username, 'role' => $role]);
 

@@ -75,6 +75,32 @@ export async function refreshAuthToken(token: string): Promise<{ token: string; 
   }, token);
 }
 
+export async function registerDevicePushToken(
+  token: string,
+  pushToken: string,
+  platform: string
+): Promise<void> {
+  await request<{ success: boolean }>(
+    "/api/me/push-token",
+    {
+      method: "POST",
+      body: JSON.stringify({ token: pushToken, platform }),
+    },
+    token
+  );
+}
+
+export async function unregisterDevicePushToken(token: string, pushToken: string): Promise<void> {
+  await request<{ success: boolean }>(
+    "/api/me/push-token",
+    {
+      method: "DELETE",
+      body: JSON.stringify({ token: pushToken }),
+    },
+    token
+  );
+}
+
 export async function fetchProfile(token: string): Promise<User> {
   const response = await request<{ success: boolean; user: User }>("/api/profile", {}, token);
   return response.user;

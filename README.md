@@ -68,6 +68,14 @@ Le fichier `docker-compose.yml` actuel est configuré pour le **déploiement VPS
 | `APP_DEBUG` | `false` | `true` |
 | `APP_KEY` | Chaîne aléatoire sécurisée | Peut rester la valeur par défaut |
 | `SMTP_*` | Identifiants du serveur mail de production | Identifiants de test ou désactivé |
+| `EXPO_ACCESS_TOKEN` | Optionnel, token Expo serveur pour sécuriser l'API push | Optionnel |
+
+#### Notifications push mobiles
+
+- Appliquer la migration [database/migrations/025_push_device_tokens.sql](database/migrations/025_push_device_tokens.sql)
+- Définir `EXPO_PROJECT_ID` côté application Expo pour permettre la génération du token push
+- Définir `EXPO_ACCESS_TOKEN` côté backend si vous souhaitez authentifier les appels vers l'API Expo Push
+- Les invitations d'espace déclenchent alors une notification push vers les terminaux mobiles enregistrés du destinataire
 
 #### Exemple : passer en mode local après un pull
 

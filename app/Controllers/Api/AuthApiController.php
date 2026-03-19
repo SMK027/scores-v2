@@ -13,6 +13,7 @@ use App\Models\LoginLock;
 use App\Models\Fail2banConfig;
 use App\Models\PasswordPolicy;
 use App\Models\ActivityLog;
+use App\Models\PushDeviceToken;
 
 /**
  * API d'authentification pour l'application mobile.
@@ -248,6 +249,39 @@ class AuthApiController extends ApiController
                 'created_at'  => $user['created_at'] ?? null,
             ],
         ]);
+    }
+
+    public function registerPushToken(): void
+    {
+        $this->requireAuth();
+
+        $data = $this->getJsonBody();
+        $pushToken = trim((string) ($data['token'] ?? ''));
+        $platform = trim((string) ($data['platform'] ?? 'unknown'));
+
+        $pushDeviceTokenModel = new PushDeviceToken();
+        if ($pushToken === '' || !$pushDeviceTokenModel->isValidExpoPushToken($pushToken)) {
+            $this->error('Token push invalide.', 422);
+        }
+
+        $pushDeviceTokenModel->upsertForUser($this->userId, $pushToken, $platform);
+
+        $this->json(['success' => true]);
+    }
+
+    public function unregisterPushToken(): void
+    {
+        $this->requireAuth();
+
+        $data = $this->getJsonBody();
+        $pushToken = trim((string) ($data['token'] ?? ''));
+        if ($pushToken === '') {
+            $this->json(['success' => true]);
+        }
+
+        (new PushDeviceToken())->deleteForUser($this->userId, $pushToken);
+
+        $this->json(['success' => true]);
     }
 
     /**

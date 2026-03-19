@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { AppState, SafeAreaView, StyleSheet, View, ActivityIndicator, Platform } from "react-native";
+import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
 import * as NavigationBar from "expo-navigation-bar";
-import { refreshAuthToken } from "./services/api";
+import { refreshAuthToken, registerDevicePushToken, unregisterDevicePushToken } from "./services/api";
+import { registerForPushNotificationsAsync } from "./services/pushNotifications";
 import { clearSession, loadSession, saveSession } from "./services/session";
 import { GameDetailScreen } from "./screens/GameDetailScreen";
 import { CompetitionDetailScreen } from "./screens/CompetitionDetailScreen";
@@ -24,6 +26,15 @@ type Route =
   | { name: "game"; space: Space; gameId: number }
   | { name: "competition"; space: Space; competitionId: number };
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
+
 export function MobileApp() {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -31,14 +42,23 @@ export function MobileApp() {
   const [previousRoute, setPreviousRoute] = useState<Route>({ name: "spaces" });
   const [bootstrapping, setBootstrapping] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
+  const [registeredPushToken, setRegisteredPushToken] = useState<string | null>(null);
 
   const goToSpaces = () => setRoute({ name: "spaces" });
 
   const logout = () => {
+    const currentToken = token;
+    const currentPushToken = registeredPushToken;
+
     setToken(null);
     setUser(null);
     setRoute({ name: "welcome" });
+    setRegisteredPushToken(null);
     void clearSession();
+
+    if (currentToken && currentPushToken) {
+      void unregisterDevicePushToken(currentToken, currentPushToken).catch(() => undefined);
+    }
   };
 
   useEffect(() => {
@@ -120,6 +140,47 @@ export function MobileApp() {
     });
 
     return () => subscription.remove();
+  }, [token]);
+
+  useEffect(() => {
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const notificationType = response.notification.request.content.data?.type;
+      if (notificationType === "space_invitation") {
+        setRoute({ name: "spaces" });
+      }
+    });
+
+    return () => responseSubscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    let isMounted = true;
+
+    void (async () => {
+      try {
+        const pushToken = await registerForPushNotificationsAsync();
+        if (!pushToken || !isMounted) {
+          return;
+        }
+
+        await registerDevicePushToken(token, pushToken, Platform.OS);
+        if (isMounted) {
+          setRegisteredPushToken(pushToken);
+        }
+      } catch {
+        if (isMounted) {
+          setRegisteredPushToken(null);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
   }, [token]);
 
   if (bootstrapping) {

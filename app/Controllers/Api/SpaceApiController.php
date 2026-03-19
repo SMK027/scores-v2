@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers\Api;
 
+use App\Core\ExpoPushNotifier;
 use App\Models\Space;
 use App\Models\SpaceMember;
 use App\Models\SpaceInvite;
@@ -280,7 +281,17 @@ class SpaceApiController extends ApiController
             $this->error('Une invitation est déjà en attente pour cet utilisateur.');
         }
 
-        $this->invitationModel->invite((int) $id, $user['id'], $this->userId, $role);
+        $invitationId = $this->invitationModel->invite((int) $id, $user['id'], $this->userId, $role);
+
+        $space = $this->spaceModel->find((int) $id);
+        $inviterName = (string) ($this->userPayload['username'] ?? 'Un membre');
+        (new ExpoPushNotifier())->sendSpaceInvitation(
+            (int) $user['id'],
+            (int) $id,
+            $invitationId,
+            (string) ($space['name'] ?? 'Scores'),
+            $inviterName
+        );
 
         ActivityLog::logSpace((int) $id, 'member.invite', $this->userId, 'user', $user['id'], ['username' => $username, 'role' => $role]);
 
