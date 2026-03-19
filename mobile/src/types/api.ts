@@ -110,3 +110,61 @@ export type GameDetailsResponse = {
   rounds: Round[];
   round_scores: Record<string, Record<string, number>>;
 };
+
+export type SearchComment = {
+  id: number;
+  content: string;
+  created_at?: string;
+  username?: string;
+  game_id?: number;
+};
+
+export type SearchResults = {
+  players: Player[];
+  game_types: GameType[];
+  games: Game[];
+  comments: SearchComment[];
+};
+
+export type SpaceSearchResponse = {
+  success: boolean;
+  query: string;
+  results: SearchResults;
+  total: number;
+};
+
+export type LeaderboardEntry = {
+  rank: number;
+  user_id: number;
+  username: string;
+  avatar?: string | null;
+  rounds_played: number;
+  rounds_won: number;
+  win_rate: number;
+};
+
+export type LeaderboardResponse = {
+  success: boolean;
+  period: "all" | "7d" | "30d" | "3m" | "6m" | "1y" | "custom";
+  custom_from?: string;
+  custom_to?: string;
+  criteria: {
+    min_rounds_played: number;
+    min_spaces_played: number;
+  };
+  leaderboard: LeaderboardEntry[];
+  total: number;
+};
+
+export type Competition = {
+  id: number;
+  space_id: number;
+  name: string;
+  description?: string | null;
+  status: "planned" | "active" | "paused" | "closed";
+  starts_at?: string | null;
+  ends_at?: string | null;
+  created_by?: number | null;
+  creator_name?: string | null;
+  session_count: number;
+};
