@@ -41,9 +41,17 @@ class SpaceApiController extends ApiController
         $spaces = $this->spaceModel->findByUser($this->userId);
         $pendingInvitations = $this->invitationModel->findPendingForUser($this->userId);
 
+        // Compter les parties en cours pour chaque espace
+        $gameModel = new Game();
+        $spacesWithCounts = array_map(function ($space) use ($gameModel) {
+            $gamesCount = $gameModel->countInProgressBySpace($space['id']);
+            $space['games_count'] = $gamesCount;
+            return $space;
+        }, $spaces);
+
         $this->json([
             'success' => true,
-            'spaces' => $spaces,
+            'spaces' => $spacesWithCounts,
             'pending_invitations' => $pendingInvitations,
         ]);
     }
