@@ -12,9 +12,9 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { ApiError, createSpace, deleteSpace, leaveSpace, fetchSpaces } from "../services/api";
 import { theme } from "../styles/theme";
-import type { Space, User } from "../types/api";
+import { ApiError, createSpace, deleteSpace, leaveSpace, fetchSpaces, fetchInvitations, acceptInvitation, declineInvitation } from "../services/api";
+import type { Space, User, Invitation } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
 import { getRoleLabel } from "../utils/roles";
 
@@ -38,12 +38,16 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
   const [creatingSpace, setCreatingSpace] = useState(false);
   const [deletingSpaceId, setDeletingSpaceId] = useState<number | null>(null);
   const [leavingSpaceId, setLeavingSpaceId] = useState<number | null>(null);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [respondingInvitationId, setRespondingInvitationId] = useState<number | null>(null);
 
   const loadSpaces = useCallback(async () => {
     try {
       setError(null);
       const data = await fetchSpaces(token);
       setSpaces(data);
+      const pendingInvitations = await fetchInvitations(token);
+      setInvitations(pendingInvitations);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -66,6 +70,53 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
     setRefreshing(true);
     await loadSpaces();
     setRefreshing(false);
+  };
+
+  const handleAcceptInvitation = async (invitation: Invitation) => {
+    try {
+      setRespondingInvitationId(invitation.id);
+      setError(null);
+      await acceptInvitation(token, invitation.id);
+      await loadSpaces();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Impossible d'accepter l'invitation.");
+      }
+    } finally {
+      setRespondingInvitationId(null);
+    }
+  };
+
+  const handleDeclineInvitation = async (invitation: Invitation) => {
+    Alert.alert(
+      "Refuser l'invitation ?",
+      `Êtes-vous sûr de vouloir refuser l'invitation pour "${invitation.space_name}" ?`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Refuser",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setRespondingInvitationId(invitation.id);
+              setError(null);
+              await declineInvitation(token, invitation.id);
+              await loadSpaces();
+            } catch (err) {
+              if (err instanceof ApiError) {
+                setError(err.message);
+              } else {
+                setError("Impossible de refuser l'invitation.");
+              }
+            } finally {
+              setRespondingInvitationId(null);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const submitCreateSpace = async () => {
@@ -279,6 +330,48 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
         renderItem={({ item }) => (
           <Pressable style={styles.card} onPress={() => onSelectSpace(item)}>
             <View style={styles.cardHeader}>
+              {invitations.length > 0 && (
+                <View style={styles.invitationsPanel}>
+                  <Text style={styles.invitationsPanelTitle}>Invitations en attente ({invitations.length})</Text>
+                  <View>
+                    {invitations.map((invitation) => (
+                      <View key={invitation.id} style={styles.invitationCard}>
+                        <View style={styles.invitationContent}>
+                          <Text style={styles.invitationSpaceName}>{invitation.space_name}</Text>
+                          <Text style={styles.invitationMeta}>Invité par {invitation.invited_by_name}</Text>
+                        </View>
+                        <View style={styles.invitationActions}>
+                          <Pressable
+                            style={[
+                              styles.invitationAcceptButton,
+                              respondingInvitationId === invitation.id ? styles.disabled : undefined,
+                            ]}
+                            disabled={respondingInvitationId === invitation.id}
+                            onPress={() => handleAcceptInvitation(invitation)}
+                          >
+                            <Text style={styles.invitationAcceptButtonText}>
+                              {respondingInvitationId === invitation.id ? "..." : "Accepter"}
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            style={[
+                              styles.invitationDeclineButton,
+                              respondingInvitationId === invitation.id ? styles.disabled : undefined,
+                            ]}
+                            disabled={respondingInvitationId === invitation.id}
+                            onPress={() => handleDeclineInvitation(invitation)}
+                          >
+                            <Text style={styles.invitationDeclineButtonText}>
+                              {respondingInvitationId === invitation.id ? "..." : "Refuser"}
+                            </Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
               <View style={styles.cardHeaderLeft}>
                 <View style={styles.spaceAvatarCircle}>
                   <Text style={styles.spaceAvatarText}>{item.name.slice(0, 2).toUpperCase()}</Text>
@@ -655,5 +748,74 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: "400",
     marginTop: -2,
+  },
+  invitationsPanel: {
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: "#e8d5b7",
+    borderRadius: theme.radius.lg,
+    padding: 12,
+    marginBottom: 12,
+  },
+  invitationsPanelTitle: {
+    color: theme.colors.text,
+    fontWeight: "700",
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  invitationCard: {
+    backgroundColor: "#fffaf0",
+    borderWidth: 1,
+    borderColor: "#f4d5a3",
+    borderRadius: theme.radius.md,
+    padding: 10,
+    marginBottom: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  invitationContent: {
+    flex: 1,
+    marginRight: 10,
+  },
+  invitationSpaceName: {
+    color: theme.colors.text,
+    fontWeight: "700",
+    fontSize: 14,
+    marginBottom: 2,
+  },
+  invitationMeta: {
+    color: theme.colors.mutedText,
+    fontSize: 11,
+  },
+  invitationActions: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  invitationAcceptButton: {
+    backgroundColor: "#e8f5e9",
+    borderWidth: 1,
+    borderColor: "#81c784",
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  invitationAcceptButtonText: {
+    color: "#2e7d32",
+    fontWeight: "700",
+    fontSize: 11,
+  },
+  invitationDeclineButton: {
+    backgroundColor: "#ffebee",
+    borderWidth: 1,
+    borderColor: "#ef5350",
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  invitationDeclineButtonText: {
+    color: "#c62828",
+    fontWeight: "700",
+    fontSize: 11,
   },
 });

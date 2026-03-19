@@ -16,6 +16,7 @@ import type {
   Space,
   SpacesResponse,
   User,
+    Invitation,
 } from "../types/api";
 
 class ApiError extends Error {
@@ -98,6 +99,27 @@ export async function updateProfile(
 export async function fetchSpaces(token: string): Promise<Space[]> {
   const response = await request<SpacesResponse>("/api/spaces", {}, token);
   return response.spaces;
+}
+
+export async function fetchInvitations(token: string): Promise<Invitation[]> {
+  const response = await request<SpacesResponse>("/api/spaces", {}, token);
+  return response.pending_invitations || [];
+}
+
+export async function acceptInvitation(token: string, invitationId: number): Promise<void> {
+  await request<{ success: boolean; message: string }>(
+    `/api/invitations/${invitationId}/accept`,
+    { method: "POST" },
+    token
+  );
+}
+
+export async function declineInvitation(token: string, invitationId: number): Promise<void> {
+  await request<{ success: boolean; message: string }>(
+    `/api/invitations/${invitationId}/decline`,
+    { method: "POST" },
+    token
+  );
 }
 
 export async function createSpace(

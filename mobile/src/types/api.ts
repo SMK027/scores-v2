@@ -23,9 +23,22 @@ export type Space = {
   games_count?: number;
 };
 
+export type Invitation = {
+  id: number;
+  space_id: number;
+  invited_user_id: number;
+  invited_by: number;
+  role: string;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: string;
+  space_name: string;
+  invited_by_name: string;
+};
+
 export type SpacesResponse = {
   success: boolean;
   spaces: Space[];
+  pending_invitations: Invitation[];
 };
 
 export type GameType = {
