@@ -211,4 +211,16 @@ class Game extends Model
 
         return $totalPlay;
     }
+
+    /**
+     * Compte le nombre de parties en cours (non complétées) pour un espace.
+     */
+    public function countInProgressBySpace(int $spaceId): int
+    {
+        $stmt = $this->query(
+            "SELECT COUNT(*) FROM {$this->table} WHERE space_id = :space_id AND status IN ('pending', 'in_progress', 'paused')",
+            ['space_id' => $spaceId]
+        );
+        return (int) $stmt->fetchColumn();
+    }
 }
