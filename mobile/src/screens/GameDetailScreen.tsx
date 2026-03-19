@@ -132,25 +132,42 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
 
   const gameStatusMeta = getStatusMeta(details?.game.status ?? "pending");
 
+  const beginRoundScoring = (roundId: number) => {
+    const currentRoundScores = (details?.round_scores?.[String(roundId)] || {}) as Record<string, unknown>;
+
+    setEditingRoundId(roundId);
+
+    if (winCondition === "win_loss") {
+      const initialWinners: Record<number, boolean> = {};
+      playerIds.forEach((id) => {
+        const value = extractScoreValue(currentRoundScores[String(id)]);
+        initialWinners[id] = value === 1;
+      });
+      setWinners(initialWinners);
+      setScores({});
+      return;
+    }
+
+    const initialScores: Record<number, string> = {};
+    playerIds.forEach((id) => {
+      const value = extractScoreValue(currentRoundScores[String(id)]);
+      if (value === null) {
+        initialScores[id] = winCondition === "ranking" ? "1" : "";
+      } else {
+        initialScores[id] = String(value);
+      }
+    });
+    setScores(initialScores);
+    setWinners({});
+  };
+
   const startRoundAndScores = async () => {
     try {
       setSaving(true);
       setError(null);
       const roundId = await createRound(token, space.id, gameId);
-      setEditingRoundId(roundId);
-
-      const initial: Record<number, string> = {};
-      playerIds.forEach((id) => {
-        initial[id] = winCondition === "ranking" ? "1" : "";
-      });
-      setScores(initial);
-
-      const initialWinners: Record<number, boolean> = {};
-      playerIds.forEach((id) => {
-        initialWinners[id] = false;
-      });
-      setWinners(initialWinners);
       await loadDetails();
+      beginRoundScoring(roundId);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -361,15 +378,39 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
               </View>
 
               {round.status !== "completed" ? (
-                <Pressable
-                  style={[styles.secondaryButton, updatingRoundId === round.id ? styles.disabled : undefined]}
-                  disabled={updatingRoundId === round.id}
-                  onPress={() => toggleRoundPause(round.id, round.status)}
-                >
-                  <Text style={styles.secondaryText}>
-                    {round.status === "paused" ? "Reprendre la manche" : "Mettre la manche en pause"}
-                  </Text>
-                </Pressable>
+                <View style={styles.roundActions}>
+                  <Pressable
+                    style={[
+                      styles.secondaryButton,
+                      styles.roundActionButton,
+                      updatingRoundId === round.id ? styles.disabled : undefined,
+                    ]}
+                    disabled={updatingRoundId === round.id}
+                    onPress={() => toggleRoundPause(round.id, round.status)}
+                  >
+                    <Text style={styles.secondaryText}>
+                      {round.status === "paused" ? "Reprendre la manche" : "Mettre la manche en pause"}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[
+                      styles.secondaryButton,
+                      styles.roundActionButton,
+                      editingRoundId === round.id ? styles.roundActionButtonActive : undefined,
+                    ]}
+                    onPress={() => beginRoundScoring(round.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.secondaryText,
+                        editingRoundId === round.id ? styles.roundActionButtonTextActive : undefined,
+                      ]}
+                    >
+                      {editingRoundId === round.id ? "Saisie en cours" : "Saisir les scores"}
+                    </Text>
+                  </Pressable>
+                </View>
               ) : null}
 
               {details.players.map((player) => {
@@ -398,6 +439,9 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
         {editingRoundId ? (
           <View style={styles.scoreEditor}>
             <Text style={styles.blockTitle}>
+              {`Manche #${details.rounds.find((round) => round.id === editingRoundId)?.round_number ?? "?"}`}
+            </Text>
+            <Text style={styles.meta}>
               {winCondition === "ranking"
                 ? "Saisir le classement de la manche"
                 : winCondition === "win_loss"
@@ -445,6 +489,18 @@ export function GameDetailScreen({ token, space, gameId, onBack }: Props) {
               onPress={saveScores}
             >
               <Text style={styles.primaryText}>Enregistrer les scores</Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.secondaryButton, saving ? styles.disabled : undefined]}
+              disabled={saving}
+              onPress={() => {
+                setEditingRoundId(null);
+                setScores({});
+                setWinners({});
+              }}
+            >
+              <Text style={styles.secondaryText}>Annuler la saisie</Text>
             </Pressable>
           </View>
         ) : null}
@@ -546,6 +602,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 8,
+  },
+  roundActions: {
+    marginBottom: 8,
+    gap: 8,
+  },
+  roundActionButton: {
+    marginTop: 0,
+  },
+  roundActionButtonActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  roundActionButtonTextActive: {
+    color: theme.colors.primary,
   },
   roundTitle: {
     color: theme.colors.text,
