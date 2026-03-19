@@ -222,7 +222,7 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
                 <Text style={styles.statusBadgeActiveText}>Actif</Text>
               </View>
               <View style={styles.gamesBadge}>
-                <Text style={styles.gamesBadgeText}>Parties en cours: -</Text>
+                <Text style={styles.gamesBadgeText}>Parties en cours: {item.games_count ?? 0}</Text>
               </View>
             </View>
           </Pressable>
