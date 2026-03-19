@@ -256,7 +256,7 @@ export function MobileApp() {
         />
       ) : null}
 
-      {route.name === "game" && token ? (
+      {route.name === "game" && token && user ? (
         <GameDetailScreen
           token={token}
           user={user}

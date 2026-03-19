@@ -27,7 +27,7 @@ import type { Comment, GameDetailsResponse, Space, User } from "../types/api";
 
 type Props = {
   token: string;
-  user: User;
+  user: User | null;
   space: Space;
   gameId: number;
   onBack: () => void;
@@ -589,8 +589,8 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
         ) : null}
 
         {details.comments.map((comment) => {
-          const isAuthor = comment.user_id === user.id;
-          const canDelete = isAuthor || user.global_role === "admin" || user.global_role === "superadmin" || user.global_role === "moderator";
+          const isAuthor = user && comment.user_id === user.id;
+          const canDelete = isAuthor || (user && (user.global_role === "admin" || user.global_role === "superadmin" || user.global_role === "moderator"));
           return (
             <View key={comment.id} style={styles.commentCard}>
               <View style={styles.commentHeader}>
