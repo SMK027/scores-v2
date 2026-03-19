@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Pressable,
@@ -624,6 +625,72 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     } finally {
       setSavingPlayer(false);
     }
+  };
+
+  const confirmAndDeletePlayer = (playerId: number, playerName: string) => {
+    Alert.alert(
+      "Supprimer le joueur",
+      "Confirmer la suppression de " + playerName + " ?",
+      [
+        { text: "Annuler", onPress: () => {}, style: "cancel" },
+        { text: "Supprimer", onPress: () => removePlayerSubmit(playerId), style: "destructive" },
+      ]
+    );
+  };
+
+  const confirmAndDeleteGameType = (gameTypeId: number, gameTypeName: string) => {
+    Alert.alert(
+      "Supprimer le type de jeu",
+      "Confirmer la suppression de " + gameTypeName + " ?",
+      [
+        { text: "Annuler", onPress: () => {}, style: "cancel" },
+        { text: "Supprimer", onPress: () => removeGameTypeSubmit(gameTypeId), style: "destructive" },
+      ]
+    );
+  };
+
+  const confirmAndRemoveMember = (memberId: number, memberUsername: string) => {
+    Alert.alert(
+      "Retirer le membre",
+      "Confirmer le retrait de " + memberUsername + " ?",
+      [
+        { text: "Annuler", onPress: () => {}, style: "cancel" },
+        { text: "Retirer", onPress: () => removeMemberSubmit(memberId), style: "destructive" },
+      ]
+    );
+  };
+
+  const confirmAndUpdatePlayer = () => {
+    Alert.alert(
+      "Mettre a jour le joueur",
+      "Confirmer les modifications ?",
+      [
+        { text: "Annuler", onPress: () => {}, style: "cancel" },
+        { text: "Confirmer", onPress: () => saveEditPlayer() },
+      ]
+    );
+  };
+
+  const confirmAndUpdateGameType = () => {
+    Alert.alert(
+      "Mettre a jour le type de jeu",
+      "Confirmer les modifications ?",
+      [
+        { text: "Annuler", onPress: () => {}, style: "cancel" },
+        { text: "Confirmer", onPress: () => saveEditGameType() },
+      ]
+    );
+  };
+
+  const confirmAndUpdateMemberRole = (memberId: number) => {
+    Alert.alert(
+      "Changer le role",
+      "Confirmer le changement de role ?",
+      [
+        { text: "Annuler", onPress: () => {}, style: "cancel" },
+        { text: "Confirmer", onPress: () => saveEditMemberRole(memberId) },
+      ]
+    );
   };
 
   const removePlayerSubmit = async (playerId: number) => {
@@ -1422,7 +1489,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                     </Pressable>
                     <Pressable
                       disabled={deletingPlayerId === player.id}
-                      onPress={() => removePlayerSubmit(player.id)}
+                      onPress={() => confirmAndDeletePlayer(player.id, player.name)}
                     >
                       <Text style={styles.deleteAction}>
                         {deletingPlayerId === player.id ? "Suppression..." : "Supprimer"}
@@ -1470,7 +1537,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                       <Pressable
                         style={[styles.secondaryButton, savingPlayer ? styles.disabledButton : undefined]}
                         disabled={savingPlayer}
-                        onPress={saveEditPlayer}
+                        onPress={confirmAndUpdatePlayer}
                       >
                         <Text style={styles.secondaryButtonText}>
                           {savingPlayer ? "Enregistrement..." : "Enregistrer"}
@@ -1588,7 +1655,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                     </Pressable>
                     <Pressable
                       disabled={deletingGameTypeId === gameType.id}
-                      onPress={() => removeGameTypeSubmit(gameType.id)}
+                      onPress={() => confirmAndDeleteGameType(gameType.id, gameType.name)}
                     >
                       <Text style={styles.deleteAction}>
                         {deletingGameTypeId === gameType.id ? "Suppression..." : "Supprimer"}
@@ -1665,7 +1732,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                       <Pressable
                         style={[styles.secondaryButton, savingGameType ? styles.disabledButton : undefined]}
                         disabled={savingGameType}
-                        onPress={saveEditGameType}
+                        onPress={confirmAndUpdateGameType}
                       >
                         <Text style={styles.secondaryButtonText}>
                           {savingGameType ? "Enregistrement..." : "Enregistrer"}
@@ -1715,7 +1782,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                       ) : null}
                       <Pressable
                         disabled={removingMemberId === member.id}
-                        onPress={() => removeMemberSubmit(member.id)}
+                        onPress={() => confirmAndRemoveMember(member.id, member.username)}
                       >
                         <Text style={styles.deleteAction}>
                           {removingMemberId === member.id ? "Retrait..." : "Retirer"}
@@ -1753,7 +1820,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                       <Pressable
                         style={[styles.secondaryButton, savingMemberRole ? styles.disabledButton : undefined]}
                         disabled={savingMemberRole}
-                        onPress={() => saveEditMemberRole(member.id)}
+                        onPress={() => confirmAndUpdateMemberRole(member.id)}
                       >
                         <Text style={styles.secondaryButtonText}>
                           {savingMemberRole ? "Enregistrement..." : "Enregistrer"}
