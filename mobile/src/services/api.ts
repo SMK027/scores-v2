@@ -124,6 +124,12 @@ export async function deleteSpace(token: string, spaceId: number): Promise<void>
   }, token);
 }
 
+export async function leaveSpace(token: string, spaceId: number): Promise<void> {
+  await request<{ success: boolean; message?: string }>(`/api/spaces/${spaceId}/leave`, {
+    method: "POST",
+  }, token);
+}
+
 export async function fetchSpaceGames(
   token: string,
   spaceId: number,

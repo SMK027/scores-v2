@@ -12,7 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { ApiError, createSpace, deleteSpace, fetchSpaces } from "../services/api";
+import { ApiError, createSpace, deleteSpace, leaveSpace, fetchSpaces } from "../services/api";
 import { theme } from "../styles/theme";
 import type { Space, User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
@@ -37,6 +37,7 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
   const [newSpaceDescription, setNewSpaceDescription] = useState("");
   const [creatingSpace, setCreatingSpace] = useState(false);
   const [deletingSpaceId, setDeletingSpaceId] = useState<number | null>(null);
+  const [leavingSpaceId, setLeavingSpaceId] = useState<number | null>(null);
 
   const loadSpaces = useCallback(async () => {
     try {
@@ -124,6 +125,36 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
               }
             } finally {
               setDeletingSpaceId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const confirmAndLeaveSpace = (space: Space) => {
+    Alert.alert(
+      "Quitter cet espace ?",
+      `Êtes-vous sûr de vouloir quitter \"${space.name}\" ?`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Quitter",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLeavingSpaceId(space.id);
+              setError(null);
+              await leaveSpace(token, space.id);
+              await loadSpaces();
+            } catch (err) {
+              if (err instanceof ApiError) {
+                setError(err.message);
+              } else {
+                setError("Impossible de quitter cet espace.");
+              }
+            } finally {
+              setLeavingSpaceId(null);
             }
           },
         },
@@ -275,7 +306,20 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
                     {deletingSpaceId === item.id ? "Suppression..." : "Supprimer"}
                   </Text>
                 </Pressable>
-              ) : null}
+              ) : (
+                <Pressable
+                  style={[styles.leaveSpaceButton, leavingSpaceId === item.id ? styles.disabled : undefined]}
+                  disabled={leavingSpaceId === item.id}
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    confirmAndLeaveSpace(item);
+                  }}
+                >
+                  <Text style={styles.leaveSpaceText}>
+                    {leavingSpaceId === item.id ? "Départ..." : "Quitter"}
+                  </Text>
+                </Pressable>
+              )}
             </View>
             {item.description ? <Text style={styles.description}>{item.description}</Text> : null}
             <View style={styles.cardFooter}>
@@ -518,6 +562,19 @@ const styles = StyleSheet.create({
   },
   deleteSpaceText: {
     color: theme.colors.danger,
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  leaveSpaceButton: {
+    borderWidth: 1,
+    borderColor: "#f4d5a3",
+    backgroundColor: "#fffaf0",
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  leaveSpaceText: {
+    color: "#d98d1a",
     fontWeight: "700",
     fontSize: 12,
   },
