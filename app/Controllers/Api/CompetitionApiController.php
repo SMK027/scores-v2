@@ -18,7 +18,6 @@ class CompetitionApiController extends ApiController
     {
         $this->requireAuth();
         $this->checkSpaceAccess((int) $id);
-        $this->checkUserRestriction('competitions_participation');
 
         $competitionModel = new Competition();
         $rows = $competitionModel->findBySpace((int) $id);
