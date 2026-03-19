@@ -181,12 +181,16 @@ class LeaderboardApiController extends ApiController
         $ph = implode(',', array_fill(0, count($playerIds), '?'));
         $dateConditions = '';
         $dateParams = [];
+        // Certaines manches historiques n'ont pas ended_at renseigné.
+        // On applique donc le filtre sur une date effective robuste.
+        $roundEffectiveDateExpr = 'COALESCE(r.ended_at, r.updated_at, r.created_at)';
+
         if ($dateFrom !== null) {
-            $dateConditions .= ' AND r.ended_at >= ?';
+            $dateConditions .= " AND {$roundEffectiveDateExpr} >= ?";
             $dateParams[] = $dateFrom;
         }
         if ($dateTo !== null) {
-            $dateConditions .= ' AND r.ended_at <= ?';
+            $dateConditions .= " AND {$roundEffectiveDateExpr} <= ?";
             $dateParams[] = $dateTo;
         }
 
