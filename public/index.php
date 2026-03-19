@@ -39,6 +39,8 @@ use App\Controllers\Api\PlayerApiController;
 use App\Controllers\Api\ProfileApiController;
 use App\Controllers\Api\StatApiController;
 use App\Controllers\Api\SearchApiController;
+use App\Controllers\Api\LeaderboardApiController;
+use App\Controllers\Api\CompetitionApiController;
 use App\Models\IpBan;
 use App\Models\UserBan;
 use App\Models\RememberToken;
@@ -454,6 +456,12 @@ $router->get('/api/spaces/{id}/stats', StatApiController::class, 'index');
 
 // Recherche
 $router->get('/api/spaces/{id}/search', SearchApiController::class, 'index');
+
+// Leaderboard global
+$router->get('/api/leaderboard', LeaderboardApiController::class, 'index');
+
+// Competitions
+$router->get('/api/spaces/{id}/competitions', CompetitionApiController::class, 'index');
 
 // Dispatcher la requête
 $method = $_SERVER['REQUEST_METHOD'];
