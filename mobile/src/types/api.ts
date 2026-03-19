@@ -20,6 +20,7 @@ export type Space = {
   description?: string | null;
   created_by?: number;
   user_role?: string;
+  games_count?: number;
 };
 
 export type SpacesResponse = {
