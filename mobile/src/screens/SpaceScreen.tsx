@@ -250,11 +250,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const loadGames = useCallback(async () => {
     try {
       setGamesLoading(true);
-      const gamesData = await fetchSpaceGames(
-        token,
-        space.id,
-        gamesStatusFilter === "all" ? undefined : gamesStatusFilter
-      );
+      const gamesData = await fetchSpaceGames(token, space.id);
       setGames(gamesData);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -265,7 +261,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     } finally {
       setGamesLoading(false);
     }
-  }, [gamesStatusFilter, space.id, token]);
+  }, [space.id, token]);
 
   const loadData = useCallback(async () => {
     try {
@@ -306,13 +302,12 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     void run();
   }, [loadData]);
 
-  useEffect(() => {
-    if (loading) {
-      return;
+  const filteredGames = useMemo(() => {
+    if (gamesStatusFilter === "all") {
+      return games;
     }
-
-    void loadGames();
-  }, [gamesStatusFilter, loadGames, loading]);
+    return games.filter((game) => game.status === gamesStatusFilter);
+  }, [games, gamesStatusFilter]);
 
   const selectedGameType = useMemo(
     () => gameTypes.find((item) => item.id === selectedGameTypeId) || null,
@@ -1277,7 +1272,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             </View>
           ) : null}
           <FlatList
-            data={games}
+            data={filteredGames}
             keyExtractor={(item) => String(item.id)}
             ListEmptyComponent={<Text style={styles.empty}>Aucune partie pour le moment.</Text>}
             renderItem={({ item }) => {
