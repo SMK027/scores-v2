@@ -831,8 +831,8 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
   const confirmAndUpdateMemberRole = (memberId: number) => {
     Alert.alert(
-      "Changer le role",
-      "Confirmer le changement de role ?",
+      "Changer le rôle",
+      "Confirmer le changement de rôle ?",
       [
         { text: "Annuler", onPress: () => {}, style: "cancel" },
         { text: "Confirmer", onPress: () => saveEditMemberRole(memberId) },
@@ -891,7 +891,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     const maxPlayers = parseOptionalPlayerCount(newGameTypeMaxPlayers);
 
     if (maxPlayers !== null && maxPlayers < minPlayers) {
-      setError("Le nombre maximum de joueurs doit etre superieur ou egal au minimum.");
+      setError("Le nombre maximum de joueurs doit être supérieur ou égal au minimum.");
       return;
     }
 
@@ -955,7 +955,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     const maxPlayers = parseOptionalPlayerCount(editGameTypeMaxPlayers);
 
     if (maxPlayers !== null && maxPlayers < minPlayers) {
-      setError("Le nombre maximum de joueurs doit etre superieur ou egal au minimum.");
+      setError("Le nombre maximum de joueurs doit être supérieur ou égal au minimum.");
       return;
     }
 
@@ -1011,7 +1011,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       setEditingMemberId(null);
       await loadData();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de modifier le role.");
+      setError(err instanceof ApiError ? err.message : "Impossible de modifier le rôle.");
     } finally {
       setSavingMemberRole(false);
     }
@@ -1058,7 +1058,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       const newToken = await createInviteLink(token, space.id);
       setInviteToken(newToken);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de generer le lien.");
+      setError(err instanceof ApiError ? err.message : "Impossible de générer le lien.");
     } finally {
       setGeneratingLink(false);
     }
@@ -1209,13 +1209,13 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
           {restrictedLinkedPlayersCount > 0 ? (
             <Text style={styles.infoText}>
-              {restrictedLinkedPlayersCount} joueur(s) lie(s) a un compte restreint sont exclus de la selection.
+              {restrictedLinkedPlayersCount} joueur(s) lié(s) à un compte restreint sont exclus de la sélection.
             </Text>
           ) : null}
 
           {selectablePlayers.length === 0 ? (
             <Text style={styles.infoText}>
-              Aucun joueur supplementaire disponible pour cette partie.
+              Aucun joueur supplémentaire disponible pour cette partie.
             </Text>
           ) : null}
 
@@ -1256,7 +1256,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
               ["all", "Toutes"],
               ["in_progress", "En cours"],
               ["paused", "En pause"],
-              ["completed", "Terminees"],
+              ["completed", "Terminées"],
             ] as const).map(([status, label]) => (
               <Pressable
                 key={status}
@@ -1320,7 +1320,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                 {mostActivePlayer ? (
                   <>
                     <Text style={styles.statsHighlightName}>{mostActivePlayer.playerName}</Text>
-                    <Text style={styles.statsMeta}>Manches jouees: {mostActivePlayer.roundsPlayed}</Text>
+                    <Text style={styles.statsMeta}>Manches jouées : {mostActivePlayer.roundsPlayed}</Text>
                   </>
                 ) : (
                   <Text style={styles.statsMeta}>Aucune donnée disponible.</Text>
@@ -1339,7 +1339,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                       <View style={styles.statsRowMain}>
                         <Text style={styles.statsPlayerName}>{stats.playerName}</Text>
                         <Text style={styles.statsMeta}>
-                          {stats.winRate.toFixed(1)}% ({stats.roundsWon} manche{stats.roundsWon > 1 ? "s" : ""} gagnee{stats.roundsWon > 1 ? "s" : ""} / {stats.roundsPlayed} jouee{stats.roundsPlayed > 1 ? "s" : ""})
+                          {stats.winRate.toFixed(1)}% ({stats.roundsWon} manche{stats.roundsWon > 1 ? "s" : ""} gagnée{stats.roundsWon > 1 ? "s" : ""} / {stats.roundsPlayed} jouée{stats.roundsPlayed > 1 ? "s" : ""})
                         </Text>
                       </View>
                     </View>
@@ -1580,13 +1580,13 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
       {currentView === "competitions" ? (
         <ScrollView contentContainerStyle={styles.formCard}>
-          <Text style={styles.sectionTitle}>Competitions</Text>
+          <Text style={styles.sectionTitle}>Compétitions</Text>
 
           {competitionsError ? <Text style={styles.error}>{competitionsError}</Text> : null}
           {competitionsLoading ? (
             <ActivityIndicator />
           ) : competitions.length === 0 ? (
-            <Text style={styles.empty}>Aucune competition dans cet espace.</Text>
+            <Text style={styles.empty}>Aucune compétition dans cet espace.</Text>
           ) : (
             competitions.map((competition) => (
               <Pressable
@@ -1617,7 +1617,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                 {competition.description ? <Text style={styles.gameMeta}>{competition.description}</Text> : null}
                 <Text style={styles.gameMeta}>Sessions: {competition.session_count}</Text>
                 <Text style={styles.gameMeta}>
-                  Periode: {competition.starts_at ? competition.starts_at.slice(0, 10) : "-"} - {competition.ends_at ? competition.ends_at.slice(0, 10) : "-"}
+                  Période : {competition.starts_at ? competition.starts_at.slice(0, 10) : "-"} - {competition.ends_at ? competition.ends_at.slice(0, 10) : "-"}
                 </Text>
               </Pressable>
             ))
@@ -1641,7 +1641,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             <View style={styles.spacer} />
 
             <AutocompleteSelect
-              label="Rattacher a un compte (optionnel)"
+              label="Rattacher à un compte (optionnel)"
               query={newPlayerMemberQuery}
               onQueryChange={setNewPlayerMemberQuery}
               options={availableNewPlayerMemberOptions}
@@ -1683,8 +1683,8 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                     <Text style={styles.playerName}>{player.name}</Text>
                     <Text style={styles.playerLinkInfo}>
                       {player.user_id
-                        ? `Compte lie: ${player.linked_username || `Utilisateur #${player.user_id}`}`
-                        : "Aucun compte lie"}
+                        ? `Compte lié : ${player.linked_username || `Utilisateur #${player.user_id}`}`
+                        : "Aucun compte lié"}
                     </Text>
                   </View>
 
@@ -1715,7 +1715,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                     <View style={styles.spacer} />
 
                     <AutocompleteSelect
-                      label="Rattacher a un compte (optionnel)"
+                      label="Rattacher à un compte (optionnel)"
                       query={editPlayerMemberQuery}
                       onQueryChange={setEditPlayerMemberQuery}
                       options={availableEditMemberOptions}
@@ -1823,7 +1823,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                   value={newGameTypeMaxPlayers}
                   onChangeText={setNewGameTypeMaxPlayers}
                   keyboardType="numeric"
-                  placeholder="Illimite"
+                  placeholder="Illimité"
                   style={styles.input}
                 />
               </View>
@@ -1849,7 +1849,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                     <Text style={styles.playerLinkInfo}>{getWinConditionLabel(gameType.win_condition)}</Text>
                     <Text style={styles.playerLinkInfo}>
                       Joueurs: min {gameType.min_players ?? 1}
-                      {gameType.max_players ? ` / max ${gameType.max_players}` : " / max illimite"}
+                      {gameType.max_players ? ` / max ${gameType.max_players}` : " / max illimité"}
                     </Text>
                     {gameType.description ? <Text style={styles.playerLinkInfo}>{gameType.description}</Text> : null}
                   </View>
@@ -1927,7 +1927,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                           value={editGameTypeMaxPlayers}
                           onChangeText={setEditGameTypeMaxPlayers}
                           keyboardType="numeric"
-                          placeholder="Illimite"
+                          placeholder="Illimité"
                           style={styles.input}
                         />
                       </View>
@@ -1982,7 +1982,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                             setEditMemberRole(member.role);
                           }}
                         >
-                          <Text style={styles.linkAction}>Role</Text>
+                          <Text style={styles.linkAction}>Rôle</Text>
                         </Pressable>
                       ) : null}
                       <Pressable

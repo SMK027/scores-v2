@@ -62,7 +62,7 @@ export function LoginScreen({ onBack, onLoginSuccess }: Props) {
           <Text style={styles.logoGlyph}>#</Text>
         </View>
         <Text style={styles.title}>Scores</Text>
-        <Text style={styles.subtitle}>Connectez-vous pour acceder a vos espaces et vos parties.</Text>
+        <Text style={styles.subtitle}>Connectez-vous pour accéder à vos espaces et vos parties.</Text>
       </View>
 
       <View style={styles.card}>

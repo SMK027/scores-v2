@@ -18,7 +18,7 @@ export function DashboardScreen({ user, onOpenSpaces, onOpenProfile, onLogout }:
       <View style={styles.header}>
         <Text style={styles.title}>Bonjour {user.username}</Text>
         <Pressable onPress={onLogout}>
-          <Text style={styles.logout}>Deconnexion</Text>
+          <Text style={styles.logout}>Déconnexion</Text>
         </Pressable>
       </View>
 
@@ -44,7 +44,7 @@ export function DashboardScreen({ user, onOpenSpaces, onOpenProfile, onLogout }:
 
       <Pressable style={styles.actionCard} onPress={onOpenSpaces}>
         <Text style={styles.cardTitle}>Mes espaces</Text>
-        <Text style={styles.cardText}>Acceder a tous mes espaces et commencer une partie</Text>
+        <Text style={styles.cardText}>Accéder à tous mes espaces et commencer une partie</Text>
       </Pressable>
     </View>
   );

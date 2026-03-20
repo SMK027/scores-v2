@@ -293,7 +293,7 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
             )}
           </Pressable>
           <Pressable onPress={onLogout}>
-            <Text style={styles.logout}>Deconnexion</Text>
+            <Text style={styles.logout}>Déconnexion</Text>
           </Pressable>
         </View>
       </View>
