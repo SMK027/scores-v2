@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { theme } from "../styles/theme";
+import { useAppTheme } from "../context/ThemeContext";
+import type { AppTheme } from "../styles";
 import type { User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
 
@@ -11,6 +13,9 @@ type Props = {
 };
 
 export function DashboardScreen({ user, onOpenSpaces, onOpenProfile, onLogout }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const avatarUri = getAvatarUri(user.avatar);
 
   return (
@@ -50,7 +55,7 @@ export function DashboardScreen({ user, onOpenSpaces, onOpenProfile, onLogout }:
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

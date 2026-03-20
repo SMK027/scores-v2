@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppState, SafeAreaView, StyleSheet, View, ActivityIndicator, Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
@@ -14,7 +14,7 @@ import { SplashScreen } from "./screens/SplashScreen";
 import { SpaceScreen } from "./screens/SpaceScreen";
 import { SpacesScreen } from "./screens/SpacesScreen";
 import { WelcomeScreen } from "./screens/WelcomeScreen";
-import { theme } from "./styles/theme";
+import { ThemeProvider, useAppTheme } from "./context/ThemeContext";
 import type { Space, User } from "./types/api";
 
 type Route =
@@ -35,7 +35,10 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export function MobileApp() {
+function MobileAppContent() {
+  const { theme, preference, resolvedMode, setPreference } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [route, setRoute] = useState<Route>({ name: "welcome" });
@@ -207,7 +210,7 @@ export function MobileApp() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar hidden />
+      <StatusBar hidden style={resolvedMode === "dark" ? "light" : "dark"} />
       {route.name === "welcome" ? <WelcomeScreen onLoginPress={() => setRoute({ name: "login" })} /> : null}
 
       {route.name === "login" ? (
@@ -236,7 +239,14 @@ export function MobileApp() {
       ) : null}
 
       {route.name === "profile" && token && user ? (
-        <ProfileScreen token={token} fallbackUser={user} onBack={() => setRoute(previousRoute)} />
+        <ProfileScreen
+          token={token}
+          fallbackUser={user}
+          onBack={() => setRoute(previousRoute)}
+          themePreference={preference}
+          resolvedTheme={resolvedMode}
+          onThemePreferenceChange={setPreference}
+        />
       ) : null}
 
       {route.name === "space" && token && user ? (
@@ -278,14 +288,23 @@ export function MobileApp() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
+export function MobileApp() {
+  return (
+    <ThemeProvider>
+      <MobileAppContent />
+    </ThemeProvider>
+  );
+}
+
+const createStyles = (theme: ReturnType<typeof useAppTheme>["theme"]) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    centered: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+  });

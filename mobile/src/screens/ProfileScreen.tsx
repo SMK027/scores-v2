@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { ApiError, fetchProfile, fetchProfileStats, updateProfile } from "../services/api";
-import { theme } from "../styles/theme";
+import { useAppTheme } from "../context/ThemeContext";
+import type { AppTheme, ResolvedTheme, ThemePreference } from "../styles";
 import type { ProfileStats, User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
 import { getRoleLabel } from "../utils/roles";
@@ -30,6 +31,9 @@ type Props = {
   token: string;
   fallbackUser: User;
   onBack: () => void;
+  themePreference: ThemePreference;
+  resolvedTheme: ResolvedTheme;
+  onThemePreferenceChange: (next: ThemePreference) => void;
 };
 
 function formatDate(value?: string): string {
@@ -60,7 +64,17 @@ function maskEmail(email: string): string {
   return `${localPart.slice(0, 3)}***@${domain}`;
 }
 
-export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
+export function ProfileScreen({
+  token,
+  fallbackUser,
+  onBack,
+  themePreference,
+  resolvedTheme,
+  onThemePreferenceChange,
+}: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [profile, setProfile] = useState<User>(fallbackUser);
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -230,12 +244,26 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Actions rapides</Text>
-        <Pressable style={styles.quickActionButton} onPress={loadProfile}>
-          <Text style={styles.quickActionText}>Paramètres du compte</Text>
-        </Pressable>
-        <Pressable style={styles.quickActionButton} onPress={loadProfile}>
-          <Text style={styles.quickActionText}>Aide et FAQ</Text>
-        </Pressable>
+        <Text style={styles.metaLabel}>Apparence</Text>
+        <View style={styles.themeSelectorRow}>
+          {([
+            ["system", "Système"],
+            ["light", "Clair"],
+            ["dark", "Sombre"],
+          ] as const).map(([value, label]) => (
+            <Pressable
+              key={value}
+              style={[styles.themeOption, themePreference === value ? styles.themeOptionActive : undefined]}
+              onPress={() => onThemePreferenceChange(value)}
+            >
+              <Text style={[styles.themeOptionText, themePreference === value ? styles.themeOptionTextActive : undefined]}>
+                {label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={styles.themeHint}>Thème actuellement appliqué : {resolvedTheme === "dark" ? "Sombre" : "Clair"}</Text>
+
         <Pressable style={styles.quickActionDanger} onPress={onBack}>
           <Text style={styles.quickActionDangerText}>Retour à l’application</Text>
         </Pressable>
@@ -244,7 +272,7 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   centered: {
     flex: 1,
     alignItems: "center",
@@ -447,6 +475,38 @@ const styles = StyleSheet.create({
   quickActionText: {
     color: theme.colors.text,
     fontWeight: "600",
+  },
+  themeSelectorRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  themeOption: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.background,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  themeOptionActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  themeOptionText: {
+    color: theme.colors.text,
+    fontWeight: "600",
+  },
+  themeOptionTextActive: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+  },
+  themeHint: {
+    color: theme.colors.mutedText,
+    fontSize: 12,
+    marginBottom: 10,
   },
   quickActionDanger: {
     borderWidth: 1,

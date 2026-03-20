@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ApiError, fetchCompetitionDetails } from "../services/api";
-import { theme } from "../styles/theme";
+import { useAppTheme } from "../context/ThemeContext";
+import type { AppTheme } from "../styles";
 import type { Competition, CompetitionParticipant, CompetitionStats, Space } from "../types/api";
 
 type Props = {
@@ -61,6 +62,9 @@ function getStatusMeta(status: Competition["status"]): { label: string; backgrou
 }
 
 export function CompetitionDetailScreen({ token, space, competitionId, onBack }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -192,7 +196,7 @@ export function CompetitionDetailScreen({ token, space, competitionId, onBack }:
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   centered: {
     flex: 1,
     alignItems: "center",

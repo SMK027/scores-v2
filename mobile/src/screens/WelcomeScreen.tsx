@@ -1,12 +1,17 @@
+import { useMemo } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { REGISTER_URL, TERMS_URL } from "../config/constants";
-import { theme } from "../styles/theme";
+import { useAppTheme } from "../context/ThemeContext";
+import type { AppTheme } from "../styles";
 
 type Props = {
   onLoginPress: () => void;
 };
 
 export function WelcomeScreen({ onLoginPress }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const openRegister = async () => {
     await Linking.openURL(REGISTER_URL);
   };
@@ -42,7 +47,7 @@ export function WelcomeScreen({ onLoginPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 22,

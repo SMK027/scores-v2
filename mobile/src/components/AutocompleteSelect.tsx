@@ -6,7 +6,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { theme } from "../styles/theme";
+import { useAppTheme } from "../context/ThemeContext";
+import type { AppTheme } from "../styles";
 
 type Option = {
   id: number;
@@ -30,6 +31,9 @@ export function AutocompleteSelect({
   onSelect,
   placeholder,
 }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [isOpen, setIsOpen] = useState(false);
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -87,7 +91,7 @@ export function AutocompleteSelect({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   wrapper: {
     zIndex: 2,
   },

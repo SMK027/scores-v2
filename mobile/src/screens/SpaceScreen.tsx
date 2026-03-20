@@ -37,7 +37,8 @@ import {
   updateMemberRole,
   updatePlayer,
 } from "../services/api";
-import { theme } from "../styles/theme";
+import { useAppTheme } from "../context/ThemeContext";
+import type { AppTheme } from "../styles";
 import type { Competition, Game, GameType, LeaderboardEntry, Player, SearchResults, Space, SpaceMember, User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
 import { getRoleLabel } from "../utils/roles";
@@ -168,6 +169,9 @@ function formatShortDate(value?: string | null): string {
 }
 
 export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenGame, onOpenCompetition }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
@@ -2219,7 +2223,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   centered: {
     flex: 1,
     alignItems: "center",

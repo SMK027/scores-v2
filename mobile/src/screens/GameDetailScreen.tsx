@@ -22,7 +22,8 @@ import {
   updateRoundStatus,
   updateRoundScores,
 } from "../services/api";
-import { theme } from "../styles/theme";
+import { useAppTheme } from "../context/ThemeContext";
+import type { AppTheme } from "../styles";
 import type { Comment, GameDetailsResponse, Space, User } from "../types/api";
 
 type Props = {
@@ -83,6 +84,9 @@ function formatRoundValue(value: number | null, winCondition: string): string {
 }
 
 export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -675,7 +679,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   centered: {
     flex: 1,
     alignItems: "center",

@@ -12,7 +12,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { theme } from "../styles/theme";
+import { useAppTheme } from "../context/ThemeContext";
+import type { AppTheme } from "../styles";
 import { ApiError, createSpace, deleteSpace, leaveSpace, fetchSpaces, acceptInvitation, declineInvitation } from "../services/api";
 import type { Space, User, Invitation } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
@@ -27,6 +28,9 @@ type Props = {
 };
 
 export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfile }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -451,7 +455,7 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   centered: {
     flex: 1,
     alignItems: "center",

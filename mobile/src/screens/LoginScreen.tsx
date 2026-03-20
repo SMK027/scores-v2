@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -12,7 +12,8 @@ import {
 import { ApiError, login } from "../services/api";
 import { FORGOT_PASSWORD_URL, REGISTER_URL, TERMS_URL } from "../config/constants";
 import type { User } from "../types/api";
-import { theme } from "../styles/theme";
+import { useAppTheme } from "../context/ThemeContext";
+import type { AppTheme } from "../styles";
 
 type Props = {
   onBack: () => void;
@@ -20,6 +21,9 @@ type Props = {
 };
 
 export function LoginScreen({ onBack, onLoginSuccess }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -126,7 +130,7 @@ export function LoginScreen({ onBack, onLoginSuccess }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
