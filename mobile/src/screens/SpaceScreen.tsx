@@ -376,11 +376,6 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
   const submitSearch = useCallback(async () => {
     const query = searchText.trim();
-    if (query.length < 2) {
-      setSearchError("Entrez au moins 2 caracteres pour rechercher.");
-      setSearchResults(null);
-      return;
-    }
 
     try {
       setSearchLoading(true);
@@ -1467,7 +1462,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
               )}
             </View>
           ) : (
-            <Text style={styles.infoText}>Entrez au moins 2 caracteres pour lancer une recherche.</Text>
+            <Text style={styles.infoText}>Saisissez un terme puis lancez la recherche.</Text>
           )}
         </ScrollView>
       ) : null}

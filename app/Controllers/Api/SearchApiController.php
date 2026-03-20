@@ -23,15 +23,10 @@ class SearchApiController extends ApiController
         $this->checkSpaceAccess((int) $id);
 
         $query = trim($_GET['q'] ?? '');
-        if (strlen($query) < 2) {
-            $this->error('La recherche doit contenir au moins 2 caractères.');
-        }
-
         $searchTerm = '%' . $query . '%';
         $spaceId = (int) $id;
 
         // Joueurs
-        $playerModel = new Player();
         $players = $this->searchPlayers($spaceId, $searchTerm);
 
         // Types de jeux
