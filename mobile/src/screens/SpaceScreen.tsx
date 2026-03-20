@@ -2025,6 +2025,29 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       ) : null}
 
       <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+        {activeGroup ? (
+          <View style={styles.subNav}>
+            {(activeGroup === "view" ? viewGroupItems : manageGroupItems).map((item) => (
+              <Pressable
+                key={item.key}
+                style={[styles.subNavItem, currentView === item.key ? styles.subNavItemActive : undefined]}
+                onPress={() => {
+                  setCurrentView(item.key);
+                  setActiveGroup(null);
+                }}
+              >
+                <Text style={styles.bottomNavIcon}>{item.icon}</Text>
+                <Text
+                  style={[styles.bottomNavLabel, currentView === item.key ? styles.bottomNavLabelActive : undefined]}
+                  numberOfLines={1}
+                >
+                  {item.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
         {/* Barre principale */}
         <View style={styles.mainNavRow}>
           {/* Parties */}
