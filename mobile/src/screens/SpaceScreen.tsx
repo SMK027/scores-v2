@@ -70,6 +70,7 @@ type PlayerStats = {
   playerId: number;
   playerName: string;
   roundsPlayed: number;
+  roundsWon: number;
   gamesPlayed: number;
   wins: number;
   winRate: number;
@@ -454,6 +455,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
           playerId: player.id,
           playerName: player.name,
           roundsPlayed: 0,
+          roundsWon: 0,
           gamesPlayed: 0,
           wins: 0,
           winRate: 0,
@@ -473,6 +475,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                 playerId: gamePlayer.player_id,
                 playerName: gamePlayer.player_name,
                 roundsPlayed: 0,
+                roundsWon: 0,
                 gamesPlayed: 1,
                 wins: gamePlayer.is_winner ? 1 : 0,
                 winRate: 0,
@@ -486,15 +489,51 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             }
           });
 
+          const winCondition = details.game.win_condition ?? "highest_score";
+
           details.rounds.forEach((round) => {
             const scoresForRound = details.round_scores?.[String(round.id)] || {};
+
+            // Collecter les scores valides du round
+            const roundEntries: Array<{ playerId: number; value: number }> = [];
             Object.keys(scoresForRound).forEach((playerIdRaw) => {
               const playerId = Number(playerIdRaw);
-              const existing = baseByPlayerId.get(playerId);
-              if (!existing) {
-                return;
+              const raw = scoresForRound[String(playerId)] as unknown;
+              let value: number | null = null;
+              if (typeof raw === "number") {
+                value = raw;
+              } else if (raw && typeof raw === "object" && "score" in (raw as object)) {
+                const s = (raw as { score?: unknown }).score;
+                value = typeof s === "number" ? s : (typeof s === "string" ? Number(s) || null : null);
               }
+              if (value !== null) {
+                roundEntries.push({ playerId, value });
+              }
+            });
+
+            // Déterminer les gagnants du round
+            const roundWinnerIds = new Set<number>();
+            if (roundEntries.length > 0) {
+              if (winCondition === "win_loss") {
+                roundEntries.forEach(({ playerId, value }) => { if (value === 1) roundWinnerIds.add(playerId); });
+              } else if (winCondition === "ranking") {
+                roundEntries.forEach(({ playerId, value }) => { if (value === 1) roundWinnerIds.add(playerId); });
+              } else if (winCondition === "highest_score") {
+                const maxScore = Math.max(...roundEntries.map((e) => e.value));
+                roundEntries.forEach(({ playerId, value }) => { if (value === maxScore) roundWinnerIds.add(playerId); });
+              } else if (winCondition === "lowest_score") {
+                const minScore = Math.min(...roundEntries.map((e) => e.value));
+                roundEntries.forEach(({ playerId, value }) => { if (value === minScore) roundWinnerIds.add(playerId); });
+              }
+            }
+
+            roundEntries.forEach(({ playerId }) => {
+              const existing = baseByPlayerId.get(playerId);
+              if (!existing) return;
               existing.roundsPlayed += 1;
+              if (roundWinnerIds.has(playerId)) {
+                existing.roundsWon += 1;
+              }
             });
           });
         });
@@ -502,15 +541,15 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
       const computed = Array.from(baseByPlayerId.values()).map((stats) => ({
         ...stats,
-        winRate: stats.gamesPlayed > 0 ? (stats.wins / stats.gamesPlayed) * 100 : 0,
+        winRate: stats.roundsPlayed > 0 ? (stats.roundsWon / stats.roundsPlayed) * 100 : 0,
       }));
 
       computed.sort((a, b) => {
         if (b.winRate !== a.winRate) {
           return b.winRate - a.winRate;
         }
-        if (b.wins !== a.wins) {
-          return b.wins - a.wins;
+        if (b.roundsWon !== a.roundsWon) {
+          return b.roundsWon - a.roundsWon;
         }
         if (b.gamesPlayed !== a.gamesPlayed) {
           return b.gamesPlayed - a.gamesPlayed;
@@ -1218,7 +1257,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                       <View style={styles.statsRowMain}>
                         <Text style={styles.statsPlayerName}>{stats.playerName}</Text>
                         <Text style={styles.statsMeta}>
-                          {stats.winRate.toFixed(1)}% ({stats.wins} victoire{stats.wins > 1 ? "s" : ""} / {stats.gamesPlayed} partie{stats.gamesPlayed > 1 ? "s" : ""})
+                          {stats.winRate.toFixed(1)}% ({stats.roundsWon} manche{stats.roundsWon > 1 ? "s" : ""} gagnee{stats.roundsWon > 1 ? "s" : ""} / {stats.roundsPlayed} jouee{stats.roundsPlayed > 1 ? "s" : ""})
                         </Text>
                       </View>
                     </View>
