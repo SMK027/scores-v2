@@ -8,6 +8,7 @@ import { registerForPushNotificationsAsync } from "./services/pushNotifications"
 import { clearSession, loadSession, saveSession } from "./services/session";
 import { GameDetailScreen } from "./screens/GameDetailScreen";
 import { CompetitionDetailScreen } from "./screens/CompetitionDetailScreen";
+import { CreateGameTypeScreen } from "./screens/CreateGameTypeScreen";
 import { CreateSpaceScreen } from "./screens/CreateSpaceScreen";
 import { CreatePlayerScreen } from "./screens/CreatePlayerScreen";
 import { LoginScreen } from "./screens/LoginScreen";
@@ -25,6 +26,7 @@ type Route =
   | { name: "spaces" }
   | { name: "create-space" }
   | { name: "create-player"; space: Space }
+  | { name: "create-game-type"; space: Space }
   | { name: "profile" }
   | { name: "space"; space: Space }
   | { name: "game"; space: Space; gameId: number }
@@ -277,11 +279,21 @@ function MobileAppContent() {
             setRoute({ name: "competition", space: route.space, competitionId })
           }
           onOpenCreatePlayer={() => setRoute({ name: "create-player", space: route.space })}
+          onOpenCreateGameType={() => setRoute({ name: "create-game-type", space: route.space })}
         />
       ) : null}
 
       {route.name === "create-player" && token ? (
         <CreatePlayerScreen
+          token={token}
+          space={route.space}
+          onBack={() => setRoute({ name: "space", space: route.space })}
+          onCreated={() => setRoute({ name: "space", space: route.space })}
+        />
+      ) : null}
+
+      {route.name === "create-game-type" && token ? (
+        <CreateGameTypeScreen
           token={token}
           space={route.space}
           onBack={() => setRoute({ name: "space", space: route.space })}

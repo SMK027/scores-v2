@@ -17,7 +17,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AutocompleteSelect } from "../components/AutocompleteSelect";
 import {
   ApiError,
-  createGameType,
   createGame,
   createInviteLink,
   fetchCompetitions,
@@ -51,6 +50,7 @@ type Props = {
   onOpenGame: (gameId: number) => void;
   onOpenCompetition: (competitionId: number) => void;
   onOpenCreatePlayer: () => void;
+  onOpenCreateGameType: () => void;
 };
 
 type SpaceView =
@@ -168,7 +168,7 @@ function formatShortDate(value?: string | null): string {
   });
 }
 
-export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenGame, onOpenCompetition, onOpenCreatePlayer }: Props) {
+export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenGame, onOpenCompetition, onOpenCreatePlayer, onOpenCreateGameType }: Props) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -201,16 +201,9 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const [editPlayerName, setEditPlayerName] = useState("");
   const [editPlayerMemberQuery, setEditPlayerMemberQuery] = useState("");
   const [editPlayerUserId, setEditPlayerUserId] = useState<number | null>(null);
-  const [creatingGameType, setCreatingGameType] = useState(false);
   const [editingGameTypeId, setEditingGameTypeId] = useState<number | null>(null);
   const [savingGameType, setSavingGameType] = useState(false);
   const [deletingGameTypeId, setDeletingGameTypeId] = useState<number | null>(null);
-
-  const [newGameTypeName, setNewGameTypeName] = useState("");
-  const [newGameTypeDescription, setNewGameTypeDescription] = useState("");
-  const [newGameTypeWinCondition, setNewGameTypeWinCondition] = useState<GameType["win_condition"]>("highest_score");
-  const [newGameTypeMinPlayers, setNewGameTypeMinPlayers] = useState("1");
-  const [newGameTypeMaxPlayers, setNewGameTypeMaxPlayers] = useState("");
 
   const [editGameTypeName, setEditGameTypeName] = useState("");
   const [editGameTypeDescription, setEditGameTypeDescription] = useState("");
@@ -836,48 +829,6 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       return null;
     }
     return parsed;
-  };
-
-  const createGameTypeSubmit = async () => {
-    const trimmed = newGameTypeName.trim();
-    if (!trimmed) {
-      setError("Le nom du type de jeu est requis.");
-      return;
-    }
-
-    const minPlayers = parsePlayerCount(newGameTypeMinPlayers, 1);
-    const maxPlayers = parseOptionalPlayerCount(newGameTypeMaxPlayers);
-
-    if (maxPlayers !== null && maxPlayers < minPlayers) {
-      setError("Le nombre maximum de joueurs doit être supérieur ou égal au minimum.");
-      return;
-    }
-
-    try {
-      setCreatingGameType(true);
-      setError(null);
-      await createGameType(token, space.id, {
-        name: trimmed,
-        description: newGameTypeDescription,
-        winCondition: newGameTypeWinCondition,
-        minPlayers,
-        maxPlayers,
-      });
-      setNewGameTypeName("");
-      setNewGameTypeDescription("");
-      setNewGameTypeWinCondition("highest_score");
-      setNewGameTypeMinPlayers("1");
-      setNewGameTypeMaxPlayers("");
-      await loadData();
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Impossible de créer le type de jeu.");
-      }
-    } finally {
-      setCreatingGameType(false);
-    }
   };
 
   const startEditGameType = (gameType: GameType) => {
@@ -1682,78 +1633,10 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
       {currentView === "gameTypes" ? (
         <ScrollView contentContainerStyle={styles.formCard} keyboardShouldPersistTaps="handled">
-          <Text style={styles.sectionTitle}>Gérer les types de jeu</Text>
-
-          <View style={styles.playerEditorCard}>
-            <Text style={styles.playerEditorTitle}>Nouveau type de jeu</Text>
-            <TextInput
-              value={newGameTypeName}
-              onChangeText={setNewGameTypeName}
-              placeholder="Nom du type de jeu"
-              style={styles.input}
-            />
-
-            <Text style={styles.label}>Description</Text>
-            <TextInput
-              value={newGameTypeDescription}
-              onChangeText={setNewGameTypeDescription}
-              placeholder="Description optionnelle"
-              style={[styles.input, styles.notes]}
-              multiline
-            />
-
-            <Text style={styles.label}>Condition de victoire</Text>
-            <View style={styles.conditionOptionsRow}>
-              {(["highest_score", "lowest_score", "ranking", "win_loss"] as const).map((condition) => (
-                <Pressable
-                  key={condition}
-                  style={[
-                    styles.conditionOption,
-                    newGameTypeWinCondition === condition ? styles.conditionOptionActive : undefined,
-                  ]}
-                  onPress={() => setNewGameTypeWinCondition(condition)}
-                >
-                  <Text
-                    style={[
-                      styles.conditionOptionText,
-                      newGameTypeWinCondition === condition ? styles.conditionOptionTextActive : undefined,
-                    ]}
-                  >
-                    {getWinConditionLabel(condition)}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <View style={styles.countInputsRow}>
-              <View style={styles.countInputBlock}>
-                <Text style={styles.label}>Joueurs min.</Text>
-                <TextInput
-                  value={newGameTypeMinPlayers}
-                  onChangeText={setNewGameTypeMinPlayers}
-                  keyboardType="numeric"
-                  style={styles.input}
-                />
-              </View>
-
-              <View style={styles.countInputBlock}>
-                <Text style={styles.label}>Joueurs max.</Text>
-                <TextInput
-                  value={newGameTypeMaxPlayers}
-                  onChangeText={setNewGameTypeMaxPlayers}
-                  keyboardType="numeric"
-                  placeholder="Illimité"
-                  style={styles.input}
-                />
-              </View>
-            </View>
-
-            <Pressable
-              style={[styles.primaryButton, creatingGameType ? styles.disabledButton : undefined]}
-              disabled={creatingGameType}
-              onPress={createGameTypeSubmit}
-            >
-              <Text style={styles.primaryText}>{creatingGameType ? "Création..." : "Ajouter le type de jeu"}</Text>
+          <View style={styles.playersHeader}>
+            <Text style={styles.sectionTitle}>Gérer les types de jeu</Text>
+            <Pressable style={styles.addPlayerButton} onPress={onOpenCreateGameType}>
+              <Text style={styles.addPlayerButtonText}>+ Ajouter un type</Text>
             </Pressable>
           </View>
 
