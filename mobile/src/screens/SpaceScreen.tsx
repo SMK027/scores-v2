@@ -217,6 +217,9 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<SearchResults | null>(null);
   const [searchFilter, setSearchFilter] = useState<"all" | "players" | "game_types" | "games" | "comments">("all");
+  const [highlightedPlayerId, setHighlightedPlayerId] = useState<number | null>(null);
+  const [highlightedGameTypeId, setHighlightedGameTypeId] = useState<number | null>(null);
+  const [highlightedGameId, setHighlightedGameId] = useState<number | null>(null);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
@@ -393,6 +396,40 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       setSearchLoading(false);
     }
   }, [searchText, space.id, token]);
+
+  const openSearchResult = useCallback(
+    (type: "players" | "game_types" | "games" | "comments", targetId: number, gameId?: number) => {
+      if (type === "players") {
+        setHighlightedPlayerId(targetId);
+        setHighlightedGameTypeId(null);
+        setHighlightedGameId(null);
+        setCurrentView("players");
+        return;
+      }
+
+      if (type === "game_types") {
+        setHighlightedGameTypeId(targetId);
+        setHighlightedPlayerId(null);
+        setHighlightedGameId(null);
+        setCurrentView("gameTypes");
+        return;
+      }
+
+      if (type === "games") {
+        setHighlightedGameId(targetId);
+        setHighlightedPlayerId(null);
+        setHighlightedGameTypeId(null);
+        setGamesStatusFilter("all");
+        setCurrentView("games");
+        return;
+      }
+
+      if (type === "comments" && typeof gameId === "number") {
+        onOpenGame(gameId);
+      }
+    },
+    [onOpenGame]
+  );
 
   useEffect(() => {
     if (currentView === "competitions" && !competitionsLoaded && !competitionsLoading) {
@@ -1229,7 +1266,10 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             renderItem={({ item }) => {
               const statusMeta = getStatusMeta(item.status);
               return (
-                <Pressable style={styles.gameCard} onPress={() => onOpenGame(item.id)}>
+                <Pressable
+                  style={[styles.gameCard, item.id === highlightedGameId ? styles.targetCard : undefined]}
+                  onPress={() => onOpenGame(item.id)}
+                >
                   <View style={styles.gameRow}>
                     <Text style={styles.gameTitle}>{item.game_type_name || "Partie"}</Text>
                     <View style={[styles.statusBadge, { backgroundColor: statusMeta.backgroundColor }]}> 
@@ -1360,13 +1400,14 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                     <Text style={styles.searchEmptyText}>Aucun joueur trouvé.</Text>
                   ) : (
                     searchResults.players.map((player) => (
-                      <View key={`player-${player.id}`} style={styles.searchRow}>
+                      <Pressable key={`player-${player.id}`} style={styles.searchRow} onPress={() => openSearchResult("players", player.id)}>
                         <Text style={styles.searchRowIcon}>👤</Text>
                         <View style={styles.searchRowContent}>
                           <Text style={styles.searchRowTitle}>{player.name}</Text>
                           <Text style={styles.searchRowMeta}>Joueur</Text>
                         </View>
-                      </View>
+                        <Text style={styles.searchRowAction}>Ouvrir</Text>
+                      </Pressable>
                     ))
                   )}
                 </View>
@@ -1382,13 +1423,14 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                     <Text style={styles.searchEmptyText}>Aucun type de jeu trouvé.</Text>
                   ) : (
                     searchResults.game_types.map((gameType) => (
-                      <View key={`gt-${gameType.id}`} style={styles.searchRow}>
+                      <Pressable key={`gt-${gameType.id}`} style={styles.searchRow} onPress={() => openSearchResult("game_types", gameType.id)}>
                         <Text style={styles.searchRowIcon}>🧩</Text>
                         <View style={styles.searchRowContent}>
                           <Text style={styles.searchRowTitle}>{gameType.name}</Text>
                           <Text style={styles.searchRowMeta}>Type de jeu</Text>
                         </View>
-                      </View>
+                        <Text style={styles.searchRowAction}>Ouvrir</Text>
+                      </Pressable>
                     ))
                   )}
                 </View>
@@ -1404,7 +1446,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                     <Text style={styles.searchEmptyText}>Aucune partie trouvée.</Text>
                   ) : (
                     searchResults.games.map((game) => (
-                      <Pressable key={`game-${game.id}`} style={styles.searchRow} onPress={() => onOpenGame(game.id)}>
+                      <Pressable key={`game-${game.id}`} style={styles.searchRow} onPress={() => openSearchResult("games", game.id)}>
                         <Text style={styles.searchRowIcon}>🎮</Text>
                         <View style={styles.searchRowContent}>
                           <Text style={styles.searchRowTitle}>{game.game_type_name || `Partie #${game.id}`}</Text>
@@ -1432,7 +1474,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
                       if (canOpenGame) {
                         return (
-                          <Pressable key={`comment-${comment.id}`} style={commentContainerStyle} onPress={() => onOpenGame(comment.game_id as number)}>
+                          <Pressable key={`comment-${comment.id}`} style={commentContainerStyle} onPress={() => openSearchResult("comments", comment.id, comment.game_id as number)}>
                             <Text style={styles.searchRowIcon}>💬</Text>
                             <View style={styles.searchRowContent}>
                               <Text style={styles.searchRowTitle} numberOfLines={2}>
@@ -1618,7 +1660,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             {players.length === 0 ? <Text style={styles.empty}>Aucun joueur dans cet espace.</Text> : null}
 
             {players.map((player) => (
-              <View key={player.id} style={styles.playerCard}>
+              <View key={player.id} style={[styles.playerCard, player.id === highlightedPlayerId ? styles.targetCard : undefined]}>
                 <View style={styles.playerCardHeader}>
                   <View style={styles.playerCardHeaderMain}>
                     <Text style={styles.playerName}>{player.name}</Text>
@@ -1783,7 +1825,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             {gameTypes.length === 0 ? <Text style={styles.empty}>Aucun type de jeu dans cet espace.</Text> : null}
 
             {gameTypes.map((gameType) => (
-              <View key={gameType.id} style={styles.playerCard}>
+              <View key={gameType.id} style={[styles.playerCard, gameType.id === highlightedGameTypeId ? styles.targetCard : undefined]}>
                 <View style={styles.playerCardHeader}>
                   <View style={styles.playerCardHeaderMain}>
                     <Text style={styles.playerName}>{gameType.name}</Text>
@@ -2581,6 +2623,10 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
     ...theme.shadow.card,
+  },
+  targetCard: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
   },
   gameTitle: {
     color: theme.colors.text,
