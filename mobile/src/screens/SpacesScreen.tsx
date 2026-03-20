@@ -6,7 +6,6 @@ import {
   Image,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -14,7 +13,7 @@ import {
 } from "react-native";
 import { useAppTheme } from "../context/ThemeContext";
 import type { AppTheme } from "../styles";
-import { ApiError, createSpace, deleteSpace, leaveSpace, fetchSpaces, acceptInvitation, declineInvitation } from "../services/api";
+import { ApiError, deleteSpace, leaveSpace, fetchSpaces, acceptInvitation, declineInvitation } from "../services/api";
 import type { Space, User, Invitation } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
 import { getRoleLabel } from "../utils/roles";
@@ -25,9 +24,10 @@ type Props = {
   onSelectSpace: (space: Space) => void;
   onLogout: () => void;
   onOpenProfile: () => void;
+  onOpenCreateSpace: () => void;
 };
 
-export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfile }: Props) {
+export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfile, onOpenCreateSpace }: Props) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -36,10 +36,6 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showCreatePanel, setShowCreatePanel] = useState(false);
-  const [newSpaceName, setNewSpaceName] = useState("");
-  const [newSpaceDescription, setNewSpaceDescription] = useState("");
-  const [creatingSpace, setCreatingSpace] = useState(false);
   const [deletingSpaceId, setDeletingSpaceId] = useState<number | null>(null);
   const [leavingSpaceId, setLeavingSpaceId] = useState<number | null>(null);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -121,35 +117,6 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
       ]
     );
   }, [loadSpaces, token]);
-
-  const submitCreateSpace = async () => {
-    const name = newSpaceName.trim();
-    if (!name) {
-      setError("Le nom de l'espace est requis.");
-      return;
-    }
-
-    try {
-      setCreatingSpace(true);
-      setError(null);
-      await createSpace(token, {
-        name,
-        description: newSpaceDescription.trim() || undefined,
-      });
-      setNewSpaceName("");
-      setNewSpaceDescription("");
-      setShowCreatePanel(false);
-      await loadSpaces();
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Impossible de créer un espace.");
-      }
-    } finally {
-      setCreatingSpace(false);
-    }
-  };
 
   const confirmAndDeleteSpace = (space: Space) => {
     if (space.created_by !== user.id) {
@@ -321,54 +288,11 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
           <Text style={styles.resultsCount}>
             {filteredSpaces.length} espace{filteredSpaces.length > 1 ? "s" : ""}
           </Text>
-          <Pressable style={styles.inlineCreateButton} onPress={() => setShowCreatePanel((current) => !current)}>
-            <Text style={styles.inlineCreateButtonText}>{showCreatePanel ? "Fermer" : "Créer un espace"}</Text>
+          <Pressable style={styles.inlineCreateButton} onPress={onOpenCreateSpace}>
+            <Text style={styles.inlineCreateButtonText}>Créer un espace</Text>
           </Pressable>
         </View>
       </View>
-
-      {showCreatePanel ? (
-        <ScrollView style={styles.createPanel} keyboardShouldPersistTaps="handled">
-          <View style={styles.createPanelHeader}>
-            <Text style={styles.createPanelTitle}>Créer un nouvel espace</Text>
-            <Text style={styles.createPanelHint}>Donne un nom clair pour que les membres le retrouvent facilement.</Text>
-          </View>
-          <Text style={styles.createFieldLabel}>Nom de l'espace</Text>
-          <TextInput
-            value={newSpaceName}
-            onChangeText={setNewSpaceName}
-            placeholder="Ex: Soirée belote"
-            style={styles.createInput}
-            maxLength={100}
-          />
-          <Text style={styles.fieldCounter}>{newSpaceName.trim().length}/100</Text>
-          <Text style={styles.createFieldLabel}>Description (optionnelle)</Text>
-          <TextInput
-            value={newSpaceDescription}
-            onChangeText={setNewSpaceDescription}
-            placeholder="Ex: Parties du vendredi soir"
-            style={[styles.createInput, styles.createNotes]}
-            multiline
-            maxLength={280}
-          />
-          <Text style={styles.fieldCounter}>{newSpaceDescription.trim().length}/280</Text>
-          <View style={styles.createActions}>
-            <Pressable
-              style={[
-                styles.createPrimary,
-                (creatingSpace || !newSpaceName.trim()) ? styles.disabled : undefined,
-              ]}
-              disabled={creatingSpace || !newSpaceName.trim()}
-              onPress={submitCreateSpace}
-            >
-              <Text style={styles.createPrimaryText}>{creatingSpace ? "Création..." : "Créer l'espace"}</Text>
-            </Pressable>
-            <Pressable style={styles.createGhost} onPress={() => setShowCreatePanel(false)}>
-              <Text style={styles.createGhostText}>Annuler</Text>
-            </Pressable>
-          </View>
-        </ScrollView>
-      ) : null}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -392,7 +316,7 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
                 : "Commencez par créer votre premier espace de jeu."}
             </Text>
             {!searchQuery.trim() ? (
-              <Pressable style={styles.emptyButton} onPress={() => setShowCreatePanel(true)}>
+              <Pressable style={styles.emptyButton} onPress={onOpenCreateSpace}>
                 <Text style={styles.emptyButtonText}>Créer mon premier espace</Text>
               </Pressable>
             ) : null}
@@ -455,7 +379,7 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
         )}
       />
 
-      <Pressable style={styles.fab} onPress={() => setShowCreatePanel((current) => !current)}>
+      <Pressable style={styles.fab} onPress={onOpenCreateSpace}>
         <Text style={styles.fabIcon}>+</Text>
       </Pressable>
     </View>
@@ -582,78 +506,6 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     color: theme.colors.text,
     fontWeight: "700",
     fontSize: 16,
-  },
-  createPanel: {
-    maxHeight: 240,
-    backgroundColor: theme.colors.card,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.lg,
-    padding: 12,
-    marginBottom: 10,
-  },
-  createPanelHeader: {
-    marginBottom: 8,
-  },
-  createPanelTitle: {
-    color: theme.colors.text,
-    fontWeight: "700",
-    fontSize: 17,
-    marginBottom: 4,
-  },
-  createPanelHint: {
-    color: theme.colors.mutedText,
-    fontSize: 12,
-  },
-  createFieldLabel: {
-    color: theme.colors.mutedText,
-    fontSize: 12,
-    fontWeight: "700",
-    marginTop: 6,
-    marginBottom: 5,
-  },
-  fieldCounter: {
-    color: theme.colors.mutedText,
-    fontSize: 11,
-    textAlign: "right",
-    marginBottom: 6,
-  },
-  createInput: {
-    backgroundColor: theme.colors.backgroundSoft,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 8,
-  },
-  createNotes: {
-    minHeight: 70,
-    textAlignVertical: "top",
-  },
-  createActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  createPrimary: {
-    flex: 1,
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.radius.md,
-    paddingVertical: 11,
-    alignItems: "center",
-  },
-  createPrimaryText: {
-    color: "#ffffff",
-    fontWeight: "700",
-  },
-  createGhost: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  createGhostText: {
-    color: theme.colors.mutedText,
-    fontWeight: "700",
   },
   disabled: {
     opacity: 0.6,

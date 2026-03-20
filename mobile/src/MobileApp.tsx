@@ -8,6 +8,7 @@ import { registerForPushNotificationsAsync } from "./services/pushNotifications"
 import { clearSession, loadSession, saveSession } from "./services/session";
 import { GameDetailScreen } from "./screens/GameDetailScreen";
 import { CompetitionDetailScreen } from "./screens/CompetitionDetailScreen";
+import { CreateSpaceScreen } from "./screens/CreateSpaceScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { SplashScreen } from "./screens/SplashScreen";
@@ -21,6 +22,7 @@ type Route =
   | { name: "welcome" }
   | { name: "login" }
   | { name: "spaces" }
+  | { name: "create-space" }
   | { name: "profile" }
   | { name: "space"; space: Space }
   | { name: "game"; space: Space; gameId: number }
@@ -235,6 +237,15 @@ function MobileAppContent() {
             setPreviousRoute({ name: "spaces" });
             setRoute({ name: "profile" });
           }}
+          onOpenCreateSpace={() => setRoute({ name: "create-space" })}
+        />
+      ) : null}
+
+      {route.name === "create-space" && token ? (
+        <CreateSpaceScreen
+          token={token}
+          onBack={() => setRoute({ name: "spaces" })}
+          onCreated={() => setRoute({ name: "spaces" })}
         />
       ) : null}
 
