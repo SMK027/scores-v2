@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppTheme } from "../context/ThemeContext";
 import type { AppTheme } from "../styles";
 import type { User } from "../types/api";
@@ -18,12 +18,19 @@ export function DashboardScreen({ user, onOpenSpaces, onOpenProfile, onLogout }:
 
   const avatarUri = getAvatarUri(user.avatar);
 
+  const confirmLogout = () => {
+    Alert.alert("Se déconnecter ?", "Voulez-vous vraiment vous déconnecter de l'application ?", [
+      { text: "Annuler", style: "cancel" },
+      { text: "Déconnexion", style: "destructive", onPress: onLogout },
+    ]);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Bonjour {user.username}</Text>
-        <Pressable onPress={onLogout}>
-          <Text style={styles.logout}>Déconnexion</Text>
+        <Pressable style={styles.logoutButton} onPress={confirmLogout}>
+          <Text style={styles.logoutButtonText}>Déconnexion</Text>
         </Pressable>
       </View>
 
@@ -82,9 +89,18 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 13,
     marginBottom: 8,
   },
-  logout: {
-    color: theme.colors.primary,
+  logoutButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.danger,
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  logoutButtonText: {
+    color: theme.colors.danger,
     fontWeight: "700",
+    fontSize: 12,
   },
   avatarCard: {
     flexDirection: "row",

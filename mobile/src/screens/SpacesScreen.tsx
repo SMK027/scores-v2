@@ -218,6 +218,13 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
 
   const avatarUri = getAvatarUri(user.avatar);
 
+  const confirmLogout = useCallback(() => {
+    Alert.alert("Se déconnecter ?", "Voulez-vous vraiment vous déconnecter de l'application ?", [
+      { text: "Annuler", style: "cancel" },
+      { text: "Déconnexion", style: "destructive", onPress: onLogout },
+    ]);
+  }, [onLogout]);
+
   const filteredSpaces = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) {
@@ -296,8 +303,8 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
               <Text style={styles.profileAvatarText}>{getInitials(user)}</Text>
             )}
           </Pressable>
-          <Pressable onPress={onLogout}>
-            <Text style={styles.logout}>Déconnexion</Text>
+          <Pressable style={styles.logoutButton} onPress={confirmLogout}>
+            <Text style={styles.logoutButtonText}>Déconnexion</Text>
           </Pressable>
         </View>
       </View>
@@ -492,9 +499,18 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     color: theme.colors.mutedText,
     marginTop: 4,
   },
-  logout: {
-    color: theme.colors.primary,
+  logoutButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.danger,
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  logoutButtonText: {
+    color: theme.colors.danger,
     fontWeight: "700",
+    fontSize: 12,
   },
   headerActions: {
     alignItems: "flex-end",
