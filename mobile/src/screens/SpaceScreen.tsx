@@ -90,7 +90,7 @@ function getStatusMeta(status: Game["status"]): {
       };
     case "completed":
       return {
-        label: "Terminee",
+        label: "Terminée",
         backgroundColor: "#dfe0ff",
         textColor: "#3d4bdf",
       };
@@ -113,13 +113,13 @@ function getStatusMeta(status: Game["status"]): {
 function getWinConditionLabel(winCondition: GameType["win_condition"]): string {
   switch (winCondition) {
     case "highest_score":
-      return "Score le plus eleve";
+      return "Score le plus élevé";
     case "lowest_score":
       return "Score le plus bas";
     case "ranking":
       return "Classement";
     case "win_loss":
-      return "Victoire/Defaite";
+      return "Victoire/Défaite";
     default:
       return winCondition;
   }
@@ -336,7 +336,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       const data = await fetchLeaderboard(token, leaderboardPeriod);
       setLeaderboardEntries(data.entries);
       setLeaderboardCriteriaLabel(
-        `Eligibilite: min ${data.criteria.min_rounds_played} manches sur ${data.criteria.min_spaces_played} espaces.`
+        `Éligibilité : min ${data.criteria.min_rounds_played} manches sur ${data.criteria.min_spaces_played} espaces.`
       );
     } catch (err) {
       if (err instanceof ApiError) {
@@ -408,7 +408,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
   const submitCreateGame = async () => {
     if (!selectedGameTypeId) {
-      setError("Veuillez selectionner un type de jeu.");
+      setError("Veuillez sélectionner un type de jeu.");
       return;
     }
 
@@ -437,7 +437,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError("Impossible de creer la partie.");
+        setError("Impossible de créer la partie.");
       }
     } finally {
       setSaving(false);
@@ -619,7 +619,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     }
 
     if (newPlayerUserId !== null && linkedUserIds.has(newPlayerUserId)) {
-      setError("Ce compte est deja rattache a un autre joueur de cet espace.");
+      setError("Ce compte est déjà rattaché à un autre joueur de cet espace.");
       return;
     }
 
@@ -635,7 +635,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError("Impossible de creer le joueur.");
+        setError("Impossible de créer le joueur.");
       }
     } finally {
       setCreatingPlayer(false);
@@ -675,7 +675,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       );
 
       if (conflictingPlayer) {
-        setError("Ce compte est deja rattache a un autre joueur de cet espace.");
+        setError("Ce compte est déjà rattaché à un autre joueur de cet espace.");
         return;
       }
     }
@@ -693,7 +693,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError("Impossible de mettre a jour le joueur.");
+        setError("Impossible de mettre à jour le joueur.");
       }
     } finally {
       setSavingPlayer(false);
@@ -735,7 +735,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
   const confirmAndUpdatePlayer = () => {
     Alert.alert(
-      "Mettre a jour le joueur",
+      "Mettre à jour le joueur",
       "Confirmer les modifications ?",
       [
         { text: "Annuler", onPress: () => {}, style: "cancel" },
@@ -746,7 +746,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
   const confirmAndUpdateGameType = () => {
     Alert.alert(
-      "Mettre a jour le type de jeu",
+      "Mettre à jour le type de jeu",
       "Confirmer les modifications ?",
       [
         { text: "Annuler", onPress: () => {}, style: "cancel" },
@@ -841,7 +841,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError("Impossible de creer le type de jeu.");
+        setError("Impossible de créer le type de jeu.");
       }
     } finally {
       setCreatingGameType(false);
@@ -901,7 +901,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError("Impossible de mettre a jour le type de jeu.");
+        setError("Impossible de mettre à jour le type de jeu.");
       }
     } finally {
       setSavingGameType(false);
@@ -1079,7 +1079,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       {currentView !== "menu" ? (
         <View style={styles.secondaryHeaderRow}>
           <Pressable onPress={loadData}>
-            <Text style={styles.back}>Rafraichir</Text>
+            <Text style={styles.back}>Rafraîchir</Text>
           </Pressable>
         </View>
       ) : null}
@@ -1104,7 +1104,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
       {currentView === "create" ? (
         <ScrollView contentContainerStyle={styles.formCard} keyboardShouldPersistTaps="handled">
-          <Text style={styles.sectionTitle}>Creer une partie</Text>
+          <Text style={styles.sectionTitle}>Créer une partie</Text>
 
           <AutocompleteSelect
             label="Type de jeu"
@@ -1164,7 +1164,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             onPress={submitCreateGame}
             disabled={saving}
           >
-            <Text style={styles.primaryText}>{saving ? "Creation..." : "Creer la partie"}</Text>
+            <Text style={styles.primaryText}>{saving ? "Création..." : "Créer la partie"}</Text>
           </Pressable>
         </ScrollView>
       ) : null}
@@ -1512,7 +1512,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
               disabled={creatingPlayer}
               onPress={createPlayerSubmit}
             >
-              <Text style={styles.primaryText}>{creatingPlayer ? "Creation..." : "Ajouter le joueur"}</Text>
+              <Text style={styles.primaryText}>{creatingPlayer ? "Création..." : "Ajouter le joueur"}</Text>
             </Pressable>
           </View>
 
@@ -1677,7 +1677,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
               disabled={creatingGameType}
               onPress={createGameTypeSubmit}
             >
-              <Text style={styles.primaryText}>{creatingGameType ? "Creation..." : "Ajouter le type de jeu"}</Text>
+              <Text style={styles.primaryText}>{creatingGameType ? "Création..." : "Ajouter le type de jeu"}</Text>
             </Pressable>
           </View>
 

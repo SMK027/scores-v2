@@ -113,7 +113,7 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError("Impossible de mettre a jour la bio.");
+        setError("Impossible de mettre à jour la bio.");
       }
     } finally {
       setSaving(false);
@@ -136,7 +136,7 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
         </Pressable>
         <Text style={styles.headerTitle}>Profil</Text>
         <Pressable onPress={loadProfile}>
-          <Text style={styles.back}>Rafraichir</Text>
+          <Text style={styles.back}>Rafraîchir</Text>
         </Pressable>
       </View>
 
@@ -237,7 +237,7 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
           <Text style={styles.quickActionText}>Aide et FAQ</Text>
         </Pressable>
         <Pressable style={styles.quickActionDanger} onPress={onBack}>
-          <Text style={styles.quickActionDangerText}>Retour a l'application</Text>
+          <Text style={styles.quickActionDangerText}>Retour à l’application</Text>
         </Pressable>
       </View>
     </ScrollView>

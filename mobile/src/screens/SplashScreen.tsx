@@ -46,7 +46,7 @@ export function SplashScreen() {
         <Text style={styles.logoGlyph}>#</Text>
       </Animated.View>
       <Text style={styles.title}>Scores</Text>
-      <Text style={styles.subtitle}>Preparation de votre espace de jeu...</Text>
+      <Text style={styles.subtitle}>Préparation de votre espace de jeu...</Text>
     </View>
   );
 }

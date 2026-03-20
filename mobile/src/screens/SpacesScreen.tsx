@@ -140,7 +140,7 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError("Impossible de creer un espace.");
+        setError("Impossible de créer un espace.");
       }
     } finally {
       setCreatingSpace(false);
@@ -364,11 +364,11 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
             <Text style={styles.emptyText}>
               {searchQuery.trim()
                 ? "Aucun espace ne correspond a votre recherche."
-                : "Commencez par creer votre premier espace de jeu."}
+                : "Commencez par créer votre premier espace de jeu."}
             </Text>
             {!searchQuery.trim() ? (
               <Pressable style={styles.emptyButton} onPress={() => setShowCreatePanel(true)}>
-                <Text style={styles.emptyButtonText}>Creer mon premier espace</Text>
+                <Text style={styles.emptyButtonText}>Créer mon premier espace</Text>
               </Pressable>
             ) : null}
           </View>

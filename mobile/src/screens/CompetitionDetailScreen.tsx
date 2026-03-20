@@ -53,10 +53,10 @@ function getStatusMeta(status: Competition["status"]): { label: string; backgrou
     case "paused":
       return { label: "En pause", backgroundColor: "#ffe8c5", textColor: "#8a5a00" };
     case "closed":
-      return { label: "Cloturee", backgroundColor: "#dfe0ff", textColor: "#3d4bdf" };
+      return { label: "Clôturée", backgroundColor: "#dfe0ff", textColor: "#3d4bdf" };
     case "planned":
     default:
-      return { label: "Planifiee", backgroundColor: "#e9edf5", textColor: "#5b6780" };
+      return { label: "Planifiée", backgroundColor: "#e9edf5", textColor: "#5b6780" };
   }
 }
 
@@ -79,7 +79,7 @@ export function CompetitionDetailScreen({ token, space, competitionId, onBack }:
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError("Impossible de charger les details de la competition.");
+        setError("Impossible de charger les détails de la compétition.");
       }
     }
   }, [competitionId, space.id, token]);
@@ -122,7 +122,7 @@ export function CompetitionDetailScreen({ token, space, competitionId, onBack }:
           <Text style={styles.back}>Retour</Text>
         </Pressable>
         <Pressable onPress={loadDetails}>
-          <Text style={styles.back}>Rafraichir</Text>
+          <Text style={styles.back}>Rafraîchir</Text>
         </Pressable>
       </View>
 
@@ -136,8 +136,8 @@ export function CompetitionDetailScreen({ token, space, competitionId, onBack }:
         </View>
       </View>
 
-      <Text style={styles.meta}>Debut: {formatDateTime(competition.starts_at)}</Text>
-      <Text style={styles.meta}>Fin: {formatDateTime(competition.ends_at)}</Text>
+      <Text style={styles.meta}>Début : {formatDateTime(competition.starts_at)}</Text>
+      <Text style={styles.meta}>Fin : {formatDateTime(competition.ends_at)}</Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -152,7 +152,7 @@ export function CompetitionDetailScreen({ token, space, competitionId, onBack }:
           <Text style={styles.statValue}>{stats.completed_games}/{stats.total_games}</Text>
         </View>
         <View style={styles.statRow}>
-          <Text style={styles.statLabel}>Manches total</Text>
+          <Text style={styles.statLabel}>Manches totales</Text>
           <Text style={styles.statValue}>{stats.total_rounds}</Text>
         </View>
         <View style={styles.statRow}>
@@ -164,7 +164,7 @@ export function CompetitionDetailScreen({ token, space, competitionId, onBack }:
           <Text style={styles.statValue}>{formatDuration(stats.avg_play_seconds_per_game)}</Text>
         </View>
         <View style={styles.statRow}>
-          <Text style={styles.statLabel}>Manches moyennes / competiteur</Text>
+          <Text style={styles.statLabel}>Manches moyennes / compétiteur</Text>
           <Text style={styles.statValue}>{stats.avg_rounds_per_competitor.toFixed(2)}</Text>
         </View>
       </View>
@@ -183,7 +183,7 @@ export function CompetitionDetailScreen({ token, space, competitionId, onBack }:
               <Text style={styles.participantMeta}>Compte: {participant.linked_username}</Text>
             ) : null}
             <Text style={styles.participantMeta}>
-              {participant.rounds_won} manche(s) gagnee(s) sur {participant.rounds_played}
+              {participant.rounds_won} manche(s) gagnée(s) sur {participant.rounds_played}
             </Text>
           </View>
         ))}

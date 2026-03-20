@@ -38,7 +38,7 @@ function getStatusMeta(status: "pending" | "in_progress" | "paused" | "completed
     case "in_progress":
       return { label: "En cours", backgroundColor: "#caefe5", textColor: "#0b7a61" };
     case "completed":
-      return { label: "Terminee", backgroundColor: "#dfe0ff", textColor: "#3d4bdf" };
+      return { label: "Terminée", backgroundColor: "#dfe0ff", textColor: "#3d4bdf" };
     case "paused":
       return { label: "En pause", backgroundColor: "#ffe8c5", textColor: "#8a5a00" };
     case "pending":
@@ -72,7 +72,7 @@ function formatRoundValue(value: number | null, winCondition: string): string {
   }
 
   if (winCondition === "win_loss") {
-    return value === 1 ? "Gagnant" : "Defaite";
+    return value === 1 ? "Gagnant" : "Défaite";
   }
 
   if (winCondition === "ranking") {
@@ -174,12 +174,12 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
 
   const winConditionLabel =
     winCondition === "highest_score"
-      ? "Score le plus eleve"
+      ? "Score le plus élevé"
       : winCondition === "lowest_score"
       ? "Score le plus bas"
       : winCondition === "ranking"
       ? "Classement"
-      : "Victoire/Defaite";
+      : "Victoire/Défaite";
 
   const gameStatusMeta = getStatusMeta(details?.game.status ?? "pending");
 
@@ -223,7 +223,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError("Impossible de creer une manche.");
+        setError("Impossible de créer une manche.");
       }
     } finally {
       setSaving(false);
@@ -248,7 +248,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
       }
 
       if (winnerCount === 0) {
-        setError("Selectionnez au moins un gagnant pour cette manche.");
+        setError("Sélectionnez au moins un gagnant pour cette manche.");
         return;
       }
     } else {
@@ -268,11 +268,11 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
 
         if (winCondition === "ranking") {
           if (!Number.isInteger(value) || value < 1) {
-            setError("Le classement doit etre un entier positif (1, 2, 3...).");
+            setError("Le classement doit être un entier positif (1, 2, 3...).");
             return;
           }
           if (usedRanks.includes(value)) {
-            setError("Chaque place doit etre unique pour le classement.");
+            setError("Chaque place doit être unique pour le classement.");
             return;
           }
           usedRanks.push(value);
@@ -339,7 +339,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError("Impossible de mettre a jour le statut de la partie.");
+        setError("Impossible de mettre à jour le statut de la partie.");
       }
     } finally {
       setUpdatingGameStatus(false);
@@ -362,7 +362,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError("Impossible de mettre a jour le statut de la manche.");
+        setError("Impossible de mettre à jour le statut de la manche.");
       }
     } finally {
       setUpdatingRoundId(null);
@@ -387,7 +387,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
           <Text style={styles.back}>Retour</Text>
         </Pressable>
         <Pressable onPress={loadDetails}>
-          <Text style={styles.back}>Rafraichir</Text>
+          <Text style={styles.back}>Rafraîchir</Text>
         </Pressable>
       </View>
 
@@ -398,7 +398,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
           <Text style={[styles.statusText, { color: gameStatusMeta.textColor }]}>{gameStatusMeta.label}</Text>
         </View>
       </View>
-      <Text style={styles.meta}>Condition de victoire: {winConditionLabel}</Text>
+      <Text style={styles.meta}>Condition de victoire : {winConditionLabel}</Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -496,7 +496,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
               {winCondition === "ranking"
                 ? "Saisir le classement de la manche"
                 : winCondition === "win_loss"
-                ? "Selectionner le ou les gagnants"
+                ? "Sélectionner le ou les gagnants"
                 : "Saisir les scores"}
             </Text>
 
@@ -515,7 +515,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
                       }
                     >
                       <Text style={styles.scoreLabel}>{player.player_name}</Text>
-                      <Text style={styles.winnerStatus}>{isWinner ? "Gagnant" : "Defaite"}</Text>
+                      <Text style={styles.winnerStatus}>{isWinner ? "Gagnant" : "Défaite"}</Text>
                     </Pressable>
                   );
                 })
@@ -576,7 +576,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
           onPress={finishGame}
         >
           <Text style={styles.primaryText}>
-            {details.game.status === "completed" ? "Partie terminee" : "Terminer la partie"}
+            {details.game.status === "completed" ? "Partie terminée" : "Terminer la partie"}
           </Text>
         </Pressable>
       </View>
@@ -628,7 +628,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
             <TextInput
               ref={commentInputRef}
               style={styles.commentInput}
-              placeholder="Ecrire un commentaire..."
+              placeholder="Écrire un commentaire..."
               placeholderTextColor={theme.colors.mutedText}
               value={commentText}
               onChangeText={setCommentText}
@@ -647,7 +647,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
           </KeyboardAvoidingView>
         ) : (
           <Text style={styles.commentRestricted}>
-            La publication de commentaires est desactivee sur votre compte.
+            La publication de commentaires est désactivée sur votre compte.
           </Text>
         )}
       </View>
