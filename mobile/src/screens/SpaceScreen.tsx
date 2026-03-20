@@ -125,6 +125,31 @@ function getWinConditionLabel(winCondition: GameType["win_condition"]): string {
   }
 }
 
+function getViewMeta(view: Exclude<SpaceView, "menu">): { title: string; hint: string } {
+  switch (view) {
+    case "games":
+      return { title: "Parties", hint: "Consultez et ouvrez rapidement vos parties." };
+    case "create":
+      return { title: "Créer une partie", hint: "Configurez la partie puis lancez-la." };
+    case "stats":
+      return { title: "Statistiques", hint: "Suivez la dynamique des joueurs de cet espace." };
+    case "players":
+      return { title: "Joueurs", hint: "Gérez les joueurs liés à cet espace." };
+    case "gameTypes":
+      return { title: "Types de jeu", hint: "Paramétrez les règles et conditions de victoire." };
+    case "members":
+      return { title: "Membres", hint: "Invitez et organisez les rôles des membres." };
+    case "search":
+      return { title: "Recherche", hint: "Filtrez les contenus de l'espace en un seul endroit." };
+    case "leaderboard":
+      return { title: "Leaderboard", hint: "Comparez les performances globales." };
+    case "competitions":
+      return { title: "Compétitions", hint: "Consultez et suivez les compétitions en cours." };
+    default:
+      return { title: "Section", hint: "" };
+  }
+}
+
 export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenGame, onOpenCompetition }: Props) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -1027,6 +1052,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const compactNav = width < 380;
   const subNavHeight = activeGroup ? (compactNav ? 54 : 62) : 0;
   const bottomNavExtraHeight = (compactNav ? 62 : 72) + subNavHeight;
+  const currentViewMeta = currentView !== "menu" ? getViewMeta(currentView) : null;
 
   const menuStats = [
     { label: "Parties", value: games.length },
@@ -1078,8 +1104,12 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
       {currentView !== "menu" ? (
         <View style={styles.secondaryHeaderRow}>
-          <Pressable onPress={loadData}>
-            <Text style={styles.back}>Rafraîchir</Text>
+          <View>
+            <Text style={styles.contextTitle}>{currentViewMeta?.title}</Text>
+            <Text style={styles.contextHint}>{currentViewMeta?.hint}</Text>
+          </View>
+          <Pressable style={styles.refreshPill} onPress={loadData}>
+            <Text style={styles.refreshPillText}>Rafraîchir</Text>
           </Pressable>
         </View>
       ) : null}
@@ -2098,8 +2128,38 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   secondaryHeaderRow: {
-    alignItems: "flex-end",
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 8,
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  contextTitle: {
+    color: theme.colors.text,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  contextHint: {
+    color: theme.colors.mutedText,
+    fontSize: 12,
+    marginTop: 2,
+    maxWidth: 210,
+  },
+  refreshPill: {
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  refreshPillText: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+    fontSize: 12,
   },
   profileButton: {
     width: 34,

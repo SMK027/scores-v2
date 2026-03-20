@@ -298,13 +298,23 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
         </View>
       </View>
 
-      <TextInput
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        placeholder="Rechercher un espace..."
-        style={styles.searchInput}
-        autoCorrect={false}
-      />
+      <View style={styles.controlsPanel}>
+        <TextInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Rechercher un espace..."
+          style={styles.searchInput}
+          autoCorrect={false}
+        />
+        <View style={styles.controlsFooter}>
+          <Text style={styles.resultsCount}>
+            {filteredSpaces.length} espace{filteredSpaces.length > 1 ? "s" : ""}
+          </Text>
+          <Pressable style={styles.inlineCreateButton} onPress={() => setShowCreatePanel((current) => !current)}>
+            <Text style={styles.inlineCreateButtonText}>{showCreatePanel ? "Fermer" : "Créer un espace"}</Text>
+          </Pressable>
+        </View>
+      </View>
 
       {showCreatePanel ? (
         <ScrollView style={styles.createPanel} keyboardShouldPersistTaps="handled">
@@ -350,6 +360,10 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
       ) : null}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <View style={styles.listHeaderRow}>
+        <Text style={styles.listHeaderTitle}>Espaces disponibles</Text>
+      </View>
 
       <FlatList
         data={filteredSpaces}
@@ -504,14 +518,50 @@ const styles = StyleSheet.create({
     color: theme.colors.danger,
     marginBottom: 8,
   },
-  searchInput: {
+  controlsPanel: {
     backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    padding: 10,
+    marginBottom: 10,
+  },
+  searchInput: {
+    backgroundColor: theme.colors.backgroundSoft,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    marginBottom: 10,
+  },
+  controlsFooter: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  resultsCount: {
+    color: theme.colors.mutedText,
+    fontWeight: "600",
+  },
+  inlineCreateButton: {
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  inlineCreateButtonText: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  listHeaderRow: {
+    marginBottom: 8,
+  },
+  listHeaderTitle: {
+    color: theme.colors.text,
+    fontWeight: "700",
+    fontSize: 16,
   },
   createPanel: {
     maxHeight: 240,

@@ -400,6 +400,23 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
       </View>
       <Text style={styles.meta}>Condition de victoire : {winConditionLabel}</Text>
 
+      <View style={styles.overviewCard}>
+        <View style={styles.overviewItem}>
+          <Text style={styles.overviewValue}>{details.players.length}</Text>
+          <Text style={styles.overviewLabel}>Joueurs</Text>
+        </View>
+        <View style={styles.overviewDivider} />
+        <View style={styles.overviewItem}>
+          <Text style={styles.overviewValue}>{details.rounds.length}</Text>
+          <Text style={styles.overviewLabel}>Manches</Text>
+        </View>
+        <View style={styles.overviewDivider} />
+        <View style={styles.overviewItem}>
+          <Text style={styles.overviewValue}>{details.comments.length}</Text>
+          <Text style={styles.overviewLabel}>Commentaires</Text>
+        </View>
+      </View>
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.block}>
@@ -479,6 +496,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
       </View>
 
       <View style={styles.block}>
+        <Text style={styles.blockTitle}>Actions de partie</Text>
         <Pressable
           style={[styles.primaryButton, saving ? styles.disabled : undefined]}
           disabled={saving}
@@ -555,30 +573,32 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
             </Pressable>
           </View>
         ) : null}
-      </View>
 
-      <View style={styles.gameActionsRow}>
-        {details.game.status !== "completed" && (details.game.status === "in_progress" || details.game.status === "paused") ? (
+        <View style={styles.actionDivider} />
+
+        <View style={styles.gameActionsRow}>
+          {details.game.status !== "completed" && (details.game.status === "in_progress" || details.game.status === "paused") ? (
+            <Pressable
+              style={[styles.secondaryButton, updatingGameStatus ? styles.disabled : undefined]}
+              disabled={updatingGameStatus}
+              onPress={toggleGamePause}
+            >
+              <Text style={styles.secondaryText}>
+                {details.game.status === "paused" ? "Reprendre la partie" : "Mettre la partie en pause"}
+              </Text>
+            </Pressable>
+          ) : null}
+
           <Pressable
-            style={[styles.secondaryButton, updatingGameStatus ? styles.disabled : undefined]}
-            disabled={updatingGameStatus}
-            onPress={toggleGamePause}
+            style={[styles.finishButton, finishing ? styles.disabled : undefined]}
+            disabled={finishing || details.game.status === "completed"}
+            onPress={finishGame}
           >
-            <Text style={styles.secondaryText}>
-              {details.game.status === "paused" ? "Reprendre la partie" : "Mettre la partie en pause"}
+            <Text style={styles.primaryText}>
+              {details.game.status === "completed" ? "Partie terminée" : "Terminer la partie"}
             </Text>
           </Pressable>
-        ) : null}
-
-        <Pressable
-          style={[styles.finishButton, finishing ? styles.disabled : undefined]}
-          disabled={finishing || details.game.status === "completed"}
-          onPress={finishGame}
-        >
-          <Text style={styles.primaryText}>
-            {details.game.status === "completed" ? "Partie terminée" : "Terminer la partie"}
-          </Text>
-        </Pressable>
+        </View>
       </View>
 
       <View style={styles.block}>
@@ -693,6 +713,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  overviewCard: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.card,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  overviewItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  overviewValue: {
+    color: theme.colors.text,
+    fontWeight: "800",
+    fontSize: 20,
+  },
+  overviewLabel: {
+    marginTop: 2,
+    color: theme.colors.mutedText,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  overviewDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: theme.colors.border,
+  },
   error: {
     color: theme.colors.danger,
     marginTop: 10,
@@ -778,7 +830,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   gameActionsRow: {
-    marginTop: 8,
+    marginTop: 10,
+    gap: 8,
+  },
+  actionDivider: {
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
   },
   primaryText: {
     color: "#ffffff",
