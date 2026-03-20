@@ -383,11 +383,11 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
       contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top, 12) + 8 }]}
     >
       <View style={styles.header}>
-        <Pressable onPress={onBack}>
-          <Text style={styles.back}>Retour</Text>
+        <Pressable style={styles.navButton} onPress={onBack}>
+          <Text style={styles.navButtonText}>← Retour</Text>
         </Pressable>
-        <Pressable onPress={loadDetails}>
-          <Text style={styles.back}>Rafraîchir</Text>
+        <Pressable style={styles.navButton} onPress={loadDetails}>
+          <Text style={styles.navButtonText}>↻ Rafraîchir</Text>
         </Pressable>
       </View>
 
@@ -694,9 +694,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 8,
   },
-  back: {
+  navButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  navButtonText: {
     color: theme.colors.primary,
     fontWeight: "700",
+    fontSize: 12,
   },
   title: {
     fontSize: 22,

@@ -1126,12 +1126,12 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     >
       <View style={styles.header}>
         {currentView === "menu" ? (
-          <Pressable onPress={onBack}>
-            <Text style={styles.back}>Retour</Text>
+          <Pressable style={styles.navButton} onPress={onBack}>
+            <Text style={styles.navButtonText}>← Retour</Text>
           </Pressable>
         ) : (
-          <Pressable onPress={() => setCurrentView("menu")}>
-            <Text style={styles.back}>Menu</Text>
+          <Pressable style={styles.navButton} onPress={() => setCurrentView("menu")}>
+            <Text style={styles.navButtonText}>☰ Menu</Text>
           </Pressable>
         )}
         <Text style={styles.title} numberOfLines={1}>
@@ -2237,9 +2237,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 8,
   },
-  back: {
+  navButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  navButtonText: {
     color: theme.colors.primary,
     fontWeight: "700",
+    fontSize: 12,
   },
   title: {
     flex: 1,

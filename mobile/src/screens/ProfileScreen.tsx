@@ -131,12 +131,12 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Pressable onPress={onBack}>
-          <Text style={styles.back}>Retour</Text>
+        <Pressable style={styles.navButton} onPress={onBack}>
+          <Text style={styles.navButtonText}>← Retour</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Profil</Text>
-        <Pressable onPress={loadProfile}>
-          <Text style={styles.back}>Rafraîchir</Text>
+        <Pressable style={styles.navButton} onPress={loadProfile}>
+          <Text style={styles.navButtonText}>↻ Rafraîchir</Text>
         </Pressable>
       </View>
 
@@ -270,9 +270,18 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 18,
   },
-  back: {
+  navButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  navButtonText: {
     color: theme.colors.primary,
     fontWeight: "700",
+    fontSize: 12,
   },
   error: {
     color: theme.colors.danger,
