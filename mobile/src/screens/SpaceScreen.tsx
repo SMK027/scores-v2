@@ -150,6 +150,23 @@ function getViewMeta(view: Exclude<SpaceView, "menu">): { title: string; hint: s
   }
 }
 
+function formatShortDate(value?: string | null): string {
+  if (!value) {
+    return "Date inconnue";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "Date inconnue";
+  }
+
+  return parsed.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
 export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenGame, onOpenCompetition }: Props) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -1450,7 +1467,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                         <Text style={styles.searchRowIcon}>🎮</Text>
                         <View style={styles.searchRowContent}>
                           <Text style={styles.searchRowTitle}>{game.game_type_name || `Partie #${game.id}`}</Text>
-                          <Text style={styles.searchRowMeta}>Partie</Text>
+                          <Text style={styles.searchRowMeta}>Partie · Créée le {formatShortDate(game.created_at)}</Text>
                         </View>
                         <Text style={styles.searchRowAction}>Voir</Text>
                       </Pressable>
