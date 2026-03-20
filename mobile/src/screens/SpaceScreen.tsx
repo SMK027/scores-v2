@@ -1339,57 +1339,130 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             ))}
           </View>
 
+          {searchResults ? (
+            <View style={styles.searchSummaryRow}>
+              <Text style={styles.searchSummaryText}>
+                {searchResults.players.length + searchResults.game_types.length + searchResults.games.length + searchResults.comments.length} résultat
+                {searchResults.players.length + searchResults.game_types.length + searchResults.games.length + searchResults.comments.length > 1 ? "s" : ""}
+              </Text>
+              <Text style={styles.searchSummaryMuted}>
+                {searchFilter === "all" ? "Toutes catégories" : "Catégorie filtrée"}
+              </Text>
+            </View>
+          ) : null}
+
           {searchError ? <Text style={styles.error}>{searchError}</Text> : null}
 
           {searchResults ? (
             <View style={styles.searchResultsWrap}>
               {(searchFilter === "all" || searchFilter === "players") && (
                 <View style={styles.searchSection}>
-                  <Text style={styles.searchSectionTitle}>Joueurs ({searchResults.players.length})</Text>
-                  {searchResults.players.map((player) => (
-                    <View key={`player-${player.id}`} style={styles.searchRow}>
-                      <Text style={styles.searchRowTitle}>{player.name}</Text>
-                      <Text style={styles.searchRowMeta}>Joueur</Text>
-                    </View>
-                  ))}
+                  <View style={styles.searchSectionHeaderRow}>
+                    <Text style={styles.searchSectionTitle}>Joueurs</Text>
+                    <Text style={styles.searchSectionCount}>{searchResults.players.length}</Text>
+                  </View>
+                  {searchResults.players.length === 0 ? (
+                    <Text style={styles.searchEmptyText}>Aucun joueur trouvé.</Text>
+                  ) : (
+                    searchResults.players.map((player) => (
+                      <View key={`player-${player.id}`} style={styles.searchRow}>
+                        <Text style={styles.searchRowIcon}>👤</Text>
+                        <View style={styles.searchRowContent}>
+                          <Text style={styles.searchRowTitle}>{player.name}</Text>
+                          <Text style={styles.searchRowMeta}>Joueur</Text>
+                        </View>
+                      </View>
+                    ))
+                  )}
                 </View>
               )}
 
               {(searchFilter === "all" || searchFilter === "game_types") && (
                 <View style={styles.searchSection}>
-                  <Text style={styles.searchSectionTitle}>Types de jeu ({searchResults.game_types.length})</Text>
-                  {searchResults.game_types.map((gameType) => (
-                    <View key={`gt-${gameType.id}`} style={styles.searchRow}>
-                      <Text style={styles.searchRowTitle}>{gameType.name}</Text>
-                      <Text style={styles.searchRowMeta}>Type de jeu</Text>
-                    </View>
-                  ))}
+                  <View style={styles.searchSectionHeaderRow}>
+                    <Text style={styles.searchSectionTitle}>Types de jeu</Text>
+                    <Text style={styles.searchSectionCount}>{searchResults.game_types.length}</Text>
+                  </View>
+                  {searchResults.game_types.length === 0 ? (
+                    <Text style={styles.searchEmptyText}>Aucun type de jeu trouvé.</Text>
+                  ) : (
+                    searchResults.game_types.map((gameType) => (
+                      <View key={`gt-${gameType.id}`} style={styles.searchRow}>
+                        <Text style={styles.searchRowIcon}>🧩</Text>
+                        <View style={styles.searchRowContent}>
+                          <Text style={styles.searchRowTitle}>{gameType.name}</Text>
+                          <Text style={styles.searchRowMeta}>Type de jeu</Text>
+                        </View>
+                      </View>
+                    ))
+                  )}
                 </View>
               )}
 
               {(searchFilter === "all" || searchFilter === "games") && (
                 <View style={styles.searchSection}>
-                  <Text style={styles.searchSectionTitle}>Parties ({searchResults.games.length})</Text>
-                  {searchResults.games.map((game) => (
-                    <Pressable key={`game-${game.id}`} style={styles.searchRow} onPress={() => onOpenGame(game.id)}>
-                      <Text style={styles.searchRowTitle}>{game.game_type_name || `Partie #${game.id}`}</Text>
-                      <Text style={styles.searchRowMeta}>Partie</Text>
-                    </Pressable>
-                  ))}
+                  <View style={styles.searchSectionHeaderRow}>
+                    <Text style={styles.searchSectionTitle}>Parties</Text>
+                    <Text style={styles.searchSectionCount}>{searchResults.games.length}</Text>
+                  </View>
+                  {searchResults.games.length === 0 ? (
+                    <Text style={styles.searchEmptyText}>Aucune partie trouvée.</Text>
+                  ) : (
+                    searchResults.games.map((game) => (
+                      <Pressable key={`game-${game.id}`} style={styles.searchRow} onPress={() => onOpenGame(game.id)}>
+                        <Text style={styles.searchRowIcon}>🎮</Text>
+                        <View style={styles.searchRowContent}>
+                          <Text style={styles.searchRowTitle}>{game.game_type_name || `Partie #${game.id}`}</Text>
+                          <Text style={styles.searchRowMeta}>Partie</Text>
+                        </View>
+                        <Text style={styles.searchRowAction}>Voir</Text>
+                      </Pressable>
+                    ))
+                  )}
                 </View>
               )}
 
               {(searchFilter === "all" || searchFilter === "comments") && (
                 <View style={styles.searchSection}>
-                  <Text style={styles.searchSectionTitle}>Commentaires ({searchResults.comments.length})</Text>
-                  {searchResults.comments.map((comment) => (
-                    <View key={`comment-${comment.id}`} style={styles.searchRow}>
-                      <Text style={styles.searchRowTitle} numberOfLines={2}>
-                        {comment.content}
-                      </Text>
-                      <Text style={styles.searchRowMeta}>{comment.username || "Auteur inconnu"}</Text>
-                    </View>
-                  ))}
+                  <View style={styles.searchSectionHeaderRow}>
+                    <Text style={styles.searchSectionTitle}>Commentaires</Text>
+                    <Text style={styles.searchSectionCount}>{searchResults.comments.length}</Text>
+                  </View>
+                  {searchResults.comments.length === 0 ? (
+                    <Text style={styles.searchEmptyText}>Aucun commentaire trouvé.</Text>
+                  ) : (
+                    searchResults.comments.map((comment) => {
+                      const commentContainerStyle = styles.searchRow;
+                      const canOpenGame = typeof comment.game_id === "number";
+
+                      if (canOpenGame) {
+                        return (
+                          <Pressable key={`comment-${comment.id}`} style={commentContainerStyle} onPress={() => onOpenGame(comment.game_id as number)}>
+                            <Text style={styles.searchRowIcon}>💬</Text>
+                            <View style={styles.searchRowContent}>
+                              <Text style={styles.searchRowTitle} numberOfLines={2}>
+                                {comment.content}
+                              </Text>
+                              <Text style={styles.searchRowMeta}>{comment.username || "Auteur inconnu"}</Text>
+                            </View>
+                            <Text style={styles.searchRowAction}>Voir</Text>
+                          </Pressable>
+                        );
+                      }
+
+                      return (
+                        <View key={`comment-${comment.id}`} style={commentContainerStyle}>
+                          <Text style={styles.searchRowIcon}>💬</Text>
+                          <View style={styles.searchRowContent}>
+                            <Text style={styles.searchRowTitle} numberOfLines={2}>
+                              {comment.content}
+                            </Text>
+                            <Text style={styles.searchRowMeta}>{comment.username || "Auteur inconnu"}</Text>
+                          </View>
+                        </View>
+                      );
+                    })
+                  )}
                 </View>
               )}
             </View>
@@ -2697,6 +2770,27 @@ const styles = StyleSheet.create({
   searchResultsWrap: {
     gap: 12,
   },
+  searchSummaryRow: {
+    marginTop: 2,
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  searchSummaryText: {
+    color: theme.colors.text,
+    fontWeight: "700",
+  },
+  searchSummaryMuted: {
+    color: theme.colors.mutedText,
+    fontSize: 12,
+  },
   searchSection: {
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -2704,15 +2798,38 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.card,
     padding: 10,
   },
+  searchSectionHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
   searchSectionTitle: {
     color: theme.colors.text,
     fontWeight: "700",
-    marginBottom: 6,
+  },
+  searchSectionCount: {
+    color: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    fontSize: 12,
+    fontWeight: "700",
   },
   searchRow: {
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  searchRowContent: {
+    flex: 1,
+  },
+  searchRowIcon: {
+    fontSize: 16,
   },
   searchRowTitle: {
     color: theme.colors.text,
@@ -2722,6 +2839,17 @@ const styles = StyleSheet.create({
     color: theme.colors.mutedText,
     marginTop: 2,
     fontSize: 12,
+  },
+  searchRowAction: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  searchEmptyText: {
+    color: theme.colors.mutedText,
+    fontSize: 13,
+    fontStyle: "italic",
+    paddingVertical: 6,
   },
   rankingRow: {
     borderWidth: 1,
