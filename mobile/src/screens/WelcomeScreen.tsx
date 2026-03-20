@@ -22,7 +22,7 @@ export function WelcomeScreen({ onLoginPress }: Props) {
           <Text style={styles.logoGlyph}>#</Text>
         </View>
         <Text style={styles.title}>Scores</Text>
-        <Text style={styles.subtitle}>Gerez vos parties de jeux en toute simplicite.</Text>
+        <Text style={styles.subtitle}>Gérez vos parties de jeux en toute simplicité.</Text>
       </View>
 
       <View style={styles.actions}>

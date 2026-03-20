@@ -282,7 +282,7 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
         <View style={styles.headerMain}>
           <Text style={styles.kicker}>Espace personnel</Text>
           <Text style={styles.title}>Mes espaces</Text>
-          <Text style={styles.subtitle}>Gerez vos salons de jeu, {user.username}</Text>
+          <Text style={styles.subtitle}>Gérez vos salons de jeu, {user.username}</Text>
         </View>
         <View style={styles.headerActions}>
           <Pressable style={styles.profileButton} onPress={onOpenProfile}>

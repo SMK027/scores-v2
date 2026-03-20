@@ -157,7 +157,7 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Informations</Text>
         <View style={styles.roleRow}>
-          <Text style={styles.metaLabel}>Role global</Text>
+          <Text style={styles.metaLabel}>Rôle global</Text>
           <View style={[styles.roleBadge, { backgroundColor: roleBadgeStyle.backgroundColor }]}>
             <Text style={[styles.roleBadgeText, { color: roleBadgeStyle.textColor }]}>
               {getRoleLabel(profile.global_role)}
@@ -224,14 +224,14 @@ export function ProfileScreen({ token, fallbackUser, onBack }: Props) {
             </Pressable>
           </>
         ) : (
-          <Text style={styles.bio}>{profile.bio?.trim() ? profile.bio : "Aucune bio renseignee."}</Text>
+          <Text style={styles.bio}>{profile.bio?.trim() ? profile.bio : "Aucune bio renseignée."}</Text>
         )}
       </View>
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Actions rapides</Text>
         <Pressable style={styles.quickActionButton} onPress={loadProfile}>
-          <Text style={styles.quickActionText}>Parametres du compte</Text>
+          <Text style={styles.quickActionText}>Paramètres du compte</Text>
         </Pressable>
         <Pressable style={styles.quickActionButton} onPress={loadProfile}>
           <Text style={styles.quickActionText}>Aide et FAQ</Text>

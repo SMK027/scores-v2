@@ -1323,7 +1323,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                     <Text style={styles.statsMeta}>Manches jouees: {mostActivePlayer.roundsPlayed}</Text>
                   </>
                 ) : (
-                  <Text style={styles.statsMeta}>Aucune donnee disponible.</Text>
+                  <Text style={styles.statsMeta}>Aucune donnée disponible.</Text>
                 )}
               </View>
 
@@ -1331,7 +1331,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                 <Text style={styles.statsCardTitle}>Classement par taux de victoire</Text>
 
                 {playerStats.length === 0 ? (
-                  <Text style={styles.statsMeta}>Aucune donnee disponible.</Text>
+                  <Text style={styles.statsMeta}>Aucune donnée disponible.</Text>
                 ) : (
                   playerStats.map((stats, index) => (
                     <View style={styles.statsRow} key={stats.playerId}>
@@ -1561,7 +1561,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
           {leaderboardLoading ? (
             <ActivityIndicator />
           ) : leaderboardEntries.length === 0 ? (
-            <Text style={styles.empty}>Aucune donnee de classement disponible.</Text>
+            <Text style={styles.empty}>Aucune donnée de classement disponible.</Text>
           ) : (
             leaderboardEntries.map((entry) => (
               <View key={entry.user_id} style={styles.rankingRow}>
@@ -1627,7 +1627,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
       {currentView === "players" ? (
         <ScrollView contentContainerStyle={styles.formCard} keyboardShouldPersistTaps="handled">
-          <Text style={styles.sectionTitle}>Gerer les joueurs</Text>
+          <Text style={styles.sectionTitle}>Gérer les joueurs</Text>
 
           <View style={styles.playerEditorCard}>
             <Text style={styles.playerEditorTitle}>Nouveau joueur</Text>
@@ -1763,7 +1763,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
       {currentView === "gameTypes" ? (
         <ScrollView contentContainerStyle={styles.formCard} keyboardShouldPersistTaps="handled">
-          <Text style={styles.sectionTitle}>Gerer les types de jeu</Text>
+          <Text style={styles.sectionTitle}>Gérer les types de jeu</Text>
 
           <View style={styles.playerEditorCard}>
             <Text style={styles.playerEditorTitle}>Nouveau type de jeu</Text>
@@ -1999,7 +1999,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
                 {isAdmin && editingMemberId === member.id ? (
                   <View style={styles.inlineEditor}>
-                    <Text style={styles.label}>Nouveau role</Text>
+                    <Text style={styles.label}>Nouveau rôle</Text>
                     <View style={styles.conditionOptionsRow}>
                       {MEMBER_ROLES.map((role) => (
                         <Pressable
@@ -2050,7 +2050,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
               style={styles.input}
               autoCapitalize="none"
             />
-            <Text style={styles.label}>Role attribue</Text>
+            <Text style={styles.label}>Rôle attribué</Text>
             <View style={styles.conditionOptionsRow}>
               {MEMBER_ROLES.map((role) => (
                 <Pressable
@@ -2088,7 +2088,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
               disabled={generatingLink}
               onPress={handleGenerateLink}
             >
-              <Text style={styles.primaryText}>{generatingLink ? "Generation..." : "Generer un lien"}</Text>
+              <Text style={styles.primaryText}>{generatingLink ? "Génération..." : "Générer un lien"}</Text>
             </Pressable>
             {inviteToken ? (
               <View style={styles.inviteLinkBox}>
