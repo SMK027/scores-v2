@@ -18,7 +18,6 @@ import { AutocompleteSelect } from "../components/AutocompleteSelect";
 import {
   ApiError,
   createGameType,
-  createPlayer,
   createGame,
   createInviteLink,
   fetchCompetitions,
@@ -51,6 +50,7 @@ type Props = {
   onOpenProfile: () => void;
   onOpenGame: (gameId: number) => void;
   onOpenCompetition: (competitionId: number) => void;
+  onOpenCreatePlayer: () => void;
 };
 
 type SpaceView =
@@ -168,7 +168,7 @@ function formatShortDate(value?: string | null): string {
   });
 }
 
-export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenGame, onOpenCompetition }: Props) {
+export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenGame, onOpenCompetition, onOpenCreatePlayer }: Props) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -194,14 +194,9 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStats[]>([]);
-  const [creatingPlayer, setCreatingPlayer] = useState(false);
   const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null);
   const [savingPlayer, setSavingPlayer] = useState(false);
   const [deletingPlayerId, setDeletingPlayerId] = useState<number | null>(null);
-
-  const [newPlayerName, setNewPlayerName] = useState("");
-  const [newPlayerMemberQuery, setNewPlayerMemberQuery] = useState("");
-  const [newPlayerUserId, setNewPlayerUserId] = useState<number | null>(null);
 
   const [editPlayerName, setEditPlayerName] = useState("");
   const [editPlayerMemberQuery, setEditPlayerMemberQuery] = useState("");
@@ -674,46 +669,10 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     [players]
   );
 
-  const availableNewPlayerMemberOptions = useMemo(
-    () => memberOptions.filter((option) => !linkedUserIds.has(option.id)),
-    [linkedUserIds, memberOptions]
-  );
-
   const availableEditMemberOptions = useMemo(
     () => memberOptions.filter((option) => option.id === editPlayerUserId || !linkedUserIds.has(option.id)),
     [editPlayerUserId, linkedUserIds, memberOptions]
   );
-
-  const createPlayerSubmit = async () => {
-    const trimmed = newPlayerName.trim();
-    if (!trimmed) {
-      setError("Le nom du joueur est requis.");
-      return;
-    }
-
-    if (newPlayerUserId !== null && linkedUserIds.has(newPlayerUserId)) {
-      setError("Ce compte est déjà rattaché à un autre joueur de cet espace.");
-      return;
-    }
-
-    try {
-      setCreatingPlayer(true);
-      setError(null);
-      await createPlayer(token, space.id, { name: trimmed, userId: newPlayerUserId });
-      setNewPlayerName("");
-      setNewPlayerMemberQuery("");
-      setNewPlayerUserId(null);
-      await loadData();
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Impossible de créer le joueur.");
-      }
-    } finally {
-      setCreatingPlayer(false);
-    }
-  };
 
   const startEditPlayer = (player: Player) => {
     setEditingPlayerId(player.id);
@@ -1626,49 +1585,10 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
       {currentView === "players" ? (
         <ScrollView contentContainerStyle={styles.formCard} keyboardShouldPersistTaps="handled">
-          <Text style={styles.sectionTitle}>Gérer les joueurs</Text>
-
-          <View style={styles.playerEditorCard}>
-            <Text style={styles.playerEditorTitle}>Nouveau joueur</Text>
-            <TextInput
-              value={newPlayerName}
-              onChangeText={setNewPlayerName}
-              placeholder="Nom du joueur"
-              style={styles.input}
-            />
-
-            <View style={styles.spacer} />
-
-            <AutocompleteSelect
-              label="Rattacher à un compte (optionnel)"
-              query={newPlayerMemberQuery}
-              onQueryChange={setNewPlayerMemberQuery}
-              options={availableNewPlayerMemberOptions}
-              onSelect={(id) => {
-                const member = members.find((m) => m.user_id === id);
-                setNewPlayerUserId(id);
-                setNewPlayerMemberQuery(member ? member.username : "");
-              }}
-              placeholder="Rechercher un membre"
-            />
-
-            {newPlayerUserId ? (
-              <Pressable
-                onPress={() => {
-                  setNewPlayerUserId(null);
-                  setNewPlayerMemberQuery("");
-                }}
-              >
-                <Text style={styles.unlinkText}>Retirer la liaison</Text>
-              </Pressable>
-            ) : null}
-
-            <Pressable
-              style={[styles.primaryButton, creatingPlayer ? styles.disabledButton : undefined]}
-              disabled={creatingPlayer}
-              onPress={createPlayerSubmit}
-            >
-              <Text style={styles.primaryText}>{creatingPlayer ? "Création..." : "Ajouter le joueur"}</Text>
+          <View style={styles.playersHeader}>
+            <Text style={styles.sectionTitle}>Gérer les joueurs</Text>
+            <Pressable style={styles.addPlayerButton} onPress={onOpenCreatePlayer}>
+              <Text style={styles.addPlayerButtonText}>+ Ajouter un joueur</Text>
             </Pressable>
           </View>
 
@@ -2105,59 +2025,6 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       ) : null}
 
       <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-        {/* Sous-menu Affichage */}
-        {activeGroup === "view" ? (
-          <View style={styles.subNav}>
-            {viewGroupItems.map((item) => {
-              const active = currentView === item.key;
-              return (
-                <Pressable
-                  key={item.key}
-                  style={[styles.subNavItem, active ? styles.subNavItemActive : undefined]}
-                  onPress={() => setCurrentView(item.key)}
-                >
-                  <Text style={[styles.bottomNavIcon, active ? styles.bottomNavIconActive : undefined]}>
-                    {item.icon}
-                  </Text>
-                  <Text style={[styles.bottomNavLabel, active ? styles.bottomNavLabelActive : undefined]} numberOfLines={1}>
-                    {item.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : null}
-
-        {/* Sous-menu Gestion */}
-        {activeGroup === "manage" ? (
-          <View style={styles.subNav}>
-            {manageGroupItems.map((item) => {
-              const active = currentView === item.key;
-              return (
-                <Pressable
-                  key={item.key}
-                  style={[styles.subNavItem, active ? styles.subNavItemActive : undefined]}
-                  onPress={() => {
-                    if (item.key === "members") {
-                      setInviteToken(null);
-                      setError(null);
-                      setEditingMemberId(null);
-                    }
-                    setCurrentView(item.key);
-                  }}
-                >
-                  <Text style={[styles.bottomNavIcon, active ? styles.bottomNavIconActive : undefined]}>
-                    {item.icon}
-                  </Text>
-                  <Text style={[styles.bottomNavLabel, active ? styles.bottomNavLabelActive : undefined]} numberOfLines={1}>
-                    {item.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : null}
-
         {/* Barre principale */}
         <View style={styles.mainNavRow}>
           {/* Parties */}
@@ -2694,6 +2561,23 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     marginTop: 8,
     color: theme.colors.mutedText,
     fontWeight: "600",
+  },
+  playersHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  addPlayerButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: theme.radius.md,
+  },
+  addPlayerButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 13,
   },
   playerListSection: {
     marginTop: 12,

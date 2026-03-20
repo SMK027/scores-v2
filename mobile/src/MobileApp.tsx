@@ -9,6 +9,7 @@ import { clearSession, loadSession, saveSession } from "./services/session";
 import { GameDetailScreen } from "./screens/GameDetailScreen";
 import { CompetitionDetailScreen } from "./screens/CompetitionDetailScreen";
 import { CreateSpaceScreen } from "./screens/CreateSpaceScreen";
+import { CreatePlayerScreen } from "./screens/CreatePlayerScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { SplashScreen } from "./screens/SplashScreen";
@@ -23,6 +24,7 @@ type Route =
   | { name: "login" }
   | { name: "spaces" }
   | { name: "create-space" }
+  | { name: "create-player"; space: Space }
   | { name: "profile" }
   | { name: "space"; space: Space }
   | { name: "game"; space: Space; gameId: number }
@@ -274,6 +276,16 @@ function MobileAppContent() {
           onOpenCompetition={(competitionId) =>
             setRoute({ name: "competition", space: route.space, competitionId })
           }
+          onOpenCreatePlayer={() => setRoute({ name: "create-player", space: route.space })}
+        />
+      ) : null}
+
+      {route.name === "create-player" && token ? (
+        <CreatePlayerScreen
+          token={token}
+          space={route.space}
+          onBack={() => setRoute({ name: "space", space: route.space })}
+          onCreated={() => setRoute({ name: "space", space: route.space })}
         />
       ) : null}
 
