@@ -13,6 +13,7 @@ use App\Models\IpBan;
 use App\Models\PasswordPolicy;
 use App\Models\Fail2banConfig;
 use App\Models\LeaderboardConfig;
+use App\Models\Player;
 use App\Config\Database;
 use App\Models\ActivityLog;
 use App\Models\SpaceMember;
@@ -25,12 +26,14 @@ class AdminController extends Controller
 {
     private User $userModel;
     private Space $spaceModel;
+    private Player $playerModel;
     private \PDO $pdo;
 
     public function __construct()
     {
         $this->userModel  = new User();
         $this->spaceModel = new Space();
+        $this->playerModel = new Player();
         $this->pdo = Database::getInstance()->getConnection();
     }
 
@@ -318,6 +321,123 @@ class AdminController extends Controller
             'status'     => $status,
             'sort'       => $sort,
         ]);
+    }
+
+    /**
+     * Liste des joueurs supprimés (soft delete) avec restauration possible.
+     */
+    public function deletedPlayers(): void
+    {
+        $this->checkAdmin();
+
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $perPage = 25;
+        $offset = ($page - 1) * $perPage;
+
+        $search = trim((string) ($_GET['q'] ?? ''));
+
+        $where = ['p.deleted_at IS NOT NULL'];
+        $params = [];
+
+        if ($search !== '') {
+            $where[] = '(p.name LIKE :q OR s.name LIKE :q OR u.username LIKE :q)';
+            $params['q'] = '%' . $search . '%';
+        }
+
+        $whereSql = 'WHERE ' . implode(' AND ', $where);
+
+        $countStmt = $this->pdo->prepare(
+            "SELECT COUNT(*)
+             FROM players p
+             INNER JOIN spaces s ON s.id = p.space_id
+             LEFT JOIN users u ON u.id = p.user_id
+             {$whereSql}"
+        );
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+
+        $listStmt = $this->pdo->prepare(
+            "SELECT p.id, p.name, p.space_id, p.user_id, p.deleted_at,
+                    s.name AS space_name,
+                    u.username AS linked_username
+             FROM players p
+             INNER JOIN spaces s ON s.id = p.space_id
+             LEFT JOIN users u ON u.id = p.user_id
+             {$whereSql}
+             ORDER BY p.deleted_at DESC
+             LIMIT :limit OFFSET :offset"
+        );
+        foreach ($params as $key => $value) {
+            $listStmt->bindValue(':' . $key, $value);
+        }
+        $listStmt->bindValue(':limit', $perPage, \PDO::PARAM_INT);
+        $listStmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+        $listStmt->execute();
+        $players = $listStmt->fetchAll();
+
+        $lastPage = max(1, (int) ceil($total / $perPage));
+
+        $this->render('admin/deleted_players', [
+            'title'      => 'Joueurs supprimés',
+            'activeMenu' => 'admin',
+            'players'    => $players,
+            'search'     => $search,
+            'pagination' => [
+                'page' => $page,
+                'lastPage' => $lastPage,
+                'total' => $total,
+                'perPage' => $perPage,
+            ],
+        ]);
+    }
+
+    /**
+     * Restaure un joueur supprimé (soft delete).
+     */
+    public function restoreDeletedPlayer(string $pid): void
+    {
+        $this->checkAdmin();
+        $this->validateCSRF();
+
+        $player = $this->playerModel->findDeletedById((int) $pid);
+        if (!$player) {
+            $this->setFlash('danger', 'Joueur supprimé introuvable.');
+            $this->redirect('/admin/players/deleted');
+            return;
+        }
+
+        $requestedBy = trim((string) ($_POST['requested_by'] ?? ''));
+        $requestNote = trim((string) ($_POST['request_note'] ?? ''));
+
+        $linkedUserId = (int) ($player['user_id'] ?? 0);
+        if ($linkedUserId > 0 && $this->playerModel->isUserLinkedInSpace((int) $player['space_id'], $linkedUserId)) {
+            $this->setFlash('danger', 'Restauration impossible: ce compte utilisateur est déjà lié à un autre joueur actif dans cet espace.');
+            $this->redirect('/admin/players/deleted');
+            return;
+        }
+
+        $restored = $this->playerModel->restore((int) $pid);
+        if (!$restored) {
+            $this->setFlash('warning', 'Aucune restauration effectuée.');
+            $this->redirect('/admin/players/deleted');
+            return;
+        }
+
+        ActivityLog::logAdmin(
+            'player.restore',
+            $this->getCurrentUserId(),
+            'player',
+            (int) $pid,
+            [
+                'player_name' => (string) $player['name'],
+                'space_id' => (int) $player['space_id'],
+                'requested_by' => $requestedBy !== '' ? $requestedBy : null,
+                'request_note' => $requestNote !== '' ? $requestNote : null,
+            ]
+        );
+
+        $this->setFlash('success', 'Le joueur a été restauré.');
+        $this->redirect('/admin/players/deleted');
     }
 
     /**

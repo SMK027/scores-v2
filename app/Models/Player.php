@@ -143,4 +143,38 @@ class Player extends Model
 
         return $stmt->rowCount() > 0;
     }
+
+    /**
+     * Récupère un joueur supprimé (soft delete).
+     */
+    public function findDeletedById(int $id): ?array
+    {
+        $stmt = $this->query(
+            "SELECT *
+             FROM {$this->table}
+             WHERE id = :id
+               AND deleted_at IS NOT NULL
+             LIMIT 1",
+            ['id' => $id]
+        );
+
+        $result = $stmt->fetch();
+        return $result ?: null;
+    }
+
+    /**
+     * Restaure un joueur supprimé.
+     */
+    public function restore(int $id): bool
+    {
+        $stmt = $this->query(
+            "UPDATE {$this->table}
+             SET deleted_at = NULL
+             WHERE id = :id
+               AND deleted_at IS NOT NULL",
+            ['id' => $id]
+        );
+
+        return $stmt->rowCount() > 0;
+    }
 }

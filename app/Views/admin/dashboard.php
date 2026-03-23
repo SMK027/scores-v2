@@ -26,6 +26,7 @@
 <div class="d-flex gap-1 mb-3 flex-wrap">
     <a href="/admin/users" class="btn btn-outline">👥 Gérer les utilisateurs</a>
     <a href="/admin/spaces" class="btn btn-outline">📦 Gérer les espaces</a>
+    <a href="/admin/players/deleted" class="btn btn-outline">♻️ Restaurer des joueurs</a>
     <a href="/admin/bans/users" class="btn btn-outline">🚫 Bannissements comptes</a>
     <a href="/admin/bans/ips" class="btn btn-outline">🌐 Bannissements IP</a>
     <?php if ($canAdminOnly): ?>
