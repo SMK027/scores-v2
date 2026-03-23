@@ -88,6 +88,21 @@ function formatRoundValue(value: number | null, winCondition: string): string {
   return String(value);
 }
 
+function formatDuration(seconds: number): string {
+  const safe = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(safe / 3600);
+  const m = Math.floor((safe % 3600) / 60);
+  const s = safe % 60;
+
+  if (h > 0) {
+    return `${h}h ${m}m ${s}s`;
+  }
+  if (m > 0) {
+    return `${m}m ${s}s`;
+  }
+  return `${s}s`;
+}
+
 function getCommentInitials(username?: string): string {
   const source = (username || "?").trim();
   return source.slice(0, 2).toUpperCase();
@@ -157,6 +172,21 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
   const winCondition = details?.game.win_condition ?? "highest_score";
 
   const canComment = details?.can_comment ?? false;
+  const totalDurationWithPauses = useMemo(() => {
+    if (!details) {
+      return 0;
+    }
+
+    const durations = details.round_durations ?? {};
+    const roundIds = details.rounds.map((round) => String(round.id));
+    const sumRaw = roundIds.reduce((acc, id) => acc + (durations[id]?.raw ?? 0), 0);
+
+    if (sumRaw > 0) {
+      return sumRaw;
+    }
+
+    return details.total_play_seconds ?? 0;
+  }, [details]);
 
   const handleSubmitComment = useCallback(async () => {
     const content = commentText.trim();
@@ -447,6 +477,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
         </View>
       </View>
       <Text style={styles.meta}>Condition de victoire : {winConditionLabel}</Text>
+      <Text style={styles.meta}>Durée totale (pauses incluses) : {formatDuration(totalDurationWithPauses)}</Text>
 
       <View style={styles.overviewCard}>
         <View style={styles.overviewItem}>
@@ -484,6 +515,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
           const statusMeta = getStatusMeta(round.status, theme);
           const roundScores = (details.round_scores?.[String(round.id)] || {}) as Record<string, unknown>;
           const isExpanded = expandedRoundIds.includes(round.id);
+          const roundDuration = details.round_durations?.[String(round.id)]?.raw ?? 0;
 
           return (
             <View key={round.id} style={styles.roundCard}>
@@ -496,6 +528,9 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
                   <Text style={[styles.statusText, { color: statusMeta.textColor }]}>{statusMeta.label}</Text>
                 </View>
               </Pressable>
+              <Text style={styles.roundDurationText}>
+                Durée (pauses incluses) : {formatDuration(roundDuration)}
+              </Text>
 
               {isExpanded && round.status !== "completed" ? (
                 <View style={styles.roundActions}>
@@ -872,6 +907,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   roundActions: {
     marginBottom: 8,
     gap: 8,
+  },
+  roundDurationText: {
+    color: theme.colors.mutedText,
+    fontSize: 12,
+    marginBottom: 8,
   },
   roundActionButton: {
     marginTop: 0,

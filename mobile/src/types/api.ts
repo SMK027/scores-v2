@@ -134,6 +134,8 @@ export type GameDetailsResponse = {
   players: GamePlayer[];
   rounds: Round[];
   round_scores: Record<string, Record<string, number>>;
+  round_durations?: Record<string, { raw: number; pause: number; play: number }>;
+  total_play_seconds?: number;
   comments: Comment[];
   can_comment: boolean;
 };
