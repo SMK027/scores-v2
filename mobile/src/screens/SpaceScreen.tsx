@@ -1068,7 +1068,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
           </Pressable>
         ) : (
           <Pressable style={styles.navButton} onPress={() => setCurrentView("menu")}>
-            <Text style={styles.navButtonText}>☰ Menu</Text>
+            <Text style={styles.navButtonText}>↩ Accueil espace</Text>
           </Pressable>
         )}
         <Text style={styles.title} numberOfLines={1}>
