@@ -129,6 +129,24 @@ class Player extends Model
     }
 
     /**
+     * Retourne le joueur actif lié à un utilisateur dans un espace.
+     */
+    public function findByUserInSpace(int $spaceId, int $userId): ?array
+    {
+        $stmt = $this->query(
+            "SELECT *
+             FROM {$this->table}
+             WHERE space_id = :space_id
+               AND user_id = :user_id
+               AND deleted_at IS NULL
+             LIMIT 1",
+            ['space_id' => $spaceId, 'user_id' => $userId]
+        );
+        $result = $stmt->fetch();
+        return $result ?: null;
+    }
+
+    /**
      * Soft delete d'un joueur.
      */
     public function softDelete(int $id): bool

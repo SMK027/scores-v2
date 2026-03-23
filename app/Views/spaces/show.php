@@ -32,6 +32,9 @@
             <a href="/spaces/<?= $currentSpace['id'] ?>/games/create" class="btn btn-primary">🎮 Nouvelle partie</a>
             <a href="/spaces/<?= $currentSpace['id'] ?>/players/create" class="btn btn-outline">👤 Ajouter un joueur</a>
             <a href="/spaces/<?= $currentSpace['id'] ?>/game-types/create" class="btn btn-outline">🃏 Nouveau type de jeu</a>
+            <?php if (!empty($linkedPlayer)): ?>
+                <a href="/spaces/<?= $currentSpace['id'] ?>/players/<?= $linkedPlayer['id'] ?>/card" class="btn btn-outline">🪪 Ma carte de membre</a>
+            <?php endif; ?>
         </div>
     </div>
 </div>

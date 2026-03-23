@@ -13,6 +13,7 @@ use App\Models\SpaceMember;
 use App\Models\SpaceInvite;
 use App\Models\SpaceInvitation;
 use App\Models\Competition;
+use App\Models\Player;
 use App\Models\User;
 
 /**
@@ -140,6 +141,9 @@ class SpaceController extends Controller
         $stmt = (new \App\Models\Game())->getRecentBySpace((int) $id, 5);
         $nextCompetition = $this->competitionModel->findNextBySpace((int) $id);
 
+        // Joueur lié à l'utilisateur connecté dans cet espace (pour la carte de membre)
+        $linkedPlayer = (new Player())->findByUserInSpace((int) $id, (int) $this->getCurrentUserId());
+
         $this->render('spaces/show', [
             'title'        => $space['name'],
             'currentSpace' => $space,
@@ -147,6 +151,7 @@ class SpaceController extends Controller
             'activeMenu'   => 'dashboard',
             'recentGames'  => $stmt,
             'nextCompetition' => $nextCompetition,
+            'linkedPlayer' => $linkedPlayer,
         ]);
     }
 
