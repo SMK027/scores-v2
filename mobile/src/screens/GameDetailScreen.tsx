@@ -109,6 +109,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
   const [editingRoundId, setEditingRoundId] = useState<number | null>(null);
   const [scores, setScores] = useState<Record<number, string>>({});
   const [winners, setWinners] = useState<Record<number, boolean>>({});
+  const [expandedRoundIds, setExpandedRoundIds] = useState<number[]>([]);
 
   const [commentText, setCommentText] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -138,6 +139,15 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
     };
     void run();
   }, [loadDetails]);
+
+  useEffect(() => {
+    if (!details) {
+      return;
+    }
+
+    const validIds = new Set(details.rounds.map((round) => round.id));
+    setExpandedRoundIds((current) => current.filter((id) => validIds.has(id)));
+  }, [details]);
 
   const playerIds = useMemo(
     () => details?.players.map((player) => player.player_id) ?? [],
@@ -224,6 +234,14 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
     });
     setScores(initialScores);
     setWinners({});
+  };
+
+  const toggleRoundExpanded = (roundId: number) => {
+    setExpandedRoundIds((current) =>
+      current.includes(roundId)
+        ? current.filter((id) => id !== roundId)
+        : [...current, roundId]
+    );
   };
 
   const startRoundAndScores = async () => {
@@ -465,17 +483,21 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
         {details.rounds.map((round) => {
           const statusMeta = getStatusMeta(round.status, theme);
           const roundScores = (details.round_scores?.[String(round.id)] || {}) as Record<string, unknown>;
+          const isExpanded = expandedRoundIds.includes(round.id);
 
           return (
             <View key={round.id} style={styles.roundCard}>
-              <View style={styles.roundHeader}>
-                <Text style={styles.roundTitle}>Manche #{round.round_number}</Text>
+              <Pressable style={styles.roundHeader} onPress={() => toggleRoundExpanded(round.id)}>
+                <View style={styles.roundHeaderMain}>
+                  <Text style={styles.roundTitle}>Manche #{round.round_number}</Text>
+                  <Text style={styles.roundToggleIcon}>{isExpanded ? "▲" : "▼"}</Text>
+                </View>
                 <View style={[styles.statusBadge, { backgroundColor: statusMeta.backgroundColor }]}>
                   <Text style={[styles.statusText, { color: statusMeta.textColor }]}>{statusMeta.label}</Text>
                 </View>
-              </View>
+              </Pressable>
 
-              {round.status !== "completed" ? (
+              {isExpanded && round.status !== "completed" ? (
                 <View style={styles.roundActions}>
                   <Pressable
                     style={[
@@ -511,7 +533,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
                 </View>
               ) : null}
 
-              {details.players.map((player) => {
+              {isExpanded ? details.players.map((player) => {
                 const scoreValue = extractScoreValue(roundScores[String(player.player_id)]);
                 return (
                   <View style={styles.row} key={`${round.id}-${player.id}`}>
@@ -519,7 +541,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
                     <Text style={styles.rowValue}>{formatRoundValue(scoreValue, winCondition)}</Text>
                   </View>
                 );
-              })}
+              }) : null}
             </View>
           );
         })}
@@ -836,6 +858,16 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 8,
+  },
+  roundHeaderMain: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  roundToggleIcon: {
+    color: theme.colors.mutedText,
+    fontSize: 11,
+    fontWeight: "700",
   },
   roundActions: {
     marginBottom: 8,
