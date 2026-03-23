@@ -548,6 +548,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
         detailsList.forEach((details) => {
           details.players.forEach((gamePlayer) => {
             const existing = baseByPlayerId.get(gamePlayer.player_id);
+            const isWinner = Number(gamePlayer.is_winner ?? 0) === 1;
             if (!existing) {
               baseByPlayerId.set(gamePlayer.player_id, {
                 playerId: gamePlayer.player_id,
@@ -555,14 +556,14 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                 roundsPlayed: 0,
                 roundsWon: 0,
                 gamesPlayed: 1,
-                wins: gamePlayer.is_winner ? 1 : 0,
+                wins: isWinner ? 1 : 0,
                 winRate: 0,
               });
               return;
             }
 
             existing.gamesPlayed += 1;
-            if (gamePlayer.is_winner) {
+            if (isWinner) {
               existing.wins += 1;
             }
           });
@@ -582,7 +583,12 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                 value = raw;
               } else if (raw && typeof raw === "object" && "score" in (raw as object)) {
                 const s = (raw as { score?: unknown }).score;
-                value = typeof s === "number" ? s : (typeof s === "string" ? Number(s) || null : null);
+                if (typeof s === "number") {
+                  value = Number.isFinite(s) ? s : null;
+                } else if (typeof s === "string") {
+                  const parsed = Number(s);
+                  value = Number.isFinite(parsed) ? parsed : null;
+                }
               }
               if (value !== null) {
                 roundEntries.push({ playerId, value });
