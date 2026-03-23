@@ -1062,25 +1062,29 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       ]}
     >
       <View style={styles.header}>
-        {currentView === "menu" ? (
-          <Pressable style={styles.navButton} onPress={onBack}>
-            <Text style={styles.navButtonText}>← Retour</Text>
-          </Pressable>
-        ) : (
-          <Pressable style={styles.navButton} onPress={() => setCurrentView("menu")}>
-            <Text style={styles.navButtonText}>↩ Accueil espace</Text>
-          </Pressable>
-        )}
-        <Text style={styles.title} numberOfLines={1} pointerEvents="none">
+        <View style={styles.headerSide}>
+          {currentView === "menu" ? (
+            <Pressable style={styles.navButton} onPress={onBack}>
+              <Text style={styles.navButtonText}>← Retour</Text>
+            </Pressable>
+          ) : (
+            <Pressable style={styles.navButton} onPress={() => setCurrentView("menu")}>
+              <Text style={styles.navButtonText}>↩ Accueil espace</Text>
+            </Pressable>
+          )}
+        </View>
+        <Text style={styles.title} numberOfLines={1}>
           {space.name}
         </Text>
-        <Pressable style={styles.profileButton} onPress={onOpenProfile}>
-          {avatarUri ? (
-            <Image source={{ uri: avatarUri }} style={styles.profileAvatar} />
-          ) : (
-            <Text style={styles.profileAvatarText}>{getInitials(user)}</Text>
-          )}
-        </Pressable>
+        <View style={[styles.headerSide, styles.headerSideRight]}>
+          <Pressable style={styles.profileButton} onPress={onOpenProfile}>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.profileAvatar} />
+            ) : (
+              <Text style={styles.profileAvatarText}>{getInitials(user)}</Text>
+            )}
+          </Pressable>
+        </View>
       </View>
 
       {currentView !== "menu" ? (
@@ -2021,12 +2025,16 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     padding: 14,
   },
   header: {
-    position: "relative",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 8,
-    minHeight: 34,
+  },
+  headerSide: {
+    width: 132,
+  },
+  headerSideRight: {
+    alignItems: "flex-end",
   },
   navButton: {
     borderWidth: 1,
@@ -2042,14 +2050,12 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 12,
   },
   title: {
-    position: "absolute",
-    left: 0,
-    right: 0,
+    flex: 1,
     textAlign: "center",
     fontSize: 22,
     fontWeight: "800",
     color: theme.colors.text,
-    paddingHorizontal: 72,
+    paddingHorizontal: 8,
   },
   secondaryHeaderRow: {
     alignItems: "center",
