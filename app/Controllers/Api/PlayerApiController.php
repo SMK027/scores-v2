@@ -40,6 +40,10 @@ class PlayerApiController extends ApiController
         $this->requireAuth();
         $this->checkSpaceAccess((int) $id);
 
+        if (!$this->model->isActiveInSpace((int) $pid, (int) $id)) {
+            $this->error('Joueur introuvable.', 404);
+        }
+
         $player = $this->model->findWithStats((int) $pid);
         if (!$player || (int) $player['space_id'] !== (int) $id) {
             $this->error('Joueur introuvable.', 404);
@@ -90,8 +94,8 @@ class PlayerApiController extends ApiController
         $this->requireAuth();
         $this->checkSpaceAccess((int) $id, ['admin', 'manager', 'member']);
 
-        $player = $this->model->find((int) $pid);
-        if (!$player || (int) $player['space_id'] !== (int) $id) {
+        $player = $this->model->findActiveByIdInSpace((int) $pid, (int) $id);
+        if (!$player) {
             $this->error('Joueur introuvable.', 404);
         }
 
@@ -126,13 +130,13 @@ class PlayerApiController extends ApiController
         $this->requireAuth();
         $this->checkSpaceAccess((int) $id, ['admin', 'manager']);
 
-        $player = $this->model->find((int) $pid);
-        if (!$player || (int) $player['space_id'] !== (int) $id) {
+        $player = $this->model->findActiveByIdInSpace((int) $pid, (int) $id);
+        if (!$player) {
             $this->error('Joueur introuvable.', 404);
         }
 
         ActivityLog::logSpace((int) $id, 'player.delete', $this->userId, 'player', (int) $pid);
-        $this->model->delete((int) $pid);
+        $this->model->softDelete((int) $pid);
 
         $this->json(['success' => true, 'message' => 'Joueur supprimé.']);
     }

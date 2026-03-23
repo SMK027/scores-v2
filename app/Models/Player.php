@@ -23,6 +23,7 @@ class Player extends Model
              FROM {$this->table} p
              LEFT JOIN users u ON p.user_id = u.id
              WHERE p.space_id = :space_id
+               AND p.deleted_at IS NULL
              ORDER BY p.name ASC",
             ['space_id' => $spaceId]
         );
@@ -35,7 +36,7 @@ class Player extends Model
      */
     public function isUserLinkedInSpace(int $spaceId, int $userId, ?int $excludePlayerId = null): bool
     {
-        $sql = "SELECT COUNT(*) FROM {$this->table} WHERE space_id = :space_id AND user_id = :user_id";
+        $sql = "SELECT COUNT(*) FROM {$this->table} WHERE space_id = :space_id AND user_id = :user_id AND deleted_at IS NULL";
         $params = ['space_id' => $spaceId, 'user_id' => $userId];
 
         if ($excludePlayerId !== null) {
@@ -53,7 +54,7 @@ class Player extends Model
      */
     public function getLinkedUserIds(int $spaceId, ?int $excludePlayerId = null): array
     {
-        $sql = "SELECT user_id FROM {$this->table} WHERE space_id = :space_id AND user_id IS NOT NULL";
+        $sql = "SELECT user_id FROM {$this->table} WHERE space_id = :space_id AND user_id IS NOT NULL AND deleted_at IS NULL";
         $params = ['space_id' => $spaceId];
 
         if ($excludePlayerId !== null) {
@@ -82,5 +83,64 @@ class Player extends Model
         );
         $result = $stmt->fetch();
         return $result ?: null;
+    }
+
+    /**
+     * Vérifie qu'un joueur actif appartient à un espace.
+     */
+    public function isActiveInSpace(int $playerId, int $spaceId): bool
+    {
+        $stmt = $this->query(
+            "SELECT 1
+             FROM {$this->table}
+             WHERE id = :id
+               AND space_id = :space_id
+               AND deleted_at IS NULL
+             LIMIT 1",
+            [
+                'id' => $playerId,
+                'space_id' => $spaceId,
+            ]
+        );
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * Vérifie qu'un joueur actif existe dans un espace.
+     */
+    public function findActiveByIdInSpace(int $playerId, int $spaceId): ?array
+    {
+        $stmt = $this->query(
+            "SELECT *
+             FROM {$this->table}
+             WHERE id = :id
+               AND space_id = :space_id
+               AND deleted_at IS NULL
+             LIMIT 1",
+            [
+                'id' => $playerId,
+                'space_id' => $spaceId,
+            ]
+        );
+
+        $result = $stmt->fetch();
+        return $result ?: null;
+    }
+
+    /**
+     * Soft delete d'un joueur.
+     */
+    public function softDelete(int $id): bool
+    {
+        $stmt = $this->query(
+            "UPDATE {$this->table}
+             SET deleted_at = NOW()
+             WHERE id = :id
+               AND deleted_at IS NULL",
+            ['id' => $id]
+        );
+
+        return $stmt->rowCount() > 0;
     }
 }

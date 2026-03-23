@@ -197,6 +197,7 @@ class Competition extends Model
              INNER JOIN players p ON p.id = cp.player_id
              LEFT JOIN users u ON u.id = p.user_id
              WHERE cp.competition_id = :cid
+                    AND p.deleted_at IS NULL
              ORDER BY p.name ASC"
         );
         $stmt->execute(['cid' => $competitionId]);

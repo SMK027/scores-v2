@@ -210,9 +210,9 @@ class PlayerController extends Controller
     public function editForm(string $id, string $pid): void
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager']);
-        $player = $this->playerModel->find((int) $pid);
+        $player = $this->playerModel->findActiveByIdInSpace((int) $pid, (int) $id);
 
-        if (!$player || $player['space_id'] != $id) {
+        if (!$player) {
             $this->setFlash('danger', 'Joueur introuvable.');
             $this->redirect("/spaces/{$id}/players");
         }
@@ -238,6 +238,13 @@ class PlayerController extends Controller
     {
         $ctx = $this->checkAccess($id, ['admin', 'manager']);
         $this->validateCSRF();
+
+        $player = $this->playerModel->findActiveByIdInSpace((int) $pid, (int) $id);
+        if (!$player) {
+            $this->setFlash('danger', 'Joueur introuvable.');
+            $this->redirect("/spaces/{$id}/players");
+            return;
+        }
 
         $data = $this->getPostData(['name', 'user_id']);
 
@@ -275,9 +282,16 @@ class PlayerController extends Controller
         $ctx = $this->checkAccess($id, ['admin', 'manager']);
         $this->validateCSRF();
 
+        $player = $this->playerModel->findActiveByIdInSpace((int) $pid, (int) $id);
+        if (!$player) {
+            $this->setFlash('danger', 'Joueur introuvable.');
+            $this->redirect("/spaces/{$id}/players");
+            return;
+        }
+
         ActivityLog::logSpace((int) $id, 'player.delete', $this->getCurrentUserId(), 'player', (int) $pid);
 
-        $this->playerModel->delete((int) $pid);
+        $this->playerModel->softDelete((int) $pid);
         $this->setFlash('success', 'Joueur supprimé.');
         $this->redirect("/spaces/{$id}/players");
     }

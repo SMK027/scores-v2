@@ -71,7 +71,9 @@ class SearchController extends Controller
         $stmt = $this->pdo->prepare("
             SELECT id, name, 'player' AS type, NULL AS extra
             FROM players
-            WHERE space_id = :sid AND name LIKE :q
+            WHERE space_id = :sid
+              AND deleted_at IS NULL
+              AND name LIKE :q
             ORDER BY name ASC
             LIMIT 20
         ");

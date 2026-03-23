@@ -25,7 +25,7 @@ class GamePlayer extends Model
         }
 
         $gameStmt = $this->query(
-            "SELECT competition_id FROM games WHERE id = :game_id LIMIT 1",
+            "SELECT competition_id, space_id FROM games WHERE id = :game_id LIMIT 1",
             ['game_id' => $gameId]
         );
         $game = $gameStmt->fetch();
@@ -34,6 +34,7 @@ class GamePlayer extends Model
         }
 
         $isCompetitionGame = !empty($game['competition_id']);
+        $spaceId = (int) ($game['space_id'] ?? 0);
 
         $normalizedIds = array_values(array_unique(array_map('intval', $playerIds)));
         if (empty($normalizedIds)) {
@@ -44,10 +45,16 @@ class GamePlayer extends Model
         $stmt = $this->db->prepare(
             "SELECT p.id, p.name, p.user_id
              FROM players p
-             WHERE p.id IN ({$placeholders})"
+             WHERE p.space_id = ?
+               AND p.deleted_at IS NULL
+               AND p.id IN ({$placeholders})"
         );
-        $stmt->execute($normalizedIds);
+        $stmt->execute(array_merge([$spaceId], $normalizedIds));
         $players = $stmt->fetchAll();
+
+        if (count($players) !== count($normalizedIds)) {
+            throw new \DomainException('Un ou plusieurs joueurs sont indisponibles pour cette partie.');
+        }
 
         $userModel = new User();
         $blockedGameParticipation = [];

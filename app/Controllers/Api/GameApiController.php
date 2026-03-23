@@ -170,7 +170,11 @@ class GameApiController extends ApiController
         $userModel = new User();
         foreach ($playerIds as $playerId) {
             $player = $this->playerModel->find((int) $playerId);
-            if (!$player || (int) $player['space_id'] !== (int) $id) {
+            if (
+                !$player
+                || (int) $player['space_id'] !== (int) $id
+                || !empty($player['deleted_at'])
+            ) {
                 $this->error('Un ou plusieurs joueurs sont invalides pour cet espace.');
             }
 

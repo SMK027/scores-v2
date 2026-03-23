@@ -52,6 +52,7 @@ class CompetitionSessionController extends Controller
             FROM players p
             WHERE p.space_id = :space_id
               AND p.user_id IS NOT NULL
+              AND p.deleted_at IS NULL
         ");
         $stmt->execute(['space_id' => $spaceId]);
         $rows = $stmt->fetchAll();
@@ -547,6 +548,7 @@ class CompetitionSessionController extends Controller
             SELECT p.id, p.name, p.user_id
             FROM players p
             WHERE p.space_id = ?
+            AND p.deleted_at IS NULL
               AND p.id IN ({$playerPlaceholders})
         ";
         $playerCheckStmt = $this->pdo->prepare($playerCheckSql);
