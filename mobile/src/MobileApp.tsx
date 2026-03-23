@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { AppState, SafeAreaView, StyleSheet, View, ActivityIndicator, Platform } from "react-native";
+import { AppState, StyleSheet, View, ActivityIndicator, Platform } from "react-native";
 import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
 import { StatusBar } from "expo-status-bar";
 import * as NavigationBar from "expo-navigation-bar";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { refreshAuthToken, registerDevicePushToken, unregisterDevicePushToken } from "./services/api";
 import { registerForPushNotificationsAsync } from "./services/pushNotifications";
 import { clearSession, loadSession, saveSession } from "./services/session";
@@ -32,14 +34,20 @@ type Route =
   | { name: "game"; space: Space; gameId: number }
   | { name: "competition"; space: Space; competitionId: number };
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+const isExpoGo =
+  Constants.executionEnvironment === "storeClient" ||
+  Constants.appOwnership === "expo";
+
+if (!isExpoGo) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 function MobileAppContent() {
   const { theme, preference, resolvedMode, setPreference } = useAppTheme();
@@ -77,7 +85,6 @@ function MobileAppContent() {
       }
 
       try {
-        await NavigationBar.setBehaviorAsync("overlay-swipe");
         await NavigationBar.setVisibilityAsync("hidden");
       } catch {
         // Ignore les erreurs silencieusement selon le device.
@@ -152,6 +159,10 @@ function MobileAppContent() {
   }, [token]);
 
   useEffect(() => {
+    if (isExpoGo) {
+      return;
+    }
+
     const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const notificationType = response.notification.request.content.data?.type;
       if (notificationType === "space_invitation") {

@@ -77,6 +77,7 @@ export function LoginScreen({ onBack, onLoginSuccess }: Props) {
           keyboardType="email-address"
           autoCapitalize="none"
           placeholder="Email"
+          placeholderTextColor={theme.colors.mutedText}
           style={styles.input}
         />
 
@@ -87,6 +88,7 @@ export function LoginScreen({ onBack, onLoginSuccess }: Props) {
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
             placeholder="Mot de passe"
+            placeholderTextColor={theme.colors.mutedText}
             style={[styles.input, styles.passwordInput]}
           />
           <Pressable style={styles.toggleButton} onPress={() => setShowPassword((current) => !current)}>
@@ -189,6 +191,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     marginBottom: 10,
+    color: theme.colors.text,
   },
   passwordRow: {
     flexDirection: "row",

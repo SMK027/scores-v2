@@ -281,6 +281,7 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Rechercher un espace..."
+          placeholderTextColor={theme.colors.mutedText}
           style={styles.searchInput}
           autoCorrect={false}
         />
@@ -477,6 +478,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderRadius: theme.radius.md,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    color: theme.colors.text,
   },
   controlsFooter: {
     marginTop: 8,

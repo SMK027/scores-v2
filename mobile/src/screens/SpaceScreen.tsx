@@ -2374,6 +2374,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderRadius: theme.radius.md,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    color: theme.colors.text,
   },
   notes: {
     minHeight: 80,
