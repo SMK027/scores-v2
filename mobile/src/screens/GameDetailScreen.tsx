@@ -172,20 +172,31 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
   const winCondition = details?.game.win_condition ?? "highest_score";
 
   const canComment = details?.can_comment ?? false;
-  const totalDurationWithPauses = useMemo(() => {
+  const gameDurations = useMemo(() => {
     if (!details) {
-      return 0;
+      return { play: 0, pause: 0, total: 0 };
     }
 
     const durations = details.round_durations ?? {};
     const roundIds = details.rounds.map((round) => String(round.id));
     const sumRaw = roundIds.reduce((acc, id) => acc + (durations[id]?.raw ?? 0), 0);
+    const sumPause = roundIds.reduce((acc, id) => acc + (durations[id]?.pause ?? 0), 0);
+    const sumPlay = roundIds.reduce((acc, id) => acc + (durations[id]?.play ?? 0), 0);
 
     if (sumRaw > 0) {
-      return sumRaw;
+      return {
+        play: sumPlay,
+        pause: sumPause,
+        total: sumRaw,
+      };
     }
 
-    return details.total_play_seconds ?? 0;
+    const fallbackPlay = details.total_play_seconds ?? 0;
+    return {
+      play: fallbackPlay,
+      pause: 0,
+      total: fallbackPlay,
+    };
   }, [details]);
 
   const handleSubmitComment = useCallback(async () => {
@@ -477,7 +488,9 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
         </View>
       </View>
       <Text style={styles.meta}>Condition de victoire : {winConditionLabel}</Text>
-      <Text style={styles.meta}>Durée totale (pauses incluses) : {formatDuration(totalDurationWithPauses)}</Text>
+      <Text style={styles.meta}>Durée effective de jeu : {formatDuration(gameDurations.play)}</Text>
+      <Text style={styles.meta}>Durée de pause : {formatDuration(gameDurations.pause)}</Text>
+      <Text style={styles.meta}>Durée totale (jeu + pauses) : {formatDuration(gameDurations.total)}</Text>
 
       <View style={styles.overviewCard}>
         <View style={styles.overviewItem}>
@@ -515,7 +528,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
           const statusMeta = getStatusMeta(round.status, theme);
           const roundScores = (details.round_scores?.[String(round.id)] || {}) as Record<string, unknown>;
           const isExpanded = expandedRoundIds.includes(round.id);
-          const roundDuration = details.round_durations?.[String(round.id)]?.raw ?? 0;
+          const roundDuration = details.round_durations?.[String(round.id)] ?? { raw: 0, pause: 0, play: 0 };
 
           return (
             <View key={round.id} style={styles.roundCard}>
@@ -528,9 +541,11 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
                   <Text style={[styles.statusText, { color: statusMeta.textColor }]}>{statusMeta.label}</Text>
                 </View>
               </Pressable>
-              <Text style={styles.roundDurationText}>
-                Durée (pauses incluses) : {formatDuration(roundDuration)}
-              </Text>
+              <View style={styles.roundDurationBlock}>
+                <Text style={styles.roundDurationText}>Jeu effectif : {formatDuration(roundDuration.play)}</Text>
+                <Text style={styles.roundDurationText}>Pause : {formatDuration(roundDuration.pause)}</Text>
+                <Text style={styles.roundDurationText}>Total : {formatDuration(roundDuration.raw)}</Text>
+              </View>
 
               {isExpanded && round.status !== "completed" ? (
                 <View style={styles.roundActions}>
@@ -911,7 +926,10 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   roundDurationText: {
     color: theme.colors.mutedText,
     fontSize: 12,
+  },
+  roundDurationBlock: {
     marginBottom: 8,
+    gap: 2,
   },
   roundActionButton: {
     marginTop: 0,
