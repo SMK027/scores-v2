@@ -459,6 +459,8 @@ if (
     participantCardInput.addEventListener('input', () => {
         const query = participantCardInput.value.trim().toLowerCase();
         participantCardHidden.value = '';
+        participantCardReferenceInput.value = '';
+        hideParticipantCardReferenceOptions();
         const filtered = query === ''
             ? participantCards
             : participantCards.filter((card) =>
@@ -470,9 +472,12 @@ if (
 
     participantCardReferenceInput.addEventListener('focus', () => {
         const playerId = parseInt(participantCardHidden.value || '0', 10);
-        const source = playerId > 0
-            ? participantCards.filter((card) => card.player_id === playerId)
-            : participantCards;
+        if (playerId <= 0) {
+            participantCardReferenceOptions.innerHTML = '<div style="padding:0.65rem;color:var(--gray);">Sélectionnez d\'abord un compétiteur.</div>';
+            participantCardReferenceOptions.style.display = 'block';
+            return;
+        }
+        const source = participantCards.filter((card) => card.player_id === playerId);
         renderParticipantCardReferenceOptions(source);
     });
 
@@ -481,7 +486,7 @@ if (
         const playerId = parseInt(participantCardHidden.value || '0', 10);
         const source = playerId > 0
             ? participantCards.filter((card) => card.player_id === playerId)
-            : participantCards;
+            : [];
         const filtered = query === ''
             ? source
             : source.filter((card) => card.reference.toUpperCase().includes(query));
@@ -497,6 +502,18 @@ if (
         if (!participantCardReferenceInput.value.trim()) {
             event.preventDefault();
             alert('Veuillez sélectionner une référence de carte.');
+            return;
+        }
+
+        const selectedPlayerId = parseInt(participantCardHidden.value || '0', 10);
+        const enteredReference = participantCardReferenceInput.value.trim().toUpperCase();
+        const associationOk = participantCards.some((card) =>
+            card.player_id === selectedPlayerId && card.reference.toUpperCase() === enteredReference
+        );
+
+        if (!associationOk) {
+            event.preventDefault();
+            alert('Le numéro de carte ne correspond pas au compétiteur sélectionné.');
         }
     });
 }

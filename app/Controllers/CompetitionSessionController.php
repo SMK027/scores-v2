@@ -447,9 +447,15 @@ class CompetitionSessionController extends Controller
         }
 
         $cardModel = new MemberCard();
-        $card = $cardModel->findByPlayerAndSpace($playerId, (int) $data['space_id']);
-        if (!$card) {
-            $this->setFlash('danger', 'Aucune carte de membre trouvée pour ce compétiteur.');
+        $card = $cardModel->findByReference($reference);
+        if (!$card || (int) ($card['space_id'] ?? 0) !== (int) $data['space_id']) {
+            $this->setFlash('danger', 'Aucune carte valide trouvée avec cette référence dans cet espace.');
+            $this->redirect('/competition/dashboard#member-card-verifier');
+            return;
+        }
+
+        if ((int) ($card['player_id'] ?? 0) !== $playerId) {
+            $this->setFlash('danger', 'Association invalide : ce numéro de carte n\'appartient pas au compétiteur sélectionné.');
             $this->redirect('/competition/dashboard#member-card-verifier');
             return;
         }
@@ -463,12 +469,6 @@ class CompetitionSessionController extends Controller
 
         if ((int) $card['is_active'] !== 1) {
             $this->setFlash('danger', 'Carte invalide : cette carte est désactivée.');
-            $this->redirect('/competition/dashboard#member-card-verifier');
-            return;
-        }
-
-        if (strcasecmp((string) $card['reference'], $reference) !== 0) {
-            $this->setFlash('danger', 'Référence non conforme : la carte présentée ne correspond pas au compétiteur sélectionné.');
             $this->redirect('/competition/dashboard#member-card-verifier');
             return;
         }
