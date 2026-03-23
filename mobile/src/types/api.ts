@@ -223,3 +223,20 @@ export type CompetitionDetailsResponse = {
   participants: CompetitionParticipant[];
   stats: CompetitionStats;
 };
+
+export type MemberCard = {
+  id: number;
+  player_id: number;
+  space_id: number;
+  reference: string;
+  signature: string;
+  is_active: 0 | 1;
+  created_at: string;
+  updated_at: string;
+  // Champs joints depuis players / spaces / space_members
+  player_name?: string;
+  player_joined_at?: string;
+  space_name?: string;
+  space_role?: string;
+  signature_valid?: boolean;
+};

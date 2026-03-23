@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   ActivityIndicator,
   FlatList,
   Image,
@@ -34,10 +35,15 @@ import {
   updateGameType,
   updateMemberRole,
   updatePlayer,
+  deleteMemberCard,
+  fetchMemberCard,
+  generateMemberCard,
+  regenerateMemberCard,
+  toggleMemberCard,
 } from "../services/api";
 import { useAppTheme } from "../context/ThemeContext";
 import type { AppTheme } from "../styles";
-import type { Competition, Game, GameType, LeaderboardEntry, Player, SearchResults, Space, SpaceMember, User } from "../types/api";
+import type { Competition, Game, GameType, LeaderboardEntry, MemberCard, Player, SearchResults, Space, SpaceMember, User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
 import { getRoleLabel } from "../utils/roles";
 
@@ -63,7 +69,8 @@ type SpaceView =
   | "members"
   | "search"
   | "leaderboard"
-  | "competitions";
+  | "competitions"
+  | "card";
 
 const MEMBER_ROLES: SpaceMember["role"][] = ["admin", "manager", "member", "guest"];
 
@@ -163,6 +170,8 @@ function getViewMeta(view: Exclude<SpaceView, "menu">): { title: string; hint: s
       return { title: "Leaderboard", hint: "Comparez les performances globales." };
     case "competitions":
       return { title: "Compétitions", hint: "Consultez et suivez les compétitions en cours." };
+    case "card":
+      return { title: "Ma carte de membre", hint: "Votre carte de membre numérique pour cet espace." };
     default:
       return { title: "Section", hint: "" };
   }
@@ -255,6 +264,11 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const [competitionsLoading, setCompetitionsLoading] = useState(false);
   const [competitionsError, setCompetitionsError] = useState<string | null>(null);
   const [competitionsLoaded, setCompetitionsLoaded] = useState(false);
+
+  const [memberCard, setMemberCard] = useState<MemberCard | null | undefined>(undefined);
+  const [cardLoading, setCardLoading] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
+  const [cardSaving, setCardSaving] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     visible: boolean;
     title: string;
@@ -1039,6 +1053,109 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const isAdmin = space.user_role === "admin";
   const canManageMembers = isAdmin || space.user_role === "manager";
 
+  // Joueur lié à l'utilisateur connecté dans cet espace
+  const linkedPlayer = players.find((p) => p.user_id === user.id) ?? null;
+
+  const loadCard = useCallback(async () => {
+    if (!linkedPlayer) return;
+    try {
+      setCardError(null);
+      setCardLoading(true);
+      const data = await fetchMemberCard(token, space.id, linkedPlayer.id);
+      setMemberCard(data);
+    } catch (err) {
+      setCardError(err instanceof ApiError ? err.message : "Impossible de charger la carte.");
+    } finally {
+      setCardLoading(false);
+    }
+  }, [linkedPlayer, space.id, token]);
+
+  useEffect(() => {
+    if (currentView === "card" && memberCard === undefined && !cardLoading) {
+      void loadCard();
+    }
+  }, [cardLoading, currentView, loadCard, memberCard]);
+
+  const handleGenerateCard = useCallback(async () => {
+    if (!linkedPlayer) return;
+    try {
+      setCardError(null);
+      setCardSaving(true);
+      const data = await generateMemberCard(token, space.id, linkedPlayer.id);
+      setMemberCard(data);
+    } catch (err) {
+      setCardError(err instanceof ApiError ? err.message : "Impossible de générer la carte.");
+    } finally {
+      setCardSaving(false);
+    }
+  }, [linkedPlayer, space.id, token]);
+
+  const handleToggleCard = useCallback(async (active: boolean) => {
+    if (!linkedPlayer || !memberCard) return;
+    try {
+      setCardError(null);
+      setCardSaving(true);
+      const data = await toggleMemberCard(token, space.id, linkedPlayer.id, active);
+      setMemberCard(data);
+    } catch (err) {
+      setCardError(err instanceof ApiError ? err.message : "Impossible de modifier la carte.");
+    } finally {
+      setCardSaving(false);
+    }
+  }, [linkedPlayer, memberCard, space.id, token]);
+
+  const handleRegenerateCard = useCallback(async () => {
+    if (!linkedPlayer) return;
+    Alert.alert(
+      "Régénérer la carte",
+      "La référence et la signature seront recréées. L'ancienne carte sera invalide. Continuer ?",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Régénérer", style: "destructive",
+          onPress: async () => {
+            try {
+              setCardError(null);
+              setCardSaving(true);
+              const data = await regenerateMemberCard(token, space.id, linkedPlayer.id);
+              setMemberCard(data);
+            } catch (err) {
+              setCardError(err instanceof ApiError ? err.message : "Impossible de régénérer la carte.");
+            } finally {
+              setCardSaving(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [linkedPlayer, space.id, token]);
+
+  const handleDeleteCard = useCallback(async () => {
+    if (!linkedPlayer) return;
+    Alert.alert(
+      "Supprimer la carte",
+      "La carte de membre sera définitivement supprimée. Continuer ?",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer", style: "destructive",
+          onPress: async () => {
+            try {
+              setCardError(null);
+              setCardSaving(true);
+              await deleteMemberCard(token, space.id, linkedPlayer.id);
+              setMemberCard(null);
+            } catch (err) {
+              setCardError(err instanceof ApiError ? err.message : "Impossible de supprimer la carte.");
+            } finally {
+              setCardSaving(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [linkedPlayer, space.id, token]);
+
   const viewGroupItems: Array<{ key: Exclude<SpaceView, "menu">; label: string; icon: string }> = [
     { key: "leaderboard", label: "Classement", icon: "🏆" },
     { key: "stats", label: "Stats", icon: "📊" },
@@ -1049,6 +1166,10 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     { key: "players", label: "Joueurs", icon: "👥" },
     { key: "gameTypes", label: "Types", icon: "🧩" },
   ];
+
+  if (linkedPlayer) {
+    viewGroupItems.push({ key: "card", label: "Ma carte", icon: "🪪" });
+  }
 
   if (canManageMembers) {
     manageGroupItems.push({ key: "members", label: "Membres", icon: "🤝" });
@@ -1574,6 +1695,109 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
               );
             })
           )}
+        </ScrollView>
+      ) : null}
+
+      {currentView === "card" ? (
+        <ScrollView contentContainerStyle={styles.formCard}>
+          <Text style={styles.sectionTitle}>Ma carte de membre</Text>
+          {cardError ? <Text style={styles.error}>{cardError}</Text> : null}
+          {cardLoading ? (
+            <ActivityIndicator style={{ marginTop: 24 }} />
+          ) : memberCard === null ? (
+            <View style={styles.cardEmptyContainer}>
+              <Text style={styles.empty}>
+                Vous n'avez pas encore de carte de membre pour cet espace.
+              </Text>
+              <Pressable
+                style={[styles.cardActionButton, cardSaving && styles.buttonDisabled]}
+                disabled={cardSaving}
+                onPress={() => { void handleGenerateCard(); }}
+              >
+                <Text style={styles.cardActionButtonText}>
+                  {cardSaving ? "Génération…" : "🪪 Générer ma carte"}
+                </Text>
+              </Pressable>
+            </View>
+          ) : memberCard ? (
+            <View>
+              {/* Widget carte visuel */}
+              <View style={[styles.cardWidget, memberCard.is_active ? styles.cardWidgetActive : styles.cardWidgetInactive]}>
+                <View style={styles.cardWidgetHeader}>
+                  <Text style={styles.cardWidgetSpaceName}>{memberCard.space_name ?? space.name}</Text>
+                  <View style={[styles.cardStatusBadge, memberCard.is_active ? styles.badgeActive : styles.badgeInactive]}>
+                    <Text style={styles.cardStatusText}>{memberCard.is_active ? "Active" : "Désactivée"}</Text>
+                  </View>
+                </View>
+                <Text style={styles.cardPlayerName}>{memberCard.player_name ?? linkedPlayer?.name}</Text>
+                <Text style={styles.cardRoleText}>{memberCard.space_role ?? "Membre"}</Text>
+                <View style={styles.cardWidgetFooter}>
+                  <View>
+                    <Text style={styles.cardLabel}>RÉFÉRENCE</Text>
+                    <Text style={styles.cardReference}>{memberCard.reference}</Text>
+                  </View>
+                  <View style={styles.cardSigContainer}>
+                    <Text style={styles.cardLabel}>SIGNATURE</Text>
+                    <Text style={styles.cardSignatureText}>
+                      {memberCard.signature_valid === true ? "✅ valide" : memberCard.signature_valid === false ? "❌ invalide" : "—"}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Informations */}
+              <View style={styles.cardInfoSection}>
+                <Text style={styles.cardInfoRow}>
+                  <Text style={styles.cardInfoLabel}>Émise le : </Text>
+                  {memberCard.created_at ? memberCard.created_at.slice(0, 10) : "—"}
+                </Text>
+                {memberCard.player_joined_at ? (
+                  <Text style={styles.cardInfoRow}>
+                    <Text style={styles.cardInfoLabel}>Membre depuis : </Text>
+                    {memberCard.player_joined_at.slice(0, 10)}
+                  </Text>
+                ) : null}
+              </View>
+
+              {/* Actions */}
+              <View style={styles.cardActionsRow}>
+                <Pressable
+                  style={[
+                    styles.cardActionButton,
+                    memberCard.is_active ? styles.cardActionButtonSecondary : styles.cardActionButton,
+                    cardSaving && styles.buttonDisabled,
+                  ]}
+                  disabled={cardSaving}
+                  onPress={() => { void handleToggleCard(memberCard.is_active ? false : true); }}
+                >
+                  <Text
+                    style={[
+                      styles.cardActionButtonText,
+                      memberCard.is_active ? styles.cardActionButtonTextSecondary : undefined,
+                    ]}
+                  >
+                    {cardSaving ? "…" : memberCard.is_active ? "⏸ Désactiver" : "▶ Activer"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.cardActionButton, styles.cardActionButtonSecondary, cardSaving && styles.buttonDisabled]}
+                  disabled={cardSaving}
+                  onPress={() => { void handleRegenerateCard(); }}
+                >
+                  <Text style={[styles.cardActionButtonText, styles.cardActionButtonTextSecondary]}>
+                    {cardSaving ? "…" : "🔄 Régénérer"}
+                  </Text>
+                </Pressable>
+              </View>
+              <Pressable
+                style={[styles.cardDeleteButton, cardSaving && styles.buttonDisabled]}
+                disabled={cardSaving}
+                onPress={() => { void handleDeleteCard(); }}
+              >
+                <Text style={styles.cardDeleteButtonText}>🗑 Supprimer la carte</Text>
+              </Pressable>
+            </View>
+          ) : null}
         </ScrollView>
       ) : null}
 
@@ -2350,6 +2574,147 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     padding: 14,
     marginBottom: 14,
     ...theme.shadow.card,
+  },
+  cardEmptyContainer: {
+    marginTop: 8,
+    gap: 10,
+  },
+  cardWidget: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    padding: 14,
+    marginTop: 6,
+    backgroundColor: theme.colors.background,
+    ...theme.shadow.card,
+  },
+  cardWidgetActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  cardWidgetInactive: {
+    opacity: 0.8,
+  },
+  cardWidgetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 10,
+  },
+  cardWidgetSpaceName: {
+    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: "800",
+    flex: 1,
+  },
+  cardStatusBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  badgeActive: {
+    backgroundColor: theme.colors.success,
+  },
+  badgeInactive: {
+    backgroundColor: theme.colors.danger,
+  },
+  cardStatusText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  cardPlayerName: {
+    color: theme.colors.text,
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  cardRoleText: {
+    color: theme.colors.mutedText,
+    marginTop: 2,
+    marginBottom: 12,
+    fontWeight: "600",
+  },
+  cardWidgetFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    gap: 10,
+  },
+  cardLabel: {
+    color: theme.colors.mutedText,
+    fontSize: 11,
+    letterSpacing: 0.5,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  cardReference: {
+    color: theme.colors.text,
+    fontWeight: "800",
+  },
+  cardSigContainer: {
+    alignItems: "flex-end",
+  },
+  cardSignatureText: {
+    color: theme.colors.text,
+    fontWeight: "700",
+  },
+  cardInfoSection: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    padding: 10,
+    backgroundColor: theme.colors.card,
+  },
+  cardInfoRow: {
+    color: theme.colors.text,
+    marginTop: 4,
+  },
+  cardInfoLabel: {
+    color: theme.colors.mutedText,
+    fontWeight: "600",
+  },
+  cardActionsRow: {
+    marginTop: 12,
+    flexDirection: "row",
+    gap: 10,
+  },
+  cardActionButton: {
+    flex: 1,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.md,
+    paddingVertical: 11,
+    alignItems: "center",
+  },
+  cardActionButtonSecondary: {
+    backgroundColor: theme.colors.primarySoft,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  cardActionButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  cardActionButtonTextSecondary: {
+    color: theme.colors.primary,
+  },
+  cardDeleteButton: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.danger,
+    borderRadius: theme.radius.md,
+    paddingVertical: 11,
+    alignItems: "center",
+    backgroundColor: "transparent",
+  },
+  cardDeleteButtonText: {
+    color: theme.colors.danger,
+    fontWeight: "700",
+  },
+  buttonDisabled: {
+    opacity: 0.55,
   },
   gamesContainer: {
     flex: 1,

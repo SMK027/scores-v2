@@ -8,6 +8,7 @@ import type {
   GamesResponse,
   LeaderboardEntry,
   LeaderboardResponse,
+  MemberCard,
   Player,
   ProfileStats,
   SpaceSearchResponse,
@@ -535,3 +536,70 @@ export async function fetchCompetitionDetails(
 }
 
 export { ApiError };
+
+// ─── Cartes de membre ────────────────────────────────────────────────────────
+
+export async function fetchMemberCard(
+  token: string,
+  spaceId: number,
+  playerId: number
+): Promise<MemberCard | null> {
+  const response = await request<{ success: boolean; card: MemberCard | null }>(
+    `/api/spaces/${spaceId}/players/${playerId}/card`,
+    {},
+    token
+  );
+  return response.card;
+}
+
+export async function generateMemberCard(
+  token: string,
+  spaceId: number,
+  playerId: number
+): Promise<MemberCard> {
+  const response = await request<{ success: boolean; card: MemberCard }>(
+    `/api/spaces/${spaceId}/players/${playerId}/card`,
+    { method: "POST" },
+    token
+  );
+  return response.card;
+}
+
+export async function regenerateMemberCard(
+  token: string,
+  spaceId: number,
+  playerId: number
+): Promise<MemberCard> {
+  const response = await request<{ success: boolean; card: MemberCard }>(
+    `/api/spaces/${spaceId}/players/${playerId}/card/regenerate`,
+    { method: "POST" },
+    token
+  );
+  return response.card;
+}
+
+export async function toggleMemberCard(
+  token: string,
+  spaceId: number,
+  playerId: number,
+  active: boolean
+): Promise<MemberCard> {
+  const response = await request<{ success: boolean; card: MemberCard }>(
+    `/api/spaces/${spaceId}/players/${playerId}/card`,
+    { method: "PUT", body: JSON.stringify({ active }) },
+    token
+  );
+  return response.card;
+}
+
+export async function deleteMemberCard(
+  token: string,
+  spaceId: number,
+  playerId: number
+): Promise<void> {
+  await request<{ success: boolean }>(
+    `/api/spaces/${spaceId}/players/${playerId}/card`,
+    { method: "DELETE" },
+    token
+  );
+}

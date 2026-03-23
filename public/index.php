@@ -37,6 +37,7 @@ use App\Controllers\Api\SpaceApiController;
 use App\Controllers\Api\GameApiController;
 use App\Controllers\Api\GameTypeApiController;
 use App\Controllers\Api\PlayerApiController;
+use App\Controllers\Api\MemberCardApiController;
 use App\Controllers\Api\ProfileApiController;
 use App\Controllers\Api\StatApiController;
 use App\Controllers\Api\SearchApiController;
@@ -445,6 +446,13 @@ $router->get('/api/spaces/{id}/players/{pid}', PlayerApiController::class, 'show
 $router->post('/api/spaces/{id}/players', PlayerApiController::class, 'create');
 $router->put('/api/spaces/{id}/players/{pid}', PlayerApiController::class, 'update');
 $router->delete('/api/spaces/{id}/players/{pid}', PlayerApiController::class, 'delete');
+
+// Cartes de membre
+$router->get('/api/spaces/{id}/players/{pid}/card', MemberCardApiController::class, 'show');
+$router->post('/api/spaces/{id}/players/{pid}/card', MemberCardApiController::class, 'generate');
+$router->post('/api/spaces/{id}/players/{pid}/card/regenerate', MemberCardApiController::class, 'regenerate');
+$router->put('/api/spaces/{id}/players/{pid}/card', MemberCardApiController::class, 'toggle');
+$router->delete('/api/spaces/{id}/players/{pid}/card', MemberCardApiController::class, 'delete');
 
 // Parties
 $router->get('/api/spaces/{id}/games', GameApiController::class, 'index');
