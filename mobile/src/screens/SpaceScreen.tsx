@@ -1433,6 +1433,10 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
               value={searchText}
               onChangeText={setSearchText}
               placeholder="Rechercher joueurs, jeux, parties..."
+              placeholderTextColor={theme.colors.mutedText}
+              selectionColor={theme.colors.primary}
+              cursorColor={theme.colors.primary}
+              underlineColorAndroid="transparent"
               style={[styles.input, styles.searchInputField]}
             />
             <Pressable
@@ -3048,6 +3052,9 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   searchInputField: {
     flex: 1,
     marginBottom: 0,
+    backgroundColor: theme.colors.backgroundSoft,
+    color: theme.colors.text,
+    borderColor: theme.colors.primary,
   },
   searchButton: {
     marginTop: 0,
