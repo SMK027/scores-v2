@@ -2021,10 +2021,12 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     padding: 14,
   },
   header: {
+    position: "relative",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 8,
+    minHeight: 34,
   },
   navButton: {
     borderWidth: 1,
@@ -2040,12 +2042,14 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 12,
   },
   title: {
-    flex: 1,
+    position: "absolute",
+    left: 0,
+    right: 0,
     textAlign: "center",
     fontSize: 22,
     fontWeight: "800",
     color: theme.colors.text,
-    marginHorizontal: 8,
+    paddingHorizontal: 72,
   },
   secondaryHeaderRow: {
     alignItems: "center",
