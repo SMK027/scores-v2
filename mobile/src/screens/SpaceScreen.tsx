@@ -1071,7 +1071,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             <Text style={styles.navButtonText}>↩ Accueil espace</Text>
           </Pressable>
         )}
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={styles.title} numberOfLines={1} pointerEvents="none">
           {space.name}
         </Text>
         <Pressable style={styles.profileButton} onPress={onOpenProfile}>
