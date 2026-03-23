@@ -77,7 +77,7 @@ type PlayerStats = {
   winRate: number;
 };
 
-function getStatusMeta(status: Game["status"]): {
+function getStatusMeta(status: Game["status"], theme: AppTheme): {
   label: string;
   backgroundColor: string;
   textColor: string;
@@ -86,28 +86,45 @@ function getStatusMeta(status: Game["status"]): {
     case "in_progress":
       return {
         label: "En cours",
-        backgroundColor: "#caefe5",
-        textColor: "#0b7a61",
+        backgroundColor: theme.colors.backgroundSoft,
+        textColor: theme.colors.success,
       };
     case "completed":
       return {
         label: "Terminée",
-        backgroundColor: "#dfe0ff",
-        textColor: "#3d4bdf",
+        backgroundColor: theme.colors.primarySoft,
+        textColor: theme.colors.primary,
       };
     case "paused":
       return {
         label: "En pause",
-        backgroundColor: "#ffe8c5",
-        textColor: "#8a5a00",
+        backgroundColor: theme.colors.backgroundSoft,
+        textColor: theme.colors.warning,
       };
     case "pending":
     default:
       return {
         label: "En attente",
-        backgroundColor: "#e9edf5",
-        textColor: "#5b6780",
+        backgroundColor: theme.colors.backgroundSoft,
+        textColor: theme.colors.mutedText,
       };
+  }
+}
+
+function getCompetitionStatusMeta(status: Competition["status"], theme: AppTheme): {
+  backgroundColor: string;
+  textColor: string;
+} {
+  switch (status) {
+    case "active":
+      return { backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.success };
+    case "paused":
+      return { backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.warning };
+    case "planned":
+      return { backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.mutedText };
+    case "closed":
+    default:
+      return { backgroundColor: theme.colors.primarySoft, textColor: theme.colors.primary };
   }
 }
 
@@ -1190,7 +1207,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             keyExtractor={(item) => String(item.id)}
             ListEmptyComponent={<Text style={styles.empty}>Aucune partie pour le moment.</Text>}
             renderItem={({ item }) => {
-              const statusMeta = getStatusMeta(item.status);
+              const statusMeta = getStatusMeta(item.status, theme);
               return (
                 <Pressable
                   style={[styles.gameCard, item.id === highlightedGameId ? styles.targetCard : undefined]}
@@ -1497,39 +1514,28 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
           ) : competitions.length === 0 ? (
             <Text style={styles.empty}>Aucune compétition dans cet espace.</Text>
           ) : (
-            competitions.map((competition) => (
-              <Pressable
-                key={competition.id}
-                style={styles.competitionCard}
-                onPress={() => onOpenCompetition(competition.id)}
-              >
-                <View style={styles.gameRow}>
-                  <Text style={styles.gameTitle}>{competition.name}</Text>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      {
-                        backgroundColor:
-                          competition.status === "active"
-                            ? "#caefe5"
-                            : competition.status === "paused"
-                              ? "#ffe8c5"
-                              : competition.status === "planned"
-                                ? "#fff3d8"
-                                : "#e9edf5",
-                      },
-                    ]}
-                  >
-                    <Text style={styles.statusText}>{competition.status}</Text>
+            competitions.map((competition) => {
+              const statusTone = getCompetitionStatusMeta(competition.status, theme);
+              return (
+                <Pressable
+                  key={competition.id}
+                  style={styles.competitionCard}
+                  onPress={() => onOpenCompetition(competition.id)}
+                >
+                  <View style={styles.gameRow}>
+                    <Text style={styles.gameTitle}>{competition.name}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: statusTone.backgroundColor }]}> 
+                      <Text style={[styles.statusText, { color: statusTone.textColor }]}>{competition.status}</Text>
+                    </View>
                   </View>
-                </View>
-                {competition.description ? <Text style={styles.gameMeta}>{competition.description}</Text> : null}
-                <Text style={styles.gameMeta}>Sessions: {competition.session_count}</Text>
-                <Text style={styles.gameMeta}>
-                  Période : {competition.starts_at ? competition.starts_at.slice(0, 10) : "-"} - {competition.ends_at ? competition.ends_at.slice(0, 10) : "-"}
-                </Text>
-              </Pressable>
-            ))
+                  {competition.description ? <Text style={styles.gameMeta}>{competition.description}</Text> : null}
+                  <Text style={styles.gameMeta}>Sessions: {competition.session_count}</Text>
+                  <Text style={styles.gameMeta}>
+                    Période : {competition.starts_at ? competition.starts_at.slice(0, 10) : "-"} - {competition.ends_at ? competition.ends_at.slice(0, 10) : "-"}
+                  </Text>
+                </Pressable>
+              );
+            })
           )}
         </ScrollView>
       ) : null}

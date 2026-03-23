@@ -34,17 +34,20 @@ type Props = {
   onBack: () => void;
 };
 
-function getStatusMeta(status: "pending" | "in_progress" | "paused" | "completed") {
+function getStatusMeta(
+  status: "pending" | "in_progress" | "paused" | "completed",
+  theme: AppTheme
+) {
   switch (status) {
     case "in_progress":
-      return { label: "En cours", backgroundColor: "#caefe5", textColor: "#0b7a61" };
+      return { label: "En cours", backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.success };
     case "completed":
-      return { label: "Terminée", backgroundColor: "#dfe0ff", textColor: "#3d4bdf" };
+      return { label: "Terminée", backgroundColor: theme.colors.primarySoft, textColor: theme.colors.primary };
     case "paused":
-      return { label: "En pause", backgroundColor: "#ffe8c5", textColor: "#8a5a00" };
+      return { label: "En pause", backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.warning };
     case "pending":
     default:
-      return { label: "En attente", backgroundColor: "#e9edf5", textColor: "#5b6780" };
+      return { label: "En attente", backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.mutedText };
   }
 }
 
@@ -185,7 +188,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
       ? "Classement"
       : "Victoire/Défaite";
 
-  const gameStatusMeta = getStatusMeta(details?.game.status ?? "pending");
+  const gameStatusMeta = getStatusMeta(details?.game.status ?? "pending", theme);
 
   const beginRoundScoring = (roundId: number) => {
     const currentRoundScores = (details?.round_scores?.[String(roundId)] || {}) as Record<string, unknown>;
@@ -437,7 +440,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
         <Text style={styles.blockTitle}>Manches</Text>
         {details.rounds.length === 0 ? <Text style={styles.meta}>Aucune manche.</Text> : null}
         {details.rounds.map((round) => {
-          const statusMeta = getStatusMeta(round.status);
+          const statusMeta = getStatusMeta(round.status, theme);
           const roundScores = (details.round_scores?.[String(round.id)] || {}) as Record<string, unknown>;
 
           return (
@@ -782,7 +785,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: theme.radius.sm,
     padding: 10,
-    backgroundColor: "#fafcff",
+    backgroundColor: theme.colors.backgroundSoft,
   },
   roundHeader: {
     flexDirection: "row",
@@ -862,7 +865,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: "#f4f7fb",
+    backgroundColor: theme.colors.backgroundSoft,
   },
   secondaryText: {
     color: theme.colors.text,
@@ -909,7 +912,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   winnerRowActive: {
     borderColor: theme.colors.success,
-    backgroundColor: "#eaf6ee",
+    backgroundColor: theme.colors.primarySoft,
   },
   winnerStatus: {
     color: theme.colors.mutedText,
@@ -921,7 +924,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: theme.radius.sm,
     padding: 10,
-    backgroundColor: "#fafcff",
+    backgroundColor: theme.colors.backgroundSoft,
   },
   commentHeader: {
     flexDirection: "row",

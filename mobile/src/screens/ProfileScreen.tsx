@@ -7,23 +7,23 @@ import type { ProfileStats, User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
 import { getRoleLabel } from "../utils/roles";
 
-function getRoleBadgeStyle(role?: string): { backgroundColor: string; textColor: string } {
+function getRoleBadgeStyle(theme: AppTheme, role?: string): { backgroundColor: string; textColor: string } {
   switch (role) {
     case "superadmin":
-      return { backgroundColor: "#ffe3e3", textColor: "#b42318" };
+      return { backgroundColor: theme.colors.primarySoft, textColor: theme.colors.danger };
     case "admin":
-      return { backgroundColor: "#e9f1ff", textColor: "#1f6feb" };
+      return { backgroundColor: theme.colors.primarySoft, textColor: theme.colors.primary };
     case "moderator":
-      return { backgroundColor: "#efe4ff", textColor: "#6f42c1" };
+      return { backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.primaryStrong };
     case "manager":
-      return { backgroundColor: "#e6f6ec", textColor: "#1a7f37" };
+      return { backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.success };
     case "member":
-      return { backgroundColor: "#eef2f8", textColor: "#5f6b85" };
+      return { backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.mutedText };
     case "guest":
-      return { backgroundColor: "#fff4d6", textColor: "#9a6700" };
+      return { backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.warning };
     case "user":
     default:
-      return { backgroundColor: "#eef2f8", textColor: "#5f6b85" };
+      return { backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.mutedText };
   }
 }
 
@@ -113,7 +113,7 @@ export function ProfileScreen({
 
   const joinedLabel = useMemo(() => formatDate(profile.created_at), [profile.created_at]);
   const avatarUri = useMemo(() => getAvatarUri(profile.avatar), [profile.avatar]);
-  const roleBadgeStyle = useMemo(() => getRoleBadgeStyle(profile.global_role), [profile.global_role]);
+  const roleBadgeStyle = useMemo(() => getRoleBadgeStyle(theme, profile.global_role), [profile.global_role, theme]);
 
   const saveBio = async () => {
     try {
@@ -510,11 +510,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   quickActionDanger: {
     borderWidth: 1,
-    borderColor: "#f2c7c3",
+    borderColor: theme.colors.danger,
     borderRadius: theme.radius.md,
     paddingVertical: 12,
     paddingHorizontal: 12,
-    backgroundColor: "#fff1f0",
+    backgroundColor: theme.colors.backgroundSoft,
   },
   quickActionDangerText: {
     color: theme.colors.danger,

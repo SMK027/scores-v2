@@ -47,17 +47,20 @@ function formatDuration(seconds: number): string {
   return `${s}s`;
 }
 
-function getStatusMeta(status: Competition["status"]): { label: string; backgroundColor: string; textColor: string } {
+function getStatusMeta(
+  status: Competition["status"],
+  theme: AppTheme
+): { label: string; backgroundColor: string; textColor: string } {
   switch (status) {
     case "active":
-      return { label: "Active", backgroundColor: "#caefe5", textColor: "#0b7a61" };
+      return { label: "Active", backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.success };
     case "paused":
-      return { label: "En pause", backgroundColor: "#ffe8c5", textColor: "#8a5a00" };
+      return { label: "En pause", backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.warning };
     case "closed":
-      return { label: "Clôturée", backgroundColor: "#dfe0ff", textColor: "#3d4bdf" };
+      return { label: "Clôturée", backgroundColor: theme.colors.primarySoft, textColor: theme.colors.primary };
     case "planned":
     default:
-      return { label: "Planifiée", backgroundColor: "#e9edf5", textColor: "#5b6780" };
+      return { label: "Planifiée", backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.mutedText };
   }
 }
 
@@ -117,7 +120,7 @@ export function CompetitionDetailScreen({ token, space, competitionId, onBack }:
     );
   }
 
-  const statusMeta = getStatusMeta(competition.status);
+  const statusMeta = getStatusMeta(competition.status, theme);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top, 12) + 8 }]}> 
@@ -290,7 +293,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: theme.radius.sm,
     padding: 10,
-    backgroundColor: "#fafcff",
+    backgroundColor: theme.colors.backgroundSoft,
     marginBottom: 8,
   },
   participantName: {
