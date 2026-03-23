@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
+  Modal,
   Pressable,
   Share,
   ScrollView,
@@ -255,6 +255,45 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const [competitionsLoading, setCompetitionsLoading] = useState(false);
   const [competitionsError, setCompetitionsError] = useState<string | null>(null);
   const [competitionsLoaded, setCompetitionsLoaded] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    destructive: boolean;
+    onConfirm: (() => void) | null;
+  }>({
+    visible: false,
+    title: "",
+    message: "",
+    confirmText: "Confirmer",
+    destructive: false,
+    onConfirm: null,
+  });
+
+  const openConfirmDialog = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    options?: { confirmText?: string; destructive?: boolean }
+  ) => {
+    setConfirmDialog({
+      visible: true,
+      title,
+      message,
+      confirmText: options?.confirmText ?? "Confirmer",
+      destructive: options?.destructive ?? false,
+      onConfirm,
+    });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog((current) => ({
+      ...current,
+      visible: false,
+      onConfirm: null,
+    }));
+  };
 
   const loadGames = useCallback(async () => {
     try {
@@ -749,68 +788,56 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   };
 
   const confirmAndDeletePlayer = (playerId: number, playerName: string) => {
-    Alert.alert(
+    openConfirmDialog(
       "Supprimer le joueur",
       "Confirmer la suppression de " + playerName + " ?",
-      [
-        { text: "Annuler", onPress: () => {}, style: "cancel" },
-        { text: "Supprimer", onPress: () => removePlayerSubmit(playerId), style: "destructive" },
-      ]
+      () => removePlayerSubmit(playerId),
+      { confirmText: "Supprimer", destructive: true }
     );
   };
 
   const confirmAndDeleteGameType = (gameTypeId: number, gameTypeName: string) => {
-    Alert.alert(
+    openConfirmDialog(
       "Supprimer le type de jeu",
       "Confirmer la suppression de " + gameTypeName + " ?",
-      [
-        { text: "Annuler", onPress: () => {}, style: "cancel" },
-        { text: "Supprimer", onPress: () => removeGameTypeSubmit(gameTypeId), style: "destructive" },
-      ]
+      () => removeGameTypeSubmit(gameTypeId),
+      { confirmText: "Supprimer", destructive: true }
     );
   };
 
   const confirmAndRemoveMember = (memberId: number, memberUsername: string) => {
-    Alert.alert(
+    openConfirmDialog(
       "Retirer le membre",
       "Confirmer le retrait de " + memberUsername + " ?",
-      [
-        { text: "Annuler", onPress: () => {}, style: "cancel" },
-        { text: "Retirer", onPress: () => removeMemberSubmit(memberId), style: "destructive" },
-      ]
+      () => removeMemberSubmit(memberId),
+      { confirmText: "Retirer", destructive: true }
     );
   };
 
   const confirmAndUpdatePlayer = () => {
-    Alert.alert(
+    openConfirmDialog(
       "Mettre à jour le joueur",
       "Confirmer les modifications ?",
-      [
-        { text: "Annuler", onPress: () => {}, style: "cancel" },
-        { text: "Confirmer", onPress: () => saveEditPlayer() },
-      ]
+      () => saveEditPlayer(),
+      { confirmText: "Confirmer" }
     );
   };
 
   const confirmAndUpdateGameType = () => {
-    Alert.alert(
+    openConfirmDialog(
       "Mettre à jour le type de jeu",
       "Confirmer les modifications ?",
-      [
-        { text: "Annuler", onPress: () => {}, style: "cancel" },
-        { text: "Confirmer", onPress: () => saveEditGameType() },
-      ]
+      () => saveEditGameType(),
+      { confirmText: "Confirmer" }
     );
   };
 
   const confirmAndUpdateMemberRole = (memberId: number) => {
-    Alert.alert(
+    openConfirmDialog(
       "Changer le rôle",
       "Confirmer le changement de rôle ?",
-      [
-        { text: "Annuler", onPress: () => {}, style: "cancel" },
-        { text: "Confirmer", onPress: () => saveEditMemberRole(memberId) },
-      ]
+      () => saveEditMemberRole(memberId),
+      { confirmText: "Confirmer" }
     );
   };
 
@@ -2008,6 +2035,42 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
           </Pressable>
         </View>
       </View>
+
+      <Modal
+        visible={confirmDialog.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeConfirmDialog}
+      >
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>{confirmDialog.title}</Text>
+            <Text style={styles.confirmMessage}>{confirmDialog.message}</Text>
+
+            <View style={styles.confirmActionsRow}>
+              <Pressable style={styles.confirmCancelButton} onPress={closeConfirmDialog}>
+                <Text style={styles.confirmCancelText}>Annuler</Text>
+              </Pressable>
+
+              <Pressable
+                style={[
+                  styles.confirmSubmitButton,
+                  confirmDialog.destructive ? styles.confirmSubmitButtonDanger : undefined,
+                ]}
+                onPress={() => {
+                  const callback = confirmDialog.onConfirm;
+                  closeConfirmDialog();
+                  if (callback) {
+                    callback();
+                  }
+                }}
+              >
+                <Text style={styles.confirmSubmitText}>{confirmDialog.confirmText}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -2776,6 +2839,68 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   shareLinkButtonText: {
     color: theme.colors.primary,
+    fontWeight: "700",
+  },
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+  },
+  confirmCard: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    padding: 16,
+    ...theme.shadow.card,
+  },
+  confirmTitle: {
+    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: "800",
+    marginBottom: 8,
+  },
+  confirmMessage: {
+    color: theme.colors.mutedText,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  confirmActionsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 16,
+  },
+  confirmCancelButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  confirmCancelText: {
+    color: theme.colors.mutedText,
+    fontWeight: "700",
+  },
+  confirmSubmitButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  confirmSubmitButtonDanger: {
+    borderColor: theme.colors.danger,
+    backgroundColor: theme.colors.danger,
+  },
+  confirmSubmitText: {
+    color: "#fff",
     fontWeight: "700",
   },
 });
