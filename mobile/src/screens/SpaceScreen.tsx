@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   ActivityIndicator,
   FlatList,
   Image,
@@ -1106,55 +1105,45 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
   const handleRegenerateCard = useCallback(async () => {
     if (!linkedPlayer) return;
-    Alert.alert(
+    openConfirmDialog(
       "Régénérer la carte",
       "La référence et la signature seront recréées. L'ancienne carte sera invalide. Continuer ?",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Régénérer", style: "destructive",
-          onPress: async () => {
-            try {
-              setCardError(null);
-              setCardSaving(true);
-              const data = await regenerateMemberCard(token, space.id, linkedPlayer.id);
-              setMemberCard(data);
-            } catch (err) {
-              setCardError(err instanceof ApiError ? err.message : "Impossible de régénérer la carte.");
-            } finally {
-              setCardSaving(false);
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          setCardError(null);
+          setCardSaving(true);
+          const data = await regenerateMemberCard(token, space.id, linkedPlayer.id);
+          setMemberCard(data);
+        } catch (err) {
+          setCardError(err instanceof ApiError ? err.message : "Impossible de régénérer la carte.");
+        } finally {
+          setCardSaving(false);
+        }
+      },
+      { confirmText: "Régénérer", destructive: true }
     );
-  }, [linkedPlayer, space.id, token]);
+  }, [linkedPlayer, openConfirmDialog, space.id, token]);
 
   const handleDeleteCard = useCallback(async () => {
     if (!linkedPlayer) return;
-    Alert.alert(
+    openConfirmDialog(
       "Supprimer la carte",
       "La carte de membre sera définitivement supprimée. Continuer ?",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer", style: "destructive",
-          onPress: async () => {
-            try {
-              setCardError(null);
-              setCardSaving(true);
-              await deleteMemberCard(token, space.id, linkedPlayer.id);
-              setMemberCard(null);
-            } catch (err) {
-              setCardError(err instanceof ApiError ? err.message : "Impossible de supprimer la carte.");
-            } finally {
-              setCardSaving(false);
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          setCardError(null);
+          setCardSaving(true);
+          await deleteMemberCard(token, space.id, linkedPlayer.id);
+          setMemberCard(null);
+        } catch (err) {
+          setCardError(err instanceof ApiError ? err.message : "Impossible de supprimer la carte.");
+        } finally {
+          setCardSaving(false);
+        }
+      },
+      { confirmText: "Supprimer", destructive: true }
     );
-  }, [linkedPlayer, space.id, token]);
+  }, [linkedPlayer, openConfirmDialog, space.id, token]);
 
   const viewGroupItems: Array<{ key: Exclude<SpaceView, "menu">; label: string; icon: string }> = [
     { key: "leaderboard", label: "Classement", icon: "🏆" },
