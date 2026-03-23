@@ -315,6 +315,22 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
     }
   };
 
+  const toggleNegativeScore = (playerId: number) => {
+    setScores((current) => {
+      const raw = (current[playerId] ?? "").trim();
+
+      if (!raw) {
+        return { ...current, [playerId]: "-" };
+      }
+
+      if (raw.startsWith("-")) {
+        return { ...current, [playerId]: raw.slice(1) };
+      }
+
+      return { ...current, [playerId]: `-${raw}` };
+    });
+  };
+
   const finishGame = async () => {
     try {
       setFinishing(true);
@@ -554,15 +570,26 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
               : details.players.map((player) => (
                   <View key={player.id} style={styles.scoreRow}>
                     <Text style={styles.scoreLabel}>{player.player_name}</Text>
-                    <TextInput
-                      value={scores[player.player_id] ?? ""}
-                      onChangeText={(value) =>
-                        setScores((current) => ({ ...current, [player.player_id]: value }))
-                      }
-                      keyboardType="numeric"
-                      style={styles.scoreInput}
-                      placeholder={winCondition === "ranking" ? "Place" : "0"}
-                    />
+                    <View style={styles.scoreInputGroup}>
+                      {winCondition !== "ranking" ? (
+                        <Pressable
+                          style={styles.scoreSignButton}
+                          onPress={() => toggleNegativeScore(player.player_id)}
+                        >
+                          <Text style={styles.scoreSignButtonText}>-</Text>
+                        </Pressable>
+                      ) : null}
+                      <TextInput
+                        value={scores[player.player_id] ?? ""}
+                        onChangeText={(value) =>
+                          setScores((current) => ({ ...current, [player.player_id]: value }))
+                        }
+                        keyboardType="numeric"
+                        style={styles.scoreInput}
+                        placeholder={winCondition === "ranking" ? "Place" : "0"}
+                        placeholderTextColor={theme.colors.mutedText}
+                      />
+                    </View>
                   </View>
                 ))}
 
@@ -899,6 +926,27 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 8,
+  },
+  scoreInputGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  scoreSignButton: {
+    width: 32,
+    height: 32,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.backgroundSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scoreSignButtonText: {
+    color: theme.colors.text,
+    fontSize: 20,
+    lineHeight: 22,
+    fontWeight: "700",
   },
   scoreLabel: {
     color: theme.colors.text,
