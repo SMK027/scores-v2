@@ -25,7 +25,7 @@
                             <th>Manches jouées</th>
                             <th>Manches gagnées</th>
                             <th>Taux</th>
-                            <?php if (in_array($spaceRole, ['admin', 'manager'])): ?>
+                            <?php if (in_array($spaceRole, ['admin', 'manager']) || is_authenticated()): ?>
                                 <th class="text-right">Actions</th>
                             <?php endif; ?>
                         </tr>
@@ -51,6 +51,8 @@
                                 <?php if (in_array($spaceRole, ['admin', 'manager'])): ?>
                                     <td class="text-right">
                                         <div class="btn-group">
+                                            <a href="/spaces/<?= $currentSpace['id'] ?>/players/<?= $player['id'] ?>/card"
+                                               class="btn btn-sm btn-outline" title="Carte de membre">🪪</a>
                                             <a href="/spaces/<?= $currentSpace['id'] ?>/players/<?= $player['id'] ?>/edit"
                                                class="btn btn-sm btn-outline">Modifier</a>
                                             <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/players/<?= $player['id'] ?>/delete" style="display:inline;">
@@ -60,6 +62,13 @@
                                             </form>
                                         </div>
                                     </td>
+                                <?php elseif (!empty($player['user_id']) && (int)$player['user_id'] === (int)current_user_id()): ?>
+                                    <td class="text-right">
+                                        <a href="/spaces/<?= $currentSpace['id'] ?>/players/<?= $player['id'] ?>/card"
+                                           class="btn btn-sm btn-outline" title="Ma carte de membre">🪪 Ma carte</a>
+                                    </td>
+                                <?php else: ?>
+                                    <td></td>
                                 <?php endif; ?>
                             </tr>
                         <?php endforeach; ?>

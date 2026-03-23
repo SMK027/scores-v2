@@ -31,6 +31,7 @@ use App\Controllers\CompetitionController;
 use App\Controllers\CompetitionSessionController;
 use App\Controllers\SpaceTransferController;
 use App\Controllers\LeaderboardController;
+use App\Controllers\MemberCardController;
 use App\Controllers\Api\AuthApiController;
 use App\Controllers\Api\SpaceApiController;
 use App\Controllers\Api\GameApiController;
@@ -195,6 +196,9 @@ $router = new Router();
 // ============================================================
 $router->get('/', HomeController::class, 'index');
 $router->get('/legal', HomeController::class, 'legal');
+// Vérification publique de cartes de membre (sans authentification)
+$router->get('/cards', MemberCardController::class, 'verifySearch');
+$router->get('/cards/{ref}', MemberCardController::class, 'verifyPublic');
 $router->get('/login', AuthController::class, 'loginForm');
 $router->post('/login', AuthController::class, 'login');
 $router->get('/register', AuthController::class, 'registerForm');
@@ -268,6 +272,11 @@ $router->post('/spaces/{id}/players/create', PlayerController::class, 'create');
 $router->get('/spaces/{id}/players/{pid}/edit', PlayerController::class, 'editForm');
 $router->post('/spaces/{id}/players/{pid}/edit', PlayerController::class, 'update');
 $router->post('/spaces/{id}/players/{pid}/delete', PlayerController::class, 'delete');
+$router->get('/spaces/{id}/players/{pid}/card', MemberCardController::class, 'show');
+$router->post('/spaces/{id}/players/{pid}/card/generate', MemberCardController::class, 'generate');
+$router->post('/spaces/{id}/players/{pid}/card/toggle', MemberCardController::class, 'toggle');
+$router->post('/spaces/{id}/players/{pid}/card/regenerate', MemberCardController::class, 'regenerate');
+$router->post('/spaces/{id}/players/{pid}/card/delete', MemberCardController::class, 'delete');
 
 // ============================================================
 // Parties
