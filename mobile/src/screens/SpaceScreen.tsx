@@ -1719,7 +1719,9 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                   </View>
                 </View>
                 <Text style={styles.cardPlayerName}>{memberCard.player_name ?? linkedPlayer?.name}</Text>
-                <Text style={styles.cardRoleText}>{memberCard.space_role ?? "Membre"}</Text>
+                <View style={styles.cardRoleBadge}>
+                  <Text style={styles.cardRoleBadgeText}>{getRoleLabel(memberCard.space_role ?? "member")}</Text>
+                </View>
                 <View style={styles.cardWidgetFooter}>
                   <View>
                     <Text style={styles.cardLabel}>RÉFÉRENCE</Text>
@@ -2623,11 +2625,21 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 20,
     fontWeight: "800",
   },
-  cardRoleText: {
-    color: theme.colors.mutedText,
-    marginTop: 2,
+  cardRoleBadge: {
+    marginTop: 4,
     marginBottom: 12,
-    fontWeight: "600",
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.55)",
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  cardRoleBadgeText: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+    fontSize: 12,
   },
   cardWidgetFooter: {
     flexDirection: "row",
