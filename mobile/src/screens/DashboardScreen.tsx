@@ -1,5 +1,6 @@
-import { useMemo } from "react";
-import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { useAppTheme } from "../context/ThemeContext";
 import type { AppTheme } from "../styles";
 import type { User } from "../types/api";
@@ -15,14 +16,12 @@ type Props = {
 export function DashboardScreen({ user, onOpenSpaces, onOpenProfile, onLogout }: Props) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
   const avatarUri = getAvatarUri(user.avatar);
 
   const confirmLogout = () => {
-    Alert.alert("Se déconnecter ?", "Voulez-vous vraiment vous déconnecter de l'application ?", [
-      { text: "Annuler", style: "cancel" },
-      { text: "Déconnexion", style: "destructive", onPress: onLogout },
-    ]);
+    setIsLogoutConfirmOpen(true);
   };
 
   return (
@@ -58,6 +57,19 @@ export function DashboardScreen({ user, onOpenSpaces, onOpenProfile, onLogout }:
         <Text style={styles.cardTitle}>Mes espaces</Text>
         <Text style={styles.cardText}>Accéder à tous mes espaces et commencer une partie</Text>
       </Pressable>
+
+      <ConfirmDialog
+        visible={isLogoutConfirmOpen}
+        title="Se déconnecter ?"
+        message="Voulez-vous vraiment vous déconnecter de l'application ?"
+        confirmText="Déconnexion"
+        destructive
+        onCancel={() => setIsLogoutConfirmOpen(false)}
+        onConfirm={() => {
+          setIsLogoutConfirmOpen(false);
+          onLogout();
+        }}
+      />
     </View>
   );
 }

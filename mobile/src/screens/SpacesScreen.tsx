@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
   Pressable,
@@ -12,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { useAppTheme } from "../context/ThemeContext";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import type { AppTheme } from "../styles";
 import { ApiError, deleteSpace, leaveSpace, fetchSpaces, acceptInvitation, declineInvitation } from "../services/api";
 import type { Space, User, Invitation } from "../types/api";
@@ -40,6 +40,45 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
   const [leavingSpaceId, setLeavingSpaceId] = useState<number | null>(null);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [respondingInvitationId, setRespondingInvitationId] = useState<number | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    destructive: boolean;
+    onConfirm: (() => void) | null;
+  }>({
+    visible: false,
+    title: "",
+    message: "",
+    confirmText: "Confirmer",
+    destructive: false,
+    onConfirm: null,
+  });
+
+  const openConfirmDialog = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    options?: { confirmText?: string; destructive?: boolean }
+  ) => {
+    setConfirmDialog({
+      visible: true,
+      title,
+      message,
+      confirmText: options?.confirmText ?? "Confirmer",
+      destructive: options?.destructive ?? false,
+      onConfirm,
+    });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog((current) => ({
+      ...current,
+      visible: false,
+      onConfirm: null,
+    }));
+  };
 
   const loadSpaces = useCallback(async () => {
     try {
@@ -89,32 +128,26 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
   }, [loadSpaces, token]);
 
   const handleDeclineInvitation = useCallback((invitation: Invitation) => {
-    Alert.alert(
+    openConfirmDialog(
       "Refuser l'invitation ?",
       `Êtes-vous sûr de vouloir refuser l'invitation pour "${invitation.space_name}" ?`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Refuser",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setRespondingInvitationId(invitation.id);
-              setError(null);
-              await declineInvitation(token, invitation.id);
-              await loadSpaces();
-            } catch (err) {
-              if (err instanceof ApiError) {
-                setError(err.message);
-              } else {
-                setError("Impossible de refuser l'invitation.");
-              }
-            } finally {
-              setRespondingInvitationId(null);
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          setRespondingInvitationId(invitation.id);
+          setError(null);
+          await declineInvitation(token, invitation.id);
+          await loadSpaces();
+        } catch (err) {
+          if (err instanceof ApiError) {
+            setError(err.message);
+          } else {
+            setError("Impossible de refuser l'invitation.");
+          }
+        } finally {
+          setRespondingInvitationId(null);
+        }
+      },
+      { confirmText: "Refuser", destructive: true }
     );
   }, [loadSpaces, token]);
 
@@ -124,72 +157,62 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
       return;
     }
 
-    Alert.alert(
+    openConfirmDialog(
       "Supprimer cet espace ?",
-      `Cette action supprimera définitivement \"${space.name}\" et toutes ses données.`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setDeletingSpaceId(space.id);
-              setError(null);
-              await deleteSpace(token, space.id);
-              await loadSpaces();
-            } catch (err) {
-              if (err instanceof ApiError) {
-                setError(err.message);
-              } else {
-                setError("Impossible de supprimer cet espace.");
-              }
-            } finally {
-              setDeletingSpaceId(null);
-            }
-          },
-        },
-      ]
+      `Cette action supprimera définitivement "${space.name}" et toutes ses données.`,
+      async () => {
+        try {
+          setDeletingSpaceId(space.id);
+          setError(null);
+          await deleteSpace(token, space.id);
+          await loadSpaces();
+        } catch (err) {
+          if (err instanceof ApiError) {
+            setError(err.message);
+          } else {
+            setError("Impossible de supprimer cet espace.");
+          }
+        } finally {
+          setDeletingSpaceId(null);
+        }
+      },
+      { confirmText: "Supprimer", destructive: true }
     );
   };
 
   const confirmAndLeaveSpace = (space: Space) => {
-    Alert.alert(
+    openConfirmDialog(
       "Quitter cet espace ?",
-      `Êtes-vous sûr de vouloir quitter \"${space.name}\" ?`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Quitter",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setLeavingSpaceId(space.id);
-              setError(null);
-              await leaveSpace(token, space.id);
-              await loadSpaces();
-            } catch (err) {
-              if (err instanceof ApiError) {
-                setError(err.message);
-              } else {
-                setError("Impossible de quitter cet espace.");
-              }
-            } finally {
-              setLeavingSpaceId(null);
-            }
-          },
-        },
-      ]
+      `Êtes-vous sûr de vouloir quitter "${space.name}" ?`,
+      async () => {
+        try {
+          setLeavingSpaceId(space.id);
+          setError(null);
+          await leaveSpace(token, space.id);
+          await loadSpaces();
+        } catch (err) {
+          if (err instanceof ApiError) {
+            setError(err.message);
+          } else {
+            setError("Impossible de quitter cet espace.");
+          }
+        } finally {
+          setLeavingSpaceId(null);
+        }
+      },
+      { confirmText: "Quitter", destructive: true }
     );
   };
 
   const avatarUri = getAvatarUri(user.avatar);
 
   const confirmLogout = useCallback(() => {
-    Alert.alert("Se déconnecter ?", "Voulez-vous vraiment vous déconnecter de l'application ?", [
-      { text: "Annuler", style: "cancel" },
-      { text: "Déconnexion", style: "destructive", onPress: onLogout },
-    ]);
+    openConfirmDialog(
+      "Se déconnecter ?",
+      "Voulez-vous vraiment vous déconnecter de l'application ?",
+      onLogout,
+      { confirmText: "Déconnexion", destructive: true }
+    );
   }, [onLogout]);
 
   const filteredSpaces = useMemo(() => {
@@ -383,6 +406,22 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
       <Pressable style={styles.fab} onPress={onOpenCreateSpace}>
         <Text style={styles.fabIcon}>+</Text>
       </Pressable>
+
+      <ConfirmDialog
+        visible={confirmDialog.visible}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText={confirmDialog.confirmText}
+        destructive={confirmDialog.destructive}
+        onCancel={closeConfirmDialog}
+        onConfirm={() => {
+          const callback = confirmDialog.onConfirm;
+          closeConfirmDialog();
+          if (callback) {
+            callback();
+          }
+        }}
+      />
     </View>
   );
 }
