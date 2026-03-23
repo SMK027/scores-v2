@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -23,6 +24,7 @@ import {
   updateRoundScores,
 } from "../services/api";
 import { useAppTheme } from "../context/ThemeContext";
+import { getAvatarUri } from "../utils/avatar";
 import type { AppTheme } from "../styles";
 import type { Comment, GameDetailsResponse, Space, User } from "../types/api";
 
@@ -84,6 +86,11 @@ function formatRoundValue(value: number | null, winCondition: string): string {
   }
 
   return String(value);
+}
+
+function getCommentInitials(username?: string): string {
+  const source = (username || "?").trim();
+  return source.slice(0, 2).toUpperCase();
 }
 
 export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) {
@@ -618,10 +625,20 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
         {details.comments.map((comment) => {
           const isAuthor = user && comment.user_id === user.id;
           const canDelete = isAuthor || (user && (user.global_role === "admin" || user.global_role === "superadmin" || user.global_role === "moderator"));
+          const avatarUri = getAvatarUri(comment.avatar);
           return (
             <View key={comment.id} style={styles.commentCard}>
               <View style={styles.commentHeader}>
-                <Text style={styles.commentAuthor}>{comment.username}</Text>
+                <View style={styles.commentAuthorWrap}>
+                  <View style={styles.commentAvatar}>
+                    {avatarUri ? (
+                      <Image source={{ uri: avatarUri }} style={styles.commentAvatarImage} />
+                    ) : (
+                      <Text style={styles.commentAvatarText}>{getCommentInitials(comment.username)}</Text>
+                    )}
+                  </View>
+                  <Text style={styles.commentAuthor}>{comment.username}</Text>
+                </View>
                 <Text style={styles.commentDate}>
                   {new Date(comment.created_at).toLocaleDateString("fr-FR", {
                     day: "2-digit",
@@ -932,10 +949,36 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
+  commentAuthorWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  commentAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  commentAvatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  commentAvatarText: {
+    color: theme.colors.primary,
+    fontSize: 11,
+    fontWeight: "700",
+  },
   commentAuthor: {
     color: theme.colors.text,
     fontWeight: "700",
     fontSize: 13,
+    flexShrink: 1,
   },
   commentDate: {
     color: theme.colors.mutedText,
