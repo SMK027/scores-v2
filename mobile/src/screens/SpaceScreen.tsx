@@ -2111,7 +2111,11 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
               value={inviteUsername}
               onChangeText={setInviteUsername}
               placeholder="Nom d'utilisateur"
-              style={styles.input}
+              placeholderTextColor={theme.colors.mutedText}
+              selectionColor={theme.colors.primary}
+              cursorColor={theme.colors.primary}
+              underlineColorAndroid="transparent"
+              style={[styles.input, styles.inviteInputField]}
               autoCapitalize="none"
             />
             <Text style={styles.label}>Rôle attribué</Text>
@@ -3052,6 +3056,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   searchInputField: {
     flex: 1,
     marginBottom: 0,
+    backgroundColor: theme.colors.backgroundSoft,
+    color: theme.colors.text,
+    borderColor: theme.colors.primary,
+  },
+  inviteInputField: {
     backgroundColor: theme.colors.backgroundSoft,
     color: theme.colors.text,
     borderColor: theme.colors.primary,
