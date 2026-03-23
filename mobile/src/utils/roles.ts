@@ -11,7 +11,7 @@ export function getRoleLabel(role?: string): string {
     case "member":
       return "Membre";
     case "guest":
-      return "Invite";
+      return "Invité";
     case "user":
       return "Utilisateur";
     default:
