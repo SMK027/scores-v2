@@ -1217,11 +1217,11 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             </Pressable>
           ) : (
             <Pressable style={styles.navButton} onPress={() => setCurrentView("menu")}>
-              <Text style={styles.navButtonText}>↩ Accueil espace</Text>
+              <Text style={styles.navButtonText}>↩ Espace</Text>
             </Pressable>
           )}
         </View>
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={styles.title} numberOfLines={2}>
           {space.name}
         </Text>
         <View style={[styles.headerSide, styles.headerSideRight]}>
@@ -2316,11 +2316,15 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 8,
+    gap: 8,
   },
   headerSide: {
-    width: 132,
+    flexShrink: 1,
+    maxWidth: "42%",
   },
   headerSideRight: {
+    width: 44,
+    maxWidth: 44,
     alignItems: "flex-end",
   },
   navButton: {
@@ -2328,21 +2332,22 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.card,
     borderRadius: theme.radius.md,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   navButtonText: {
     color: theme.colors.primary,
     fontWeight: "700",
-    fontSize: 12,
+    fontSize: 11,
   },
   title: {
     flex: 1,
+    minWidth: 0,
     textAlign: "center",
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "800",
     color: theme.colors.text,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
   },
   secondaryHeaderRow: {
     alignItems: "center",
