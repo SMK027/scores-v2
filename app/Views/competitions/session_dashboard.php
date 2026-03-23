@@ -34,6 +34,58 @@
     </div>
 </div>
 
+<!-- Vérificateur de carte membre -->
+<div class="card mb-3" id="member-card-verifier">
+    <div class="card-header d-flex justify-between align-center">
+        <h3>🪪 Vérificateur de carte membre</h3>
+        <span class="text-muted text-small">Participants de la compétition</span>
+    </div>
+    <div class="card-body">
+        <?php if (empty($participantCards ?? [])): ?>
+            <p class="text-muted">Aucune carte disponible pour les compétiteurs inscrits.</p>
+        <?php else: ?>
+            <form method="POST" action="/competition/participants/verify-card" id="participant-card-verifier-form">
+                <?= csrf_field() ?>
+                <div class="d-flex gap-1 flex-wrap align-center" style="max-width:980px;">
+                    <div class="autocomplete-wrapper" style="position:relative;flex:1;min-width:280px;">
+                        <label class="text-small text-muted" for="participant_card_search">Compétiteur</label>
+                        <input
+                            type="text"
+                            id="participant_card_search"
+                            class="form-control form-control-sm"
+                            placeholder="Rechercher un compétiteur inscrit..."
+                            autocomplete="off"
+                        >
+                        <input type="hidden" name="player_id" id="participant_card_player_id" required>
+                        <div id="participant_card_options" class="autocomplete-list" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:260px;overflow-y:auto;background:#fff;border:1px solid var(--gray-light);border-radius:var(--radius);margin-top:0.25rem;z-index:1000;box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
+                    </div>
+
+                    <div class="autocomplete-wrapper" style="position:relative;flex:1;min-width:280px;">
+                        <label class="text-small text-muted" for="participant_card_reference">Référence de carte présentée</label>
+                        <input
+                            type="text"
+                            id="participant_card_reference"
+                            name="reference"
+                            class="form-control form-control-sm"
+                            placeholder="Sélectionner la référence parmi les participants"
+                            autocomplete="off"
+                            required
+                        >
+                        <div id="participant_card_reference_options" class="autocomplete-list" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:260px;overflow-y:auto;background:#fff;border:1px solid var(--gray-light);border-radius:var(--radius);margin-top:0.25rem;z-index:1000;box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;justify-content:flex-end;min-width:170px;">
+                        <button class="btn btn-sm btn-primary">Vérifier l'identité</button>
+                    </div>
+                </div>
+                <p class="text-muted text-small" style="margin-top:0.6rem;">
+                    Demandez au joueur de montrer sa carte, puis validez son identité via sa référence parmi les compétiteurs inscrits.
+                </p>
+            </form>
+        <?php endif; ?>
+    </div>
+</div>
+
 <!-- Créer une partie -->
 <div class="card mb-3">
     <div class="card-header">
@@ -146,6 +198,15 @@ const allPlayers = <?= json_encode(array_map(fn($p) => [
     'name' => $p['name'],
     'competition_restricted' => in_array((int) $p['id'], array_map('intval', $restrictedCompetitionPlayerIds ?? []), true)
 ], $players)) ?>;
+
+const participantCards = <?= json_encode(array_map(static fn($c) => [
+    'player_id' => (int) ($c['player_id'] ?? 0),
+    'player_name' => (string) ($c['player_name'] ?? ''),
+    'linked_username' => $c['linked_username'] ?? null,
+    'reference' => (string) ($c['reference'] ?? ''),
+    'is_active' => (int) ($c['is_active'] ?? 0),
+    'signature_valid' => !empty($c['signature_valid']),
+], $participantCards ?? []), JSON_UNESCAPED_UNICODE) ?>;
 
 // ==== Game type autocomplete ====
 const searchInput = document.getElementById('game_type_search');
@@ -309,4 +370,141 @@ function updatePlayerCountInfo() {
 }
 
 updatePlayerCountInfo();
+
+// ==== Vérificateur carte membre (participants uniquement) ====
+const participantCardInput = document.getElementById('participant_card_search');
+const participantCardHidden = document.getElementById('participant_card_player_id');
+const participantCardOptions = document.getElementById('participant_card_options');
+const participantCardReferenceInput = document.getElementById('participant_card_reference');
+const participantCardReferenceOptions = document.getElementById('participant_card_reference_options');
+const participantCardForm = document.getElementById('participant-card-verifier-form');
+
+function hideParticipantCardOptions() {
+    if (participantCardOptions) {
+        participantCardOptions.style.display = 'none';
+    }
+}
+
+function hideParticipantCardReferenceOptions() {
+    if (participantCardReferenceOptions) {
+        participantCardReferenceOptions.style.display = 'none';
+    }
+}
+
+if (
+    participantCardInput
+    && participantCardHidden
+    && participantCardOptions
+    && participantCardReferenceInput
+    && participantCardReferenceOptions
+    && participantCardForm
+) {
+    function renderParticipantCardOptions(items) {
+        if (items.length === 0) {
+            participantCardOptions.innerHTML = '<div style="padding:0.65rem;color:var(--gray);">Aucun participant correspondant.</div>';
+            participantCardOptions.style.display = 'block';
+            return;
+        }
+
+        participantCardOptions.innerHTML = items.map((card) => (
+            '<div class="participant-card-option" data-player-id="' + card.player_id + '" data-player-name="' + card.player_name.replace(/"/g, '&quot;') + '" style="padding:0.65rem;border-bottom:1px solid var(--gray-light);cursor:pointer;display:flex;justify-content:space-between;gap:0.5rem;">'
+            + '<span>' + card.player_name + '</span>'
+            + (card.linked_username ? '<span class="text-muted text-small">@' + card.linked_username + '</span>' : '<span class="text-muted text-small">sans compte</span>')
+            + '</div>'
+        )).join('');
+
+        participantCardOptions.querySelectorAll('.participant-card-option').forEach((el) => {
+            el.addEventListener('click', () => {
+                participantCardHidden.value = el.dataset.playerId;
+                participantCardInput.value = el.dataset.playerName;
+                hideParticipantCardOptions();
+            });
+        });
+
+        participantCardOptions.style.display = 'block';
+    }
+
+    function renderParticipantCardReferenceOptions(items) {
+        if (items.length === 0) {
+            participantCardReferenceOptions.innerHTML = '<div style="padding:0.65rem;color:var(--gray);">Aucune carte correspondante.</div>';
+            participantCardReferenceOptions.style.display = 'block';
+            return;
+        }
+
+        participantCardReferenceOptions.innerHTML = items.map((card) => {
+            const badges = [];
+            badges.push(card.is_active ? 'active' : 'inactive');
+            badges.push(card.signature_valid ? 'signature ok' : 'signature invalide');
+
+            return '<div class="participant-reference-option" data-reference="' + card.reference.replace(/"/g, '&quot;') + '" style="padding:0.65rem;border-bottom:1px solid var(--gray-light);cursor:pointer;display:flex;justify-content:space-between;gap:0.5rem;">'
+                + '<span><code>' + card.reference + '</code></span>'
+                + '<span class="text-muted text-small">' + badges.join(' • ') + '</span>'
+                + '</div>';
+        }).join('');
+
+        participantCardReferenceOptions.querySelectorAll('.participant-reference-option').forEach((el) => {
+            el.addEventListener('click', () => {
+                participantCardReferenceInput.value = el.dataset.reference;
+                hideParticipantCardReferenceOptions();
+            });
+        });
+
+        participantCardReferenceOptions.style.display = 'block';
+    }
+
+    participantCardInput.addEventListener('focus', () => {
+        renderParticipantCardOptions(participantCards);
+    });
+
+    participantCardInput.addEventListener('input', () => {
+        const query = participantCardInput.value.trim().toLowerCase();
+        participantCardHidden.value = '';
+        const filtered = query === ''
+            ? participantCards
+            : participantCards.filter((card) =>
+                card.player_name.toLowerCase().includes(query)
+                || (card.linked_username && card.linked_username.toLowerCase().includes(query))
+            );
+        renderParticipantCardOptions(filtered);
+    });
+
+    participantCardReferenceInput.addEventListener('focus', () => {
+        const playerId = parseInt(participantCardHidden.value || '0', 10);
+        const source = playerId > 0
+            ? participantCards.filter((card) => card.player_id === playerId)
+            : participantCards;
+        renderParticipantCardReferenceOptions(source);
+    });
+
+    participantCardReferenceInput.addEventListener('input', () => {
+        const query = participantCardReferenceInput.value.trim().toUpperCase();
+        const playerId = parseInt(participantCardHidden.value || '0', 10);
+        const source = playerId > 0
+            ? participantCards.filter((card) => card.player_id === playerId)
+            : participantCards;
+        const filtered = query === ''
+            ? source
+            : source.filter((card) => card.reference.toUpperCase().includes(query));
+        renderParticipantCardReferenceOptions(filtered);
+    });
+
+    participantCardForm.addEventListener('submit', (event) => {
+        if (!participantCardHidden.value) {
+            event.preventDefault();
+            alert('Veuillez sélectionner un compétiteur inscrit.');
+            return;
+        }
+        if (!participantCardReferenceInput.value.trim()) {
+            event.preventDefault();
+            alert('Veuillez sélectionner une référence de carte.');
+        }
+    });
+}
+
+document.addEventListener('click', (event) => {
+    if (!event.target.closest('#member-card-verifier .autocomplete-wrapper')) {
+        hideParticipantCardOptions();
+        hideParticipantCardReferenceOptions();
+    }
+});
 </script>

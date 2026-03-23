@@ -17,6 +17,7 @@ use App\Models\Player;
 use App\Models\Round;
 use App\Models\RoundScore;
 use App\Models\RoundPause;
+use App\Models\MemberCard;
 use App\Config\Database;
 use App\Models\ActivityLog;
 
@@ -384,6 +385,24 @@ class CompetitionSessionController extends Controller
         // Joueurs inscrits à la compétition
         $players = $this->competition->getRegisteredPlayers((int) $data['competition_id']);
         $restrictedPlayerIds = $this->getRestrictedCompetitionPlayerIds((int) $data['space_id']);
+        $memberCardModel = new MemberCard();
+        $participantCards = [];
+        foreach ($players as $player) {
+            $card = $memberCardModel->findByPlayerAndSpace((int) $player['id'], (int) $data['space_id']);
+            if (!$card) {
+                continue;
+            }
+
+            $card['signature_valid'] = MemberCard::verify($card);
+            $participantCards[] = [
+                'player_id' => (int) $player['id'],
+                'player_name' => (string) ($player['name'] ?? 'Joueur'),
+                'linked_username' => $player['linked_username'] ?? null,
+                'reference' => (string) $card['reference'],
+                'is_active' => (int) ($card['is_active'] ?? 0),
+                'signature_valid' => (bool) ($card['signature_valid'] ?? false),
+            ];
+        }
 
         $this->renderMinimal('competitions/session_dashboard', [
             'title'     => 'Session #' . $data['session_number'],
@@ -391,11 +410,81 @@ class CompetitionSessionController extends Controller
             'games'     => $games,
             'gameTypes' => $gameTypes,
             'players'   => $players,
+            'participantCards' => $participantCards,
             'pauseDurationMinutes' => self::REFEREE_PAUSE_DEFAULT_MINUTES,
             'pauseMinMinutes' => self::REFEREE_PAUSE_MIN_MINUTES,
             'pauseMaxMinutes' => self::REFEREE_PAUSE_MAX_MINUTES,
             'restrictedCompetitionPlayerIds' => $restrictedPlayerIds,
         ]);
+    }
+
+    /**
+     * Vérifie la carte de membre d'un compétiteur depuis le dashboard arbitre.
+     */
+    public function verifyParticipantCard(): void
+    {
+        $data = $this->requireSession();
+
+        if (!CSRF::validate($_POST['csrf_token'] ?? '')) {
+            $this->setFlash('danger', 'Token de sécurité invalide.');
+            $this->redirect('/competition/dashboard');
+            return;
+        }
+
+        $playerId = (int) ($_POST['player_id'] ?? 0);
+        $reference = strtoupper(trim((string) ($_POST['reference'] ?? '')));
+
+        if ($playerId <= 0 || $reference === '') {
+            $this->setFlash('danger', 'Veuillez sélectionner un compétiteur et une référence de carte.');
+            $this->redirect('/competition/dashboard#member-card-verifier');
+            return;
+        }
+
+        if (!$this->competition->isPlayerRegistered((int) $data['competition_id'], $playerId)) {
+            $this->setFlash('danger', 'Ce joueur n\'est pas inscrit à cette compétition.');
+            $this->redirect('/competition/dashboard#member-card-verifier');
+            return;
+        }
+
+        $cardModel = new MemberCard();
+        $card = $cardModel->findByPlayerAndSpace($playerId, (int) $data['space_id']);
+        if (!$card) {
+            $this->setFlash('danger', 'Aucune carte de membre trouvée pour ce compétiteur.');
+            $this->redirect('/competition/dashboard#member-card-verifier');
+            return;
+        }
+
+        $signatureValid = MemberCard::verify($card);
+        if (!$signatureValid) {
+            $this->setFlash('danger', 'Carte invalide : signature numérique incorrecte.');
+            $this->redirect('/competition/dashboard#member-card-verifier');
+            return;
+        }
+
+        if ((int) $card['is_active'] !== 1) {
+            $this->setFlash('danger', 'Carte invalide : cette carte est désactivée.');
+            $this->redirect('/competition/dashboard#member-card-verifier');
+            return;
+        }
+
+        if (strcasecmp((string) $card['reference'], $reference) !== 0) {
+            $this->setFlash('danger', 'Référence non conforme : la carte présentée ne correspond pas au compétiteur sélectionné.');
+            $this->redirect('/competition/dashboard#member-card-verifier');
+            return;
+        }
+
+        ActivityLog::logCompetition(
+            (int) $data['competition_id'],
+            'competition.member_card.verify',
+            null,
+            'player',
+            $playerId,
+            (int) $data['session_id'],
+            ['reference' => (string) $card['reference'], 'referee' => (string) ($data['referee_name'] ?? '')]
+        );
+
+        $this->setFlash('success', 'Identité validée : carte active et signature conforme.');
+        $this->redirect('/competition/dashboard#member-card-verifier');
     }
 
     /**
