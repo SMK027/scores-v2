@@ -29,6 +29,7 @@
     <a href="/admin/players/deleted" class="btn btn-outline">♻️ Restaurer des joueurs</a>
     <a href="/admin/bans/users" class="btn btn-outline">🚫 Bannissements comptes</a>
     <a href="/admin/bans/ips" class="btn btn-outline">🌐 Bannissements IP</a>
+    <a href="/admin/contact" class="btn btn-outline">📬 Tickets de contact</a>
     <?php if ($canAdminOnly): ?>
     <a href="/admin/game-types" class="btn btn-outline">🃏 Types de jeux globaux</a>
     <a href="/admin/password-policy" class="btn btn-outline">🔐 Politique de mot de passe</a>

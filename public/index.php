@@ -32,6 +32,7 @@ use App\Controllers\CompetitionSessionController;
 use App\Controllers\SpaceTransferController;
 use App\Controllers\LeaderboardController;
 use App\Controllers\MemberCardController;
+use App\Controllers\ContactController;
 use App\Controllers\Api\AuthApiController;
 use App\Controllers\Api\SpaceApiController;
 use App\Controllers\Api\GameApiController;
@@ -315,6 +316,15 @@ $router->get('/spaces/{id}/stats', StatController::class, 'index');
 $router->get('/spaces/{id}/search', SearchController::class, 'index');
 
 // ============================================================
+// Contact modération (admin/manager espace)
+// ============================================================
+$router->get('/spaces/{id}/contact', ContactController::class, 'index');
+$router->get('/spaces/{id}/contact/create', ContactController::class, 'createForm');
+$router->post('/spaces/{id}/contact/create', ContactController::class, 'create');
+$router->get('/spaces/{id}/contact/{tid}', ContactController::class, 'show');
+$router->post('/spaces/{id}/contact/{tid}/reply', ContactController::class, 'reply');
+
+// ============================================================
 // Compétitions (vue espace — staff + membres)
 // ============================================================
 $router->get('/spaces/{id}/competitions', CompetitionController::class, 'index');
@@ -396,6 +406,12 @@ $router->get('/admin/bans/ips', AdminController::class, 'ipBans');
 $router->get('/admin/bans/ips/create', AdminController::class, 'ipBanForm');
 $router->post('/admin/bans/ips/create', AdminController::class, 'createIpBan');
 $router->post('/admin/bans/ips/{bid}/revoke', AdminController::class, 'revokeIpBan');
+
+// Tickets de contact
+$router->get('/admin/contact', AdminController::class, 'contactTickets');
+$router->get('/admin/contact/{tid}', AdminController::class, 'contactTicketShow');
+$router->post('/admin/contact/{tid}/reply', AdminController::class, 'contactTicketReply');
+$router->post('/admin/contact/{tid}/status', AdminController::class, 'contactTicketUpdateStatus');
 
 // Journal d'activité
 $router->get('/admin/logs', AdminController::class, 'activityLogs');

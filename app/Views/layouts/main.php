@@ -93,6 +93,9 @@
                     🏆 Compétitions
                 </a>
                 <?php if (isset($spaceRole) && in_array($spaceRole, ['admin', 'manager'])): ?>
+                <a href="/spaces/<?= $currentSpace['id'] ?>/contact" class="sidebar-link <?= ($activeMenu ?? '') === 'contact' ? 'active' : '' ?>">
+                    📬 Contact
+                </a>
                 <a href="/spaces/<?= $currentSpace['id'] ?>/members" class="sidebar-link <?= ($activeMenu ?? '') === 'members' ? 'active' : '' ?>">
                     ⚙️ Membres
                 </a>

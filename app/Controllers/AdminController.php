@@ -1478,4 +1478,142 @@ class AdminController extends Controller
 </html>
 HTML;
     }
+
+    // =========================================================
+    // Tickets de contact
+    // =========================================================
+
+    /**
+     * Liste des tickets de contact (admin).
+     */
+    public function contactTickets(): void
+    {
+        $this->checkAdmin();
+
+        $status   = trim((string) ($_GET['status'] ?? ''));
+        $category = trim((string) ($_GET['category'] ?? ''));
+
+        $ticketModel = new \App\Models\ContactTicket();
+        $tickets = $ticketModel->findAll($status, $category);
+
+        $this->render('admin/contact_tickets', [
+            'title'      => 'Tickets de contact',
+            'activeMenu' => 'admin',
+            'tickets'    => $tickets,
+            'categories' => \App\Models\ContactTicket::CATEGORIES,
+            'statuses'   => \App\Models\ContactTicket::STATUSES,
+            'filterStatus'   => $status,
+            'filterCategory' => $category,
+        ]);
+    }
+
+    /**
+     * Affiche un ticket de contact (admin).
+     */
+    public function contactTicketShow(string $ticketId): void
+    {
+        $this->checkAdmin();
+
+        $ticketModel  = new \App\Models\ContactTicket();
+        $messageModel = new \App\Models\ContactMessage();
+
+        $ticket = $ticketModel->findWithDetails((int) $ticketId);
+        if (!$ticket) {
+            $this->setFlash('danger', 'Ticket introuvable.');
+            $this->redirect('/admin/contact');
+            return;
+        }
+
+        $messages = $messageModel->findByTicket((int) $ticketId);
+
+        $this->render('admin/contact_ticket_show', [
+            'title'      => 'Ticket #' . $ticketId,
+            'activeMenu' => 'admin',
+            'ticket'     => $ticket,
+            'messages'   => $messages,
+            'statuses'   => \App\Models\ContactTicket::STATUSES,
+            'categories' => \App\Models\ContactTicket::CATEGORIES,
+        ]);
+    }
+
+    /**
+     * Répondre à un ticket (admin).
+     */
+    public function contactTicketReply(string $ticketId): void
+    {
+        $this->checkAdmin();
+        $this->validateCSRF();
+
+        $ticketModel  = new \App\Models\ContactTicket();
+        $messageModel = new \App\Models\ContactMessage();
+
+        $ticket = $ticketModel->findWithDetails((int) $ticketId);
+        if (!$ticket) {
+            $this->setFlash('danger', 'Ticket introuvable.');
+            $this->redirect('/admin/contact');
+            return;
+        }
+
+        if ($ticket['status'] === 'closed') {
+            $this->setFlash('danger', 'Ce ticket est fermé.');
+            $this->redirect('/admin/contact/' . $ticketId);
+            return;
+        }
+
+        $body = $this->getPostData(['body'])['body'];
+        if ($body === '') {
+            $this->setFlash('danger', 'Le message ne peut pas être vide.');
+            $this->redirect('/admin/contact/' . $ticketId);
+            return;
+        }
+
+        $messageModel->create([
+            'ticket_id' => (int) $ticketId,
+            'user_id'   => $this->getCurrentUserId(),
+            'body'      => $body,
+        ]);
+
+        $ticketModel->update((int) $ticketId, [
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        ActivityLog::logAdmin('contact_ticket_reply', $this->getCurrentUserId(), null, (int) $ticketId);
+
+        $this->setFlash('success', 'Réponse envoyée.');
+        $this->redirect('/admin/contact/' . $ticketId);
+    }
+
+    /**
+     * Mettre à jour le statut d'un ticket (admin).
+     */
+    public function contactTicketUpdateStatus(string $ticketId): void
+    {
+        $this->checkAdmin();
+        $this->validateCSRF();
+
+        $ticketModel = new \App\Models\ContactTicket();
+        $ticket = $ticketModel->findWithDetails((int) $ticketId);
+        if (!$ticket) {
+            $this->setFlash('danger', 'Ticket introuvable.');
+            $this->redirect('/admin/contact');
+            return;
+        }
+
+        $newStatus = $this->getPostData(['status'])['status'];
+        if (!array_key_exists($newStatus, \App\Models\ContactTicket::STATUSES)) {
+            $this->setFlash('danger', 'Statut invalide.');
+            $this->redirect('/admin/contact/' . $ticketId);
+            return;
+        }
+
+        $closedBy = ($newStatus === 'closed') ? $this->getCurrentUserId() : null;
+        $ticketModel->updateStatus((int) $ticketId, $newStatus, $closedBy);
+
+        ActivityLog::logAdmin('contact_ticket_status', $this->getCurrentUserId(), null, (int) $ticketId, [
+            'status' => $newStatus,
+        ]);
+
+        $this->setFlash('success', 'Statut mis à jour.');
+        $this->redirect('/admin/contact/' . $ticketId);
+    }
 }
