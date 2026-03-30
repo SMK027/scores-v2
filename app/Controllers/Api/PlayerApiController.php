@@ -59,7 +59,7 @@ class PlayerApiController extends ApiController
     public function create(string $id): void
     {
         $this->requireAuth();
-        $this->checkSpaceAccess((int) $id, ['admin', 'manager', 'member']);
+        $this->checkSpaceAccess((int) $id, ['admin', 'manager']);
 
         $data = $this->getJsonBody();
         $name = trim($data['name'] ?? '');
@@ -92,7 +92,7 @@ class PlayerApiController extends ApiController
     public function update(string $id, string $pid): void
     {
         $this->requireAuth();
-        $this->checkSpaceAccess((int) $id, ['admin', 'manager', 'member']);
+        $this->checkSpaceAccess((int) $id, ['admin', 'manager']);
 
         $player = $this->model->findActiveByIdInSpace((int) $pid, (int) $id);
         if (!$player) {

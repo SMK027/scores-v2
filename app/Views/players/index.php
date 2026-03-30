@@ -1,6 +1,6 @@
 <div class="page-header">
     <h1>Joueurs</h1>
-    <?php if (in_array($spaceRole, ['admin', 'manager', 'member'])): ?>
+    <?php if (in_array($spaceRole, ['admin', 'manager'])): ?>
         <a href="/spaces/<?= $currentSpace['id'] ?>/players/create" class="btn btn-primary">+ Ajouter un joueur</a>
     <?php endif; ?>
 </div>
@@ -9,7 +9,7 @@
     <div class="empty-state">
         <div class="empty-icon">👥</div>
         <p>Aucun joueur enregistré.<br>Ajoutez des joueurs pour commencer vos parties !</p>
-        <?php if (in_array($spaceRole, ['admin', 'manager', 'member'])): ?>
+        <?php if (in_array($spaceRole, ['admin', 'manager'])): ?>
             <a href="/spaces/<?= $currentSpace['id'] ?>/players/create" class="btn btn-primary">Ajouter un joueur</a>
         <?php endif; ?>
     </div>

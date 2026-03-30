@@ -156,7 +156,7 @@ class PlayerController extends Controller
      */
     public function createForm(string $id): void
     {
-        $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
+        $ctx = $this->checkAccess($id, ['admin', 'manager']);
 
         $members = $this->spaceMemberModel->findBySpace((int) $id);
         $linkedUserIds = $this->playerModel->getLinkedUserIds((int) $id);
@@ -176,7 +176,7 @@ class PlayerController extends Controller
      */
     public function create(string $id): void
     {
-        $ctx = $this->checkAccess($id, ['admin', 'manager', 'member']);
+        $ctx = $this->checkAccess($id, ['admin', 'manager']);
         $this->validateCSRF();
 
         $data = $this->getPostData(['name', 'user_id']);
