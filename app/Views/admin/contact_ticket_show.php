@@ -45,12 +45,19 @@
         <div class="card mb-2" style="border-left: 4px solid <?= $isStaff ? 'var(--primary, #4361ee)' : 'var(--gray, #6c757d)' ?>;">
             <div class="card-body">
                 <div class="d-flex justify-between align-center mb-1">
-                    <strong>
-                        <?= e($msg['username']) ?>
-                        <?php if ($isStaff): ?>
-                            <span class="badge badge-info">Modération</span>
+                    <div class="d-flex align-center gap-1">
+                        <?php if (!empty($msg['avatar'])): ?>
+                            <img src="<?= e($msg['avatar']) ?>" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">
+                        <?php else: ?>
+                            <span style="width:28px;height:28px;border-radius:50%;background:var(--primary,#4361ee);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:600;"><?= strtoupper(mb_substr($msg['username'], 0, 1)) ?></span>
                         <?php endif; ?>
-                    </strong>
+                        <strong>
+                            <?= e($msg['username']) ?>
+                            <?php if ($isStaff): ?>
+                                <span class="badge badge-info">Modération</span>
+                            <?php endif; ?>
+                        </strong>
+                    </div>
                     <small class="text-muted"><?= date('d/m/Y H:i', strtotime($msg['created_at'])) ?></small>
                 </div>
                 <div style="white-space: pre-wrap;"><?= e($msg['body']) ?></div>
