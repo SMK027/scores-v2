@@ -30,6 +30,9 @@
                         <span class="badge badge-info"><?= win_condition_label($gt['win_condition']) ?></span>
                         <span class="text-muted text-small"><?= $gt['min_players'] ?>-<?= $gt['max_players'] ?? '∞' ?> joueurs</span>
                         <span class="text-muted text-small">🎮 <?= $gt['game_count'] ?> partie(s)</span>
+                        <?php if (!empty($gt['avg_round_duration'])): ?>
+                            <span class="text-muted text-small">⏱️ ~<?= format_duration((int) $gt['avg_round_duration']) ?>/manche</span>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php if (!$isGlobal && in_array($spaceRole, ['admin', 'manager'])): ?>
