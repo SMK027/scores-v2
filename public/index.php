@@ -321,8 +321,8 @@ $router->get('/spaces/{id}/search', SearchController::class, 'index');
 $router->get('/spaces/{id}/contact', ContactController::class, 'index');
 $router->get('/spaces/{id}/contact/create', ContactController::class, 'createForm');
 $router->post('/spaces/{id}/contact/create', ContactController::class, 'create');
-$router->get('/spaces/{id}/contact/{tid}', ContactController::class, 'show');
-$router->post('/spaces/{id}/contact/{tid}/reply', ContactController::class, 'reply');
+$router->get('/spaces/{id}/contact/{ticketId}', ContactController::class, 'show');
+$router->post('/spaces/{id}/contact/{ticketId}/reply', ContactController::class, 'reply');
 
 // ============================================================
 // Compétitions (vue espace — staff + membres)
@@ -409,9 +409,9 @@ $router->post('/admin/bans/ips/{bid}/revoke', AdminController::class, 'revokeIpB
 
 // Tickets de contact
 $router->get('/admin/contact', AdminController::class, 'contactTickets');
-$router->get('/admin/contact/{tid}', AdminController::class, 'contactTicketShow');
-$router->post('/admin/contact/{tid}/reply', AdminController::class, 'contactTicketReply');
-$router->post('/admin/contact/{tid}/status', AdminController::class, 'contactTicketUpdateStatus');
+$router->get('/admin/contact/{ticketId}', AdminController::class, 'contactTicketShow');
+$router->post('/admin/contact/{ticketId}/reply', AdminController::class, 'contactTicketReply');
+$router->post('/admin/contact/{ticketId}/status', AdminController::class, 'contactTicketUpdateStatus');
 
 // Journal d'activité
 $router->get('/admin/logs', AdminController::class, 'activityLogs');

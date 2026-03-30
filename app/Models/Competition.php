@@ -155,7 +155,7 @@ class Competition extends Model
         $check = $this->db->prepare(
             "SELECT id
              FROM game_types
-             WHERE space_id = ?
+             WHERE (space_id = ? OR is_global = 1)
                AND id IN ({$placeholders})"
         );
         $check->execute($params);
