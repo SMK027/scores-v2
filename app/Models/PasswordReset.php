@@ -17,17 +17,21 @@ class PasswordReset extends Model
      * Crée un token de réinitialisation pour un utilisateur.
      * Invalide les tokens précédents non utilisés.
      *
+     * @param int $expiresInMinutes Durée de validité en minutes (défaut: 30, max: 4320 soit 3 jours)
      * @return string Le token généré
      */
-    public function createToken(int $userId): string
+    public function createToken(int $userId, int $expiresInMinutes = 30): string
     {
+        // Plafonner à 3 jours (4320 minutes)
+        $expiresInMinutes = min(max($expiresInMinutes, 1), 4320);
+
         // Invalider les anciens tokens
         $stmt = $this->db->prepare("UPDATE {$this->table} SET used = 1 WHERE user_id = :uid AND used = 0");
         $stmt->execute(['uid' => $userId]);
 
         // Générer un nouveau token
         $token = bin2hex(random_bytes(32));
-        $expiresAt = date('Y-m-d H:i:s', time() + 30 * 60); // 30 minutes
+        $expiresAt = date('Y-m-d H:i:s', time() + $expiresInMinutes * 60);
 
         $this->create([
             'user_id'    => $userId,

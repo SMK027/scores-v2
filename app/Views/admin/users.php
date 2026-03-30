@@ -73,6 +73,10 @@
                                             </a>
                                         <?php endif; ?>
 
+                                        <?php if ($user['id'] != current_user_id()): ?>
+                                            <a href="/admin/users/<?= $user['id'] ?>/reset-password" class="btn btn-sm btn-outline-warning">🔑 Reset MDP</a>
+                                        <?php endif; ?>
+
                                         <?php if (current_global_role() === 'superadmin' && $user['id'] != current_user_id()): ?>
                                             <form method="POST" action="/admin/users/<?= $user['id'] ?>/role" class="d-flex gap-1 justify-end" style="display:inline-flex;">
                                                 <?= csrf_field() ?>

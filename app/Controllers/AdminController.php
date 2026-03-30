@@ -18,6 +18,7 @@ use App\Models\GameType;
 use App\Config\Database;
 use App\Models\ActivityLog;
 use App\Models\SpaceMember;
+use App\Models\PasswordReset;
 use App\Core\Mailer;
 
 /**
@@ -1327,5 +1328,143 @@ class AdminController extends Controller
         $gameTypeModel->delete((int) $gtid);
         $this->setFlash('success', 'Type de jeu global supprimé.');
         $this->redirect('/admin/game-types');
+    }
+
+    // =========================================================
+    // Réinitialisation de mot de passe (admin)
+    // =========================================================
+
+    /**
+     * Formulaire de demande de réinitialisation admin.
+     */
+    public function adminResetPasswordForm(string $uid): void
+    {
+        $this->checkAdminOrSuperAdmin();
+
+        $userModel = new User();
+        $user = $userModel->find((int) $uid);
+
+        if (!$user) {
+            $this->setFlash('danger', 'Utilisateur introuvable.');
+            $this->redirect('/admin/users');
+        }
+
+        $this->render('admin/reset_password', [
+            'title'      => 'Réinitialisation de mot de passe',
+            'targetUser' => $user,
+        ]);
+    }
+
+    /**
+     * Traite la demande de réinitialisation admin.
+     */
+    public function adminResetPassword(string $uid): void
+    {
+        $this->checkAdminOrSuperAdmin();
+        $this->validateCSRF();
+
+        $userModel = new User();
+        $user = $userModel->find((int) $uid);
+
+        if (!$user) {
+            $this->setFlash('danger', 'Utilisateur introuvable.');
+            $this->redirect('/admin/users');
+            return;
+        }
+
+        $data = $this->getPostData(['duration']);
+        $durationMinutes = (int) ($data['duration'] ?? 0);
+
+        // Validation : entre 5 minutes et 3 jours (4320 minutes)
+        if ($durationMinutes < 5 || $durationMinutes > 4320) {
+            $this->setFlash('danger', 'La durée doit être comprise entre 5 minutes et 3 jours.');
+            $this->redirect("/admin/users/{$uid}/reset-password");
+            return;
+        }
+
+        $resetModel = new PasswordReset();
+        $token = $resetModel->createToken($user['id'], $durationMinutes);
+
+        $appUrl = rtrim(getenv('APP_URL') ?: 'http://localhost:8080', '/');
+        $resetLink = $appUrl . '/reset-password/' . $token;
+
+        $durationLabel = $this->formatDurationLabel($durationMinutes);
+
+        try {
+            $mailer = new Mailer();
+            $subject = 'Réinitialisation de votre mot de passe – Scores';
+            $body = $this->buildAdminResetEmail($user['username'], $resetLink, $durationLabel);
+            $mailer->send($user['email'], $subject, $body);
+        } catch (\RuntimeException $e) {
+            $this->setFlash('danger', 'Erreur lors de l\'envoi de l\'email.');
+            $this->redirect("/admin/users/{$uid}/reset-password");
+            return;
+        }
+
+        ActivityLog::logAdmin('user.password_reset_sent', $this->getCurrentUserId(), 'user', (int) $uid, [
+            'username' => $user['username'],
+            'duration' => $durationLabel,
+        ]);
+
+        $this->setFlash('success', "Lien de réinitialisation envoyé à {$user['email']} (valide {$durationLabel}).");
+        $this->redirect('/admin/users');
+    }
+
+    /**
+     * Formate une durée en minutes en texte lisible.
+     */
+    private function formatDurationLabel(int $minutes): string
+    {
+        if ($minutes < 60) {
+            return "{$minutes} minute" . ($minutes > 1 ? 's' : '');
+        }
+        $hours = intdiv($minutes, 60);
+        $remainMinutes = $minutes % 60;
+        if ($hours < 24) {
+            $label = "{$hours} heure" . ($hours > 1 ? 's' : '');
+            if ($remainMinutes > 0) {
+                $label .= " {$remainMinutes} min";
+            }
+            return $label;
+        }
+        $days = intdiv($hours, 24);
+        $remainHours = $hours % 24;
+        $label = "{$days} jour" . ($days > 1 ? 's' : '');
+        if ($remainHours > 0) {
+            $label .= " {$remainHours}h";
+        }
+        return $label;
+    }
+
+    /**
+     * Construit l'email HTML de réinitialisation initié par un admin.
+     */
+    private function buildAdminResetEmail(string $username, string $resetLink, string $durationLabel): string
+    {
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+    <div style="background: linear-gradient(135deg, #4361ee, #3a0ca3); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px;">🎲 Scores</h1>
+        <p style="margin: 8px 0 0; opacity: 0.9;">Réinitialisation de mot de passe</p>
+    </div>
+    <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 12px 12px;">
+        <p>Bonjour <strong>{$username}</strong>,</p>
+        <p>Un administrateur a initié la réinitialisation de votre mot de passe. Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe :</p>
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{$resetLink}" style="display: inline-block; background: #4361ee; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                Réinitialiser mon mot de passe
+            </a>
+        </div>
+        <p style="color: #666; font-size: 14px;">Ce lien est valable <strong>{$durationLabel}</strong> et ne peut être utilisé qu'une seule fois.</p>
+        <p style="color: #666; font-size: 14px;">Si vous n'êtes pas à l'origine de cette demande, contactez un administrateur.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="color: #999; font-size: 12px;">Si le bouton ne fonctionne pas, copiez-collez ce lien :<br><a href="{$resetLink}" style="color: #4361ee; word-break: break-all;">{$resetLink}</a></p>
+    </div>
+</body>
+</html>
+HTML;
     }
 }
