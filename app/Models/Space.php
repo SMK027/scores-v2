@@ -60,6 +60,7 @@ class Space extends Model
         'competitions' => 'Création de compétitions',
         'game_types'   => 'Création/modification/suppression de types de jeux',
         'imports'      => 'Import de configuration d\'espace',
+        'contact'      => 'Envoi de tickets de contact',
     ];
 
     /**

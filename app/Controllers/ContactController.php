@@ -71,6 +71,7 @@ class ContactController extends Controller
     public function createForm(string $id): void
     {
         $ctx = $this->checkAccess($id);
+        $this->checkSpaceRestriction((int) $id, 'contact');
 
         $this->render('contact/create', [
             'title'        => 'Nouveau ticket',
@@ -87,6 +88,7 @@ class ContactController extends Controller
     public function create(string $id): void
     {
         $ctx = $this->checkAccess($id);
+        $this->checkSpaceRestriction((int) $id, 'contact');
         $this->validateCSRF();
 
         $data = $this->getPostData(['category', 'subject', 'body']);
@@ -166,6 +168,7 @@ class ContactController extends Controller
     public function reply(string $id, string $ticketId): void
     {
         $ctx = $this->checkAccess($id);
+        $this->checkSpaceRestriction((int) $id, 'contact');
         $this->validateCSRF();
 
         $ticket = $this->ticketModel->findWithDetails((int) $ticketId);
