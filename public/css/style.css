@@ -392,6 +392,17 @@ p { margin-bottom: 1rem; }
     color: var(--white);
 }
 
+.btn-outline-warning {
+    background: transparent;
+    color: var(--warning-dark);
+    border-color: var(--warning);
+}
+
+.btn-outline-warning:hover {
+    background: var(--warning);
+    color: var(--dark);
+}
+
 .btn-sm {
     padding: 0.375rem 0.75rem;
     font-size: 0.8rem;
@@ -1212,6 +1223,10 @@ select.form-control {
     width: 90%;
     box-shadow: var(--shadow-lg);
     animation: modalIn 0.2s ease;
+}
+
+.modal.modal-md {
+    max-width: 500px;
 }
 
 @keyframes modalIn {

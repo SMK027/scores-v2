@@ -78,16 +78,7 @@
                                         <?php endif; ?>
 
                                         <?php if (current_global_role() === 'superadmin' && $user['id'] != current_user_id()): ?>
-                                            <form method="POST" action="/admin/users/<?= $user['id'] ?>/role" class="d-flex gap-1 justify-end" style="display:inline-flex;">
-                                                <?= csrf_field() ?>
-                                                <select name="global_role" class="form-control form-control-sm" style="width:auto;">
-                                                    <option value="user" <?= $user['global_role'] === 'user' ? 'selected' : '' ?>>Utilisateur</option>
-                                                    <option value="moderator" <?= $user['global_role'] === 'moderator' ? 'selected' : '' ?>>Modérateur</option>
-                                                    <option value="admin" <?= $user['global_role'] === 'admin' ? 'selected' : '' ?>>Admin</option>
-                                                    <option value="superadmin" <?= $user['global_role'] === 'superadmin' ? 'selected' : '' ?>>Superadmin</option>
-                                                </select>
-                                                <button type="submit" class="btn btn-sm btn-primary" data-confirm="Modifier le rôle de <?= e($user['username']) ?> ?">OK</button>
-                                            </form>
+                                            <button type="button" class="btn btn-sm btn-outline" onclick="openRoleModal(<?= $user['id'] ?>, '<?= e($user['username']) ?>', '<?= $user['global_role'] ?>')">👑 Rôle</button>
                                         <?php elseif ($user['id'] == current_user_id()): ?>
                                             <span class="text-muted text-small">Vous</span>
                                         <?php endif; ?>
@@ -122,4 +113,44 @@
             <?php endif; ?>
         <?php endfor; ?>
     </div>
+<?php endif; ?>
+
+<?php if (current_global_role() === 'superadmin'): ?>
+<!-- Modale de modification de rôle -->
+<div class="modal-overlay" id="roleModal">
+    <div class="modal modal-md">
+        <h3>👑 Modifier le rôle</h3>
+        <p>Modifier le rôle global de <strong id="roleModalUsername"></strong> :</p>
+        <form method="POST" id="roleModalForm">
+            <?= csrf_field() ?>
+            <div class="form-group">
+                <select name="global_role" id="roleModalSelect" class="form-control">
+                    <option value="user">Utilisateur</option>
+                    <option value="moderator">Modérateur</option>
+                    <option value="admin">Admin</option>
+                    <option value="superadmin">Superadmin</option>
+                </select>
+            </div>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline" onclick="closeRoleModal()">Annuler</button>
+                <button type="submit" class="btn btn-primary">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openRoleModal(userId, username, currentRole) {
+    document.getElementById('roleModalUsername').textContent = username;
+    document.getElementById('roleModalForm').action = '/admin/users/' + userId + '/role';
+    document.getElementById('roleModalSelect').value = currentRole;
+    document.getElementById('roleModal').classList.add('active');
+}
+function closeRoleModal() {
+    document.getElementById('roleModal').classList.remove('active');
+}
+document.getElementById('roleModal').addEventListener('click', function (e) {
+    if (e.target === this) closeRoleModal();
+});
+</script>
 <?php endif; ?>
