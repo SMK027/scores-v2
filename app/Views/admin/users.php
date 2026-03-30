@@ -73,7 +73,7 @@
                                             </a>
                                         <?php endif; ?>
 
-                                        <?php if ($user['id'] != current_user_id()): ?>
+                                        <?php if ($user['id'] != current_user_id() && empty($user['is_anonymized'])): ?>
                                             <a href="/admin/users/<?= $user['id'] ?>/reset-password" class="btn btn-sm btn-outline-warning">🔑 Reset MDP</a>
                                         <?php endif; ?>
 

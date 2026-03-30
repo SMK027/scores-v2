@@ -1349,6 +1349,11 @@ class AdminController extends Controller
             $this->redirect('/admin/users');
         }
 
+        if (!empty($user['is_anonymized'])) {
+            $this->setFlash('danger', 'Ce compte est anonymisé et ne peut pas être réinitialisé.');
+            $this->redirect('/admin/users');
+        }
+
         $this->render('admin/reset_password', [
             'title'      => 'Réinitialisation de mot de passe',
             'targetUser' => $user,
@@ -1368,6 +1373,12 @@ class AdminController extends Controller
 
         if (!$user) {
             $this->setFlash('danger', 'Utilisateur introuvable.');
+            $this->redirect('/admin/users');
+            return;
+        }
+
+        if (!empty($user['is_anonymized'])) {
+            $this->setFlash('danger', 'Ce compte est anonymisé et ne peut pas être réinitialisé.');
             $this->redirect('/admin/users');
             return;
         }

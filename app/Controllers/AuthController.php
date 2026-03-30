@@ -475,6 +475,12 @@ class AuthController extends Controller
             $this->redirect('/forgot-password');
         }
 
+        // Ne pas envoyer de lien pour les comptes anonymisés
+        if (!empty($user['is_anonymized'])) {
+            $this->setFlash('success', $successMsg);
+            $this->redirect('/forgot-password');
+        }
+
         // Créer le token
         $resetModel = new PasswordReset();
         $token = $resetModel->createToken($user['id']);
