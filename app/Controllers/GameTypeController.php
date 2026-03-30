@@ -193,4 +193,70 @@ class GameTypeController extends Controller
         $this->setFlash('success', 'Type de jeu supprimé.');
         $this->redirect("/spaces/{$id}/game-types");
     }
+
+    /**
+     * Formulaire de remplacement d'un type local par un type global.
+     */
+    public function replaceForm(string $id, string $gtid): void
+    {
+        $ctx = $this->checkAccess($id, ['admin', 'manager']);
+        $localType = $this->gameTypeModel->find((int) $gtid);
+
+        if (!$localType || (int) ($localType['space_id'] ?? 0) !== (int) $id || !empty($localType['is_global'])) {
+            $this->setFlash('danger', 'Type de jeu introuvable ou non remplaçable.');
+            $this->redirect("/spaces/{$id}/game-types");
+        }
+
+        $globalTypes = $this->gameTypeModel->findGlobal();
+        if (empty($globalTypes)) {
+            $this->setFlash('warning', 'Aucun type de jeu global disponible pour le remplacement.');
+            $this->redirect("/spaces/{$id}/game-types");
+        }
+
+        $this->render('game_types/replace', [
+            'title'        => 'Remplacer un type de jeu',
+            'currentSpace' => $ctx['space'],
+            'spaceRole'    => $ctx['member']['role'],
+            'activeMenu'   => 'game-types',
+            'localType'    => $localType,
+            'globalTypes'  => $globalTypes,
+        ]);
+    }
+
+    /**
+     * Traite le remplacement d'un type local par un type global.
+     */
+    public function replace(string $id, string $gtid): void
+    {
+        $ctx = $this->checkAccess($id, ['admin', 'manager']);
+        $this->validateCSRF();
+
+        $localType = $this->gameTypeModel->find((int) $gtid);
+        if (!$localType || (int) ($localType['space_id'] ?? 0) !== (int) $id || !empty($localType['is_global'])) {
+            $this->setFlash('danger', 'Type de jeu introuvable ou non remplaçable.');
+            $this->redirect("/spaces/{$id}/game-types");
+            return;
+        }
+
+        $data = $this->getPostData(['global_game_type_id']);
+        $globalId = (int) ($data['global_game_type_id'] ?? 0);
+
+        $globalType = $this->gameTypeModel->find($globalId);
+        if (!$globalType || empty($globalType['is_global'])) {
+            $this->setFlash('danger', 'Le type de jeu global sélectionné est invalide.');
+            $this->redirect("/spaces/{$id}/game-types/{$gtid}/replace");
+            return;
+        }
+
+        $count = $this->gameTypeModel->replaceWithGlobal((int) $gtid, $globalId);
+
+        ActivityLog::logSpace((int) $id, 'game_type.replace', $this->getCurrentUserId(), 'game_type', (int) $gtid, [
+            'local_name'  => $localType['name'],
+            'global_name' => $globalType['name'],
+            'games_moved' => $count,
+        ]);
+
+        $this->setFlash('success', "Type « {$localType['name']} » remplacé par « {$globalType['name']} ». {$count} partie(s) mise(s) à jour.");
+        $this->redirect("/spaces/{$id}/game-types");
+    }
 }

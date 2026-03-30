@@ -153,4 +153,41 @@ class GameTypeApiController extends ApiController
 
         $this->json(['success' => true, 'message' => 'Type de jeu supprimé.']);
     }
+
+    /**
+     * POST /api/spaces/{id}/game-types/{gtid}/replace
+     * Body: { global_game_type_id }
+     */
+    public function replace(string $id, string $gtid): void
+    {
+        $this->requireAuth();
+        $this->checkSpaceAccess((int) $id, ['admin', 'manager']);
+
+        $localType = $this->model->find((int) $gtid);
+        if (!$localType || (int) ($localType['space_id'] ?? 0) !== (int) $id || !empty($localType['is_global'])) {
+            $this->error('Type de jeu introuvable ou non remplaçable.', 404);
+        }
+
+        $data = $this->getJsonBody();
+        $globalId = (int) ($data['global_game_type_id'] ?? 0);
+
+        $globalType = $this->model->find($globalId);
+        if (!$globalType || empty($globalType['is_global'])) {
+            $this->error('Le type de jeu global sélectionné est invalide.', 400);
+        }
+
+        $count = $this->model->replaceWithGlobal((int) $gtid, $globalId);
+
+        ActivityLog::logSpace((int) $id, 'game_type.replace', $this->userId, 'game_type', (int) $gtid, [
+            'local_name'  => $localType['name'],
+            'global_name' => $globalType['name'],
+            'games_moved' => $count,
+        ]);
+
+        $this->json([
+            'success'       => true,
+            'message'       => "Type remplacé. {$count} partie(s) mise(s) à jour.",
+            'games_updated' => $count,
+        ]);
+    }
 }

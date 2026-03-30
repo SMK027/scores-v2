@@ -263,6 +263,8 @@ $router->post('/spaces/{id}/game-types/create', GameTypeController::class, 'crea
 $router->get('/spaces/{id}/game-types/{gtid}/edit', GameTypeController::class, 'editForm');
 $router->post('/spaces/{id}/game-types/{gtid}/edit', GameTypeController::class, 'update');
 $router->post('/spaces/{id}/game-types/{gtid}/delete', GameTypeController::class, 'delete');
+$router->get('/spaces/{id}/game-types/{gtid}/replace', GameTypeController::class, 'replaceForm');
+$router->post('/spaces/{id}/game-types/{gtid}/replace', GameTypeController::class, 'replace');
 
 // ============================================================
 // Joueurs
@@ -448,6 +450,7 @@ $router->get('/api/spaces/{id}/game-types/{gtid}', GameTypeApiController::class,
 $router->post('/api/spaces/{id}/game-types', GameTypeApiController::class, 'create');
 $router->put('/api/spaces/{id}/game-types/{gtid}', GameTypeApiController::class, 'update');
 $router->delete('/api/spaces/{id}/game-types/{gtid}', GameTypeApiController::class, 'delete');
+$router->post('/api/spaces/{id}/game-types/{gtid}/replace', GameTypeApiController::class, 'replace');
 
 // Joueurs
 $router->get('/api/spaces/{id}/players', PlayerApiController::class, 'index');

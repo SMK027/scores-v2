@@ -38,6 +38,7 @@
                 <?php if (!$isGlobal && in_array($spaceRole, ['admin', 'manager'])): ?>
                     <div class="card-footer">
                         <a href="/spaces/<?= $currentSpace['id'] ?>/game-types/<?= $gt['id'] ?>/edit" class="btn btn-sm btn-outline">Modifier</a>
+                        <a href="/spaces/<?= $currentSpace['id'] ?>/game-types/<?= $gt['id'] ?>/replace" class="btn btn-sm btn-outline-warning">Remplacer</a>
                         <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/game-types/<?= $gt['id'] ?>/delete" style="display:inline;">
                             <?= csrf_field() ?>
                             <button type="submit" class="btn btn-sm btn-outline-danger"

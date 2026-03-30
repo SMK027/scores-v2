@@ -95,4 +95,23 @@ class GameType extends Model
         }
         return (int) $gt['is_global'] === 1 || (int) $gt['space_id'] === $spaceId;
     }
+
+    /**
+     * Remplace un type de jeu local par un type global.
+     * Met à jour toutes les parties liées, puis supprime le type local.
+     *
+     * @return int Nombre de parties mises à jour
+     */
+    public function replaceWithGlobal(int $localId, int $globalId): int
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE games SET game_type_id = :global_id WHERE game_type_id = :local_id"
+        );
+        $stmt->execute(['global_id' => $globalId, 'local_id' => $localId]);
+        $updatedCount = $stmt->rowCount();
+
+        $this->delete($localId);
+
+        return $updatedCount;
+    }
 }
