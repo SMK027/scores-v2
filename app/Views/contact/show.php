@@ -26,6 +26,12 @@
 <div class="mb-3">
     <?php foreach ($messages as $msg):
         $isStaff = in_array($msg['global_role'], ['moderator', 'admin', 'superadmin'], true);
+        $roleLabel = match ($msg['global_role']) {
+            'superadmin' => 'Super-admin',
+            'admin'      => 'Admin',
+            'moderator'  => 'Modérateur',
+            default      => null,
+        };
     ?>
         <div class="card mb-2" style="border-left: 4px solid <?= $isStaff ? 'var(--primary, #4361ee)' : 'var(--gray, #6c757d)' ?>;">
             <div class="card-body">
@@ -39,7 +45,7 @@
                         <strong>
                             <?= e($msg['username']) ?>
                             <?php if ($isStaff): ?>
-                                <span class="badge badge-info">Modération</span>
+                                <span class="badge badge-info"><?= $roleLabel ?></span>
                             <?php endif; ?>
                         </strong>
                     </div>
