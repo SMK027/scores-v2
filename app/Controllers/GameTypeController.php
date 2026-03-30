@@ -120,6 +120,11 @@ class GameTypeController extends Controller
             $this->redirect("/spaces/{$id}/game-types");
         }
 
+        if (!empty($gameType['is_global'])) {
+            $this->setFlash('danger', 'Les types de jeux globaux ne peuvent être modifiés que depuis l\'administration.');
+            $this->redirect("/spaces/{$id}/game-types");
+        }
+
         $this->render('game_types/edit', [
             'title'        => 'Modifier le type de jeu',
             'currentSpace' => $ctx['space'],
@@ -137,6 +142,13 @@ class GameTypeController extends Controller
         $ctx = $this->checkAccess($id, ['admin', 'manager']);
         $this->checkSpaceRestriction((int) $id, 'game_types');
         $this->validateCSRF();
+
+        $existing = $this->gameTypeModel->find((int) $gtid);
+        if ($existing && !empty($existing['is_global'])) {
+            $this->setFlash('danger', 'Les types de jeux globaux ne peuvent être modifiés que depuis l\'administration.');
+            $this->redirect("/spaces/{$id}/game-types");
+            return;
+        }
 
         $data = $this->getPostData(['name', 'description', 'win_condition', 'min_players', 'max_players']);
 
@@ -167,6 +179,13 @@ class GameTypeController extends Controller
         $ctx = $this->checkAccess($id, ['admin', 'manager']);
         $this->checkSpaceRestriction((int) $id, 'game_types');
         $this->validateCSRF();
+
+        $existing = $this->gameTypeModel->find((int) $gtid);
+        if ($existing && !empty($existing['is_global'])) {
+            $this->setFlash('danger', 'Les types de jeux globaux ne peuvent être supprimés que depuis l\'administration.');
+            $this->redirect("/spaces/{$id}/game-types");
+            return;
+        }
 
         ActivityLog::logSpace((int) $id, 'game_type.delete', $this->getCurrentUserId(), 'game_type', (int) $gtid);
 

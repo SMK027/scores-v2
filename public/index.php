@@ -371,6 +371,14 @@ $router->post('/admin/fail2ban', AdminController::class, 'updateFail2ban');
 $router->get('/admin/leaderboard-criteria', AdminController::class, 'leaderboardCriteria');
 $router->post('/admin/leaderboard-criteria', AdminController::class, 'updateLeaderboardCriteria');
 
+// Types de jeux globaux
+$router->get('/admin/game-types', AdminController::class, 'globalGameTypes');
+$router->get('/admin/game-types/create', AdminController::class, 'globalGameTypeCreateForm');
+$router->post('/admin/game-types/create', AdminController::class, 'createGlobalGameType');
+$router->get('/admin/game-types/{gtid}/edit', AdminController::class, 'globalGameTypeEditForm');
+$router->post('/admin/game-types/{gtid}/edit', AdminController::class, 'updateGlobalGameType');
+$router->post('/admin/game-types/{gtid}/delete', AdminController::class, 'deleteGlobalGameType');
+
 // Bannissements comptes
 $router->get('/admin/bans/users', AdminController::class, 'userBans');
 $router->get('/admin/bans/users/search', AdminController::class, 'searchUsersApi');

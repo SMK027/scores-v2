@@ -756,19 +756,19 @@ class ProfileController extends Controller
      */
     private function getAvailableGameTypes(int $userId, \PDO $pdo, ?int $spaceId): array
     {
-        $sql = 'SELECT gt.id, gt.name, gt.space_id, s.name AS space_name
+        $sql = 'SELECT gt.id, gt.name, gt.space_id, COALESCE(s.name, \'Global\') AS space_name
                 FROM game_types gt
-                INNER JOIN spaces s ON s.id = gt.space_id
-                INNER JOIN space_members sm ON sm.space_id = s.id
-                WHERE sm.user_id = :user_id';
+                LEFT JOIN spaces s ON s.id = gt.space_id
+                LEFT JOIN space_members sm ON sm.space_id = s.id AND sm.user_id = :user_id
+                WHERE (sm.user_id IS NOT NULL OR gt.is_global = 1)';
         $params = ['user_id' => $userId];
 
         if ($spaceId !== null) {
-            $sql .= ' AND gt.space_id = :space_id';
+            $sql .= ' AND (gt.space_id = :space_id OR gt.is_global = 1)';
             $params['space_id'] = $spaceId;
         }
 
-        $sql .= ' ORDER BY s.name ASC, gt.name ASC';
+        $sql .= ' ORDER BY gt.is_global DESC, s.name ASC, gt.name ASC';
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);

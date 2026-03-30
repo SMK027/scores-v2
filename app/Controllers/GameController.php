@@ -166,7 +166,7 @@ class GameController extends Controller
 
         // Récupérer le type de jeu pour valider le nombre de joueurs
         $gameType = $this->gameTypeModel->find((int) $data['game_type_id']);
-        if (!$gameType || (int) $gameType['space_id'] !== (int) $id) {
+        if (!$gameType || !$this->gameTypeModel->isAccessibleInSpace((int) $data['game_type_id'], (int) $id)) {
             $this->setFlash('danger', 'Type de jeu invalide.');
             $this->redirect("/spaces/{$id}/games/create");
         }

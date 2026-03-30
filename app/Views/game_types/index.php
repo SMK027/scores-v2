@@ -16,6 +16,7 @@
 <?php else: ?>
     <div class="card-grid">
         <?php foreach ($gameTypes as $gt): ?>
+            <?php $isGlobal = !empty($gt['is_global']); ?>
             <div class="card">
                 <div class="card-body">
                     <h3><?= e($gt['name']) ?></h3>
@@ -23,12 +24,15 @@
                         <p class="text-muted text-small"><?= e(truncate($gt['description'], 100)) ?></p>
                     <?php endif; ?>
                     <div class="d-flex align-center gap-1 flex-wrap mt-1">
+                        <?php if ($isGlobal): ?>
+                            <span class="badge badge-warning">Global</span>
+                        <?php endif; ?>
                         <span class="badge badge-info"><?= win_condition_label($gt['win_condition']) ?></span>
                         <span class="text-muted text-small"><?= $gt['min_players'] ?>-<?= $gt['max_players'] ?? '∞' ?> joueurs</span>
                         <span class="text-muted text-small">🎮 <?= $gt['game_count'] ?> partie(s)</span>
                     </div>
                 </div>
-                <?php if (in_array($spaceRole, ['admin', 'manager'])): ?>
+                <?php if (!$isGlobal && in_array($spaceRole, ['admin', 'manager'])): ?>
                     <div class="card-footer">
                         <a href="/spaces/<?= $currentSpace['id'] ?>/game-types/<?= $gt['id'] ?>/edit" class="btn btn-sm btn-outline">Modifier</a>
                         <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/game-types/<?= $gt['id'] ?>/delete" style="display:inline;">

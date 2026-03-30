@@ -14,6 +14,7 @@ use App\Models\PasswordPolicy;
 use App\Models\Fail2banConfig;
 use App\Models\LeaderboardConfig;
 use App\Models\Player;
+use App\Models\GameType;
 use App\Config\Database;
 use App\Models\ActivityLog;
 use App\Models\SpaceMember;
@@ -1172,5 +1173,159 @@ class AdminController extends Controller
             'months'  => "P{$value}M",
             default   => "PT{$value}H",
         };
+    }
+
+    // =========================================================
+    // Types de jeux globaux
+    // =========================================================
+
+    /**
+     * Liste des types de jeux globaux.
+     */
+    public function globalGameTypes(): void
+    {
+        $this->checkAdminOrSuperAdmin();
+
+        $gameTypeModel = new GameType();
+        $gameTypes = $gameTypeModel->findGlobal();
+
+        $this->render('admin/global_game_types', [
+            'title'      => 'Types de jeux globaux',
+            'activeMenu' => 'admin',
+            'gameTypes'  => $gameTypes,
+        ]);
+    }
+
+    /**
+     * Formulaire de création d'un type de jeu global.
+     */
+    public function globalGameTypeCreateForm(): void
+    {
+        $this->checkAdminOrSuperAdmin();
+
+        $this->render('admin/global_game_type_form', [
+            'title'      => 'Nouveau type de jeu global',
+            'activeMenu' => 'admin',
+            'gameType'   => null,
+        ]);
+    }
+
+    /**
+     * Crée un type de jeu global.
+     */
+    public function createGlobalGameType(): void
+    {
+        $this->checkAdminOrSuperAdmin();
+        $this->validateCSRF();
+
+        $data = $this->getPostData(['name', 'description', 'win_condition', 'min_players', 'max_players']);
+
+        if (empty($data['name'])) {
+            $this->setFlash('danger', 'Le nom du type de jeu est requis.');
+            $this->redirect('/admin/game-types/create');
+            return;
+        }
+
+        $gameTypeModel = new GameType();
+        $gameTypeModel->create([
+            'space_id'      => null,
+            'is_global'     => 1,
+            'name'          => $data['name'],
+            'description'   => $data['description'],
+            'win_condition' => $data['win_condition'] ?: 'highest_score',
+            'min_players'   => (int) ($data['min_players'] ?: 2),
+            'max_players'   => !empty($data['max_players']) ? (int) $data['max_players'] : null,
+        ]);
+
+        ActivityLog::logAdmin('global_game_type.create', $this->getCurrentUserId(), 'game_type', null, ['name' => $data['name']]);
+
+        $this->setFlash('success', 'Type de jeu global créé.');
+        $this->redirect('/admin/game-types');
+    }
+
+    /**
+     * Formulaire d'édition d'un type de jeu global.
+     */
+    public function globalGameTypeEditForm(string $gtid): void
+    {
+        $this->checkAdminOrSuperAdmin();
+
+        $gameTypeModel = new GameType();
+        $gameType = $gameTypeModel->find((int) $gtid);
+
+        if (!$gameType || empty($gameType['is_global'])) {
+            $this->setFlash('danger', 'Type de jeu global introuvable.');
+            $this->redirect('/admin/game-types');
+            return;
+        }
+
+        $this->render('admin/global_game_type_form', [
+            'title'      => 'Modifier le type de jeu global',
+            'activeMenu' => 'admin',
+            'gameType'   => $gameType,
+        ]);
+    }
+
+    /**
+     * Met à jour un type de jeu global.
+     */
+    public function updateGlobalGameType(string $gtid): void
+    {
+        $this->checkAdminOrSuperAdmin();
+        $this->validateCSRF();
+
+        $gameTypeModel = new GameType();
+        $gameType = $gameTypeModel->find((int) $gtid);
+
+        if (!$gameType || empty($gameType['is_global'])) {
+            $this->setFlash('danger', 'Type de jeu global introuvable.');
+            $this->redirect('/admin/game-types');
+            return;
+        }
+
+        $data = $this->getPostData(['name', 'description', 'win_condition', 'min_players', 'max_players']);
+
+        if (empty($data['name'])) {
+            $this->setFlash('danger', 'Le nom est requis.');
+            $this->redirect("/admin/game-types/{$gtid}/edit");
+            return;
+        }
+
+        $gameTypeModel->update((int) $gtid, [
+            'name'          => $data['name'],
+            'description'   => $data['description'],
+            'win_condition' => $data['win_condition'] ?: 'highest_score',
+            'min_players'   => (int) ($data['min_players'] ?: 2),
+            'max_players'   => !empty($data['max_players']) ? (int) $data['max_players'] : null,
+        ]);
+
+        ActivityLog::logAdmin('global_game_type.update', $this->getCurrentUserId(), 'game_type', (int) $gtid, ['name' => $data['name']]);
+
+        $this->setFlash('success', 'Type de jeu global mis à jour.');
+        $this->redirect('/admin/game-types');
+    }
+
+    /**
+     * Supprime un type de jeu global.
+     */
+    public function deleteGlobalGameType(string $gtid): void
+    {
+        $this->checkAdminOrSuperAdmin();
+        $this->validateCSRF();
+
+        $gameTypeModel = new GameType();
+        $gameType = $gameTypeModel->find((int) $gtid);
+
+        if (!$gameType || empty($gameType['is_global'])) {
+            $this->setFlash('danger', 'Type de jeu global introuvable.');
+            $this->redirect('/admin/game-types');
+            return;
+        }
+
+        ActivityLog::logAdmin('global_game_type.delete', $this->getCurrentUserId(), 'game_type', (int) $gtid, ['name' => $gameType['name']]);
+
+        $gameTypeModel->delete((int) $gtid);
+        $this->setFlash('success', 'Type de jeu global supprimé.');
+        $this->redirect('/admin/game-types');
     }
 }

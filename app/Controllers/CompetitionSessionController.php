@@ -609,7 +609,7 @@ class CompetitionSessionController extends Controller
         }
 
         $gameType = $this->gameType->find($gameTypeId);
-        if (!$gameType || (int) $gameType['space_id'] !== (int) $data['space_id']) {
+        if (!$gameType || !$this->gameType->isAccessibleInSpace($gameTypeId, (int) $data['space_id'])) {
             $this->setFlash('danger', 'Type de jeu invalide pour cet espace.');
             $this->redirect('/competition/dashboard');
             return;

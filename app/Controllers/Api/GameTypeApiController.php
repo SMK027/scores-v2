@@ -42,7 +42,7 @@ class GameTypeApiController extends ApiController
         $this->checkSpaceAccess((int) $id);
 
         $gt = $this->model->find((int) $gtid);
-        if (!$gt || (int) $gt['space_id'] !== (int) $id) {
+        if (!$gt || !$this->model->isAccessibleInSpace((int) $gtid, (int) $id)) {
             $this->error('Type de jeu introuvable.', 404);
         }
 
@@ -96,8 +96,12 @@ class GameTypeApiController extends ApiController
         $this->checkSpaceRestriction((int) $id, 'game_types');
 
         $gt = $this->model->find((int) $gtid);
-        if (!$gt || (int) $gt['space_id'] !== (int) $id) {
+        if (!$gt || (int) ($gt['space_id'] ?? 0) !== (int) $id) {
             $this->error('Type de jeu introuvable.', 404);
+        }
+
+        if (!empty($gt['is_global'])) {
+            $this->error('Les types de jeux globaux ne peuvent être modifiés que depuis l\'administration.', 403);
         }
 
         $data = $this->getJsonBody();
@@ -136,8 +140,12 @@ class GameTypeApiController extends ApiController
         $this->checkSpaceRestriction((int) $id, 'game_types');
 
         $gt = $this->model->find((int) $gtid);
-        if (!$gt || (int) $gt['space_id'] !== (int) $id) {
+        if (!$gt || (int) ($gt['space_id'] ?? 0) !== (int) $id) {
             $this->error('Type de jeu introuvable.', 404);
+        }
+
+        if (!empty($gt['is_global'])) {
+            $this->error('Les types de jeux globaux ne peuvent être supprimés que depuis l\'administration.', 403);
         }
 
         ActivityLog::logSpace((int) $id, 'game_type.delete', $this->userId, 'game_type', (int) $gtid);

@@ -40,7 +40,7 @@ class Space extends Model
                     (SELECT COUNT(*) FROM space_members WHERE space_id = s.id) as member_count,
                     (SELECT COUNT(*) FROM games WHERE space_id = s.id) as game_count,
                   (SELECT COUNT(*) FROM players WHERE space_id = s.id AND deleted_at IS NULL) as player_count,
-                    (SELECT COUNT(*) FROM game_types WHERE space_id = s.id) as game_type_count
+                    (SELECT COUNT(*) FROM game_types WHERE space_id = s.id OR is_global = 1) as game_type_count
              FROM {$this->table} s
              LEFT JOIN users u ON s.created_by = u.id
              WHERE s.id = :id",

@@ -30,6 +30,7 @@
     <a href="/admin/bans/users" class="btn btn-outline">🚫 Bannissements comptes</a>
     <a href="/admin/bans/ips" class="btn btn-outline">🌐 Bannissements IP</a>
     <?php if ($canAdminOnly): ?>
+    <a href="/admin/game-types" class="btn btn-outline">🃏 Types de jeux globaux</a>
     <a href="/admin/password-policy" class="btn btn-outline">🔐 Politique de mot de passe</a>
     <a href="/admin/fail2ban" class="btn btn-outline">🛡️ Fail2ban</a>
     <a href="/admin/leaderboard-criteria" class="btn btn-outline">🏆 Critères leaderboard</a>

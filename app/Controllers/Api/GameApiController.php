@@ -148,7 +148,7 @@ class GameApiController extends ApiController
         }
 
         $gameType = $this->gameTypeModel->find($gameTypeId);
-        if (!$gameType || (int) $gameType['space_id'] !== (int) $id) {
+        if (!$gameType || !$this->gameTypeModel->isAccessibleInSpace($gameTypeId, (int) $id)) {
             $this->error('Type de jeu invalide.');
         }
 

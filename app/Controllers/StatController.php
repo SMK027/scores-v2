@@ -95,7 +95,7 @@ class StatController extends Controller
                 (SELECT COUNT(*) FROM games WHERE space_id = :s2 AND status = 'completed') AS completed_games,
                 (SELECT COUNT(*) FROM games WHERE space_id = :s3 AND status = 'in_progress') AS active_games,
                 (SELECT COUNT(*) FROM players WHERE space_id = :s4) AS total_players,
-                (SELECT COUNT(*) FROM game_types WHERE space_id = :s5) AS total_game_types,
+                (SELECT COUNT(*) FROM game_types WHERE space_id = :s5 OR is_global = 1) AS total_game_types,
                 (SELECT COUNT(*) FROM rounds r JOIN games g ON g.id = r.game_id WHERE g.space_id = :s6) AS total_rounds
         ");
         $stmt->execute([
