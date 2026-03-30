@@ -25,9 +25,7 @@
                             <th>Manches jouées</th>
                             <th>Manches gagnées</th>
                             <th>Taux</th>
-                            <?php if (in_array($spaceRole, ['admin', 'manager']) || is_authenticated()): ?>
-                                <th class="text-right">Actions</th>
-                            <?php endif; ?>
+                            <th class="text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -48,8 +46,8 @@
                                         <span class="text-muted">—</span>
                                     <?php endif; ?>
                                 </td>
-                                <?php if (in_array($spaceRole, ['admin', 'manager'])): ?>
-                                    <td class="text-right">
+                                <td class="text-right">
+                                    <?php if (in_array($spaceRole, ['admin', 'manager'])): ?>
                                         <div class="btn-group">
                                             <a href="/spaces/<?= $currentSpace['id'] ?>/players/<?= $player['id'] ?>/card"
                                                class="btn btn-sm btn-outline" title="Carte de membre">🪪</a>
@@ -61,15 +59,17 @@
                                                         data-confirm="Supprimer ce joueur ?">Supprimer</button>
                                             </form>
                                         </div>
-                                    </td>
-                                <?php elseif (!empty($player['user_id']) && (int)$player['user_id'] === (int)current_user_id()): ?>
-                                    <td class="text-right">
+                                    <?php elseif (!empty($player['user_id']) && (int)$player['user_id'] === (int)current_user_id()): ?>
                                         <a href="/spaces/<?= $currentSpace['id'] ?>/players/<?= $player['id'] ?>/card"
                                            class="btn btn-sm btn-outline" title="Ma carte de membre">🪪 Ma carte</a>
-                                    </td>
-                                <?php else: ?>
-                                    <td></td>
-                                <?php endif; ?>
+                                    <?php elseif (empty($player['user_id']) && !$isLinked): ?>
+                                        <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/players/<?= $player['id'] ?>/link" style="display:inline;">
+                                            <?= csrf_field() ?>
+                                            <button type="submit" class="btn btn-sm btn-outline-warning"
+                                                    data-confirm="Vous raccorder au joueur « <?= e($player['name']) ?> » ? Cette action est irréversible sans intervention d'un gestionnaire.">🔗 Me raccorder</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>

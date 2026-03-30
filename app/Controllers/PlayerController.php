@@ -64,12 +64,17 @@ class PlayerController extends Controller
         }
         unset($player);
 
+        // Vérifier si l'utilisateur courant est déjà raccordé
+        $currentUserId = $this->getCurrentUserId();
+        $isLinked = $this->playerModel->isUserLinkedInSpace((int) $id, $currentUserId);
+
         $this->render('players/index', [
             'title'        => 'Joueurs',
             'currentSpace' => $ctx['space'],
             'spaceRole'    => $ctx['member']['role'],
             'activeMenu'   => 'players',
             'players'      => $players,
+            'isLinked'     => $isLinked,
         ]);
     }
 
@@ -293,6 +298,47 @@ class PlayerController extends Controller
 
         $this->playerModel->softDelete((int) $pid);
         $this->setFlash('success', 'Joueur supprimé.');
+        $this->redirect("/spaces/{$id}/players");
+    }
+
+    /**
+     * Permet à un membre de se raccorder à un joueur existant non lié.
+     */
+    public function linkSelf(string $id, string $pid): void
+    {
+        $ctx = $this->checkAccess($id);
+        $this->validateCSRF();
+
+        $currentUserId = $this->getCurrentUserId();
+
+        // Vérifier que l'utilisateur n'est pas déjà raccordé
+        if ($this->playerModel->isUserLinkedInSpace((int) $id, $currentUserId)) {
+            $this->setFlash('danger', 'Vous êtes déjà raccordé à un joueur dans cet espace.');
+            $this->redirect("/spaces/{$id}/players");
+            return;
+        }
+
+        $player = $this->playerModel->findActiveByIdInSpace((int) $pid, (int) $id);
+        if (!$player) {
+            $this->setFlash('danger', 'Joueur introuvable.');
+            $this->redirect("/spaces/{$id}/players");
+            return;
+        }
+
+        // Le joueur ne doit pas déjà être lié à un autre compte
+        if (!empty($player['user_id'])) {
+            $this->setFlash('danger', 'Ce joueur est déjà raccordé à un compte.');
+            $this->redirect("/spaces/{$id}/players");
+            return;
+        }
+
+        $this->playerModel->update((int) $pid, ['user_id' => $currentUserId]);
+
+        ActivityLog::logSpace((int) $id, 'player.link_self', $currentUserId, 'player', (int) $pid, [
+            'player_name' => $player['name'],
+        ]);
+
+        $this->setFlash('success', "Vous êtes maintenant raccordé au joueur « {$player['name']} ».");
         $this->redirect("/spaces/{$id}/players");
     }
 }

@@ -275,6 +275,7 @@ $router->post('/spaces/{id}/players/create', PlayerController::class, 'create');
 $router->get('/spaces/{id}/players/{pid}/edit', PlayerController::class, 'editForm');
 $router->post('/spaces/{id}/players/{pid}/edit', PlayerController::class, 'update');
 $router->post('/spaces/{id}/players/{pid}/delete', PlayerController::class, 'delete');
+$router->post('/spaces/{id}/players/{pid}/link', PlayerController::class, 'linkSelf');
 $router->get('/spaces/{id}/players/{pid}/card', MemberCardController::class, 'show');
 $router->post('/spaces/{id}/players/{pid}/card/generate', MemberCardController::class, 'generate');
 $router->post('/spaces/{id}/players/{pid}/card/toggle', MemberCardController::class, 'toggle');
@@ -460,6 +461,7 @@ $router->get('/api/spaces/{id}/players/{pid}', PlayerApiController::class, 'show
 $router->post('/api/spaces/{id}/players', PlayerApiController::class, 'create');
 $router->put('/api/spaces/{id}/players/{pid}', PlayerApiController::class, 'update');
 $router->delete('/api/spaces/{id}/players/{pid}', PlayerApiController::class, 'delete');
+$router->post('/api/spaces/{id}/players/{pid}/link', PlayerApiController::class, 'linkSelf');
 
 // Cartes de membre
 $router->get('/api/spaces/{id}/players/{pid}/card', MemberCardApiController::class, 'show');

@@ -140,4 +140,35 @@ class PlayerApiController extends ApiController
 
         $this->json(['success' => true, 'message' => 'Joueur supprimé.']);
     }
+
+    /**
+     * POST /api/spaces/{id}/players/{pid}/link
+     * Permet à un membre de se raccorder à un joueur non lié.
+     */
+    public function linkSelf(string $id, string $pid): void
+    {
+        $this->requireAuth();
+        $this->checkSpaceAccess((int) $id);
+
+        if ($this->model->isUserLinkedInSpace((int) $id, $this->userId)) {
+            $this->error('Vous êtes déjà raccordé à un joueur dans cet espace.', 409);
+        }
+
+        $player = $this->model->findActiveByIdInSpace((int) $pid, (int) $id);
+        if (!$player) {
+            $this->error('Joueur introuvable.', 404);
+        }
+
+        if (!empty($player['user_id'])) {
+            $this->error('Ce joueur est déjà raccordé à un compte.', 409);
+        }
+
+        $this->model->update((int) $pid, ['user_id' => $this->userId]);
+
+        ActivityLog::logSpace((int) $id, 'player.link_self', $this->userId, 'player', (int) $pid, [
+            'player_name' => $player['name'],
+        ]);
+
+        $this->json(['success' => true, 'player' => $this->model->find((int) $pid)]);
+    }
 }
