@@ -1371,7 +1371,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             <Text style={styles.contextTitle}>{currentViewMeta?.title}</Text>
             <Text style={styles.contextHint}>{currentViewMeta?.hint}</Text>
           </View>
-          <Pressable style={styles.refreshPill} onPress={loadData}>
+          <Pressable style={styles.refreshPill} onPress={currentView === "contact" ? loadTickets : loadData}>
             <Text style={styles.refreshPillText}>Rafraîchir</Text>
           </Pressable>
         </View>
