@@ -11,6 +11,7 @@ type Props = {
   space: Space;
   competitionId: number;
   onBack: () => void;
+  onOpenReferee?: (competitionId: number) => void;
 };
 
 function formatDateTime(value?: string | null): string {
@@ -64,7 +65,7 @@ function getStatusMeta(
   }
 }
 
-export function CompetitionDetailScreen({ token, space, competitionId, onBack }: Props) {
+export function CompetitionDetailScreen({ token, space, competitionId, onBack, onOpenReferee }: Props) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -175,6 +176,16 @@ export function CompetitionDetailScreen({ token, space, competitionId, onBack }:
           <Text style={styles.statValue}>{stats.avg_rounds_per_competitor.toFixed(2)}</Text>
         </View>
       </View>
+
+      {/* Accès arbitrage */}
+      {(competition.status === "active" || competition.status === "paused") && onOpenReferee ? (
+        <Pressable
+          style={styles.refereeBtn}
+          onPress={() => onOpenReferee(competition.id)}
+        >
+          <Text style={styles.refereeBtnText}>🟢 Accéder à l'arbitrage</Text>
+        </Pressable>
+      ) : null}
 
       <View style={styles.block}>
         <Text style={styles.blockTitle}>Participants</Text>
@@ -323,5 +334,20 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   secondaryText: {
     color: theme.colors.primary,
     fontWeight: "700",
+  },
+  refereeBtn: {
+    marginTop: 14,
+    backgroundColor: theme.colors.success + "18",
+    borderRadius: theme.radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.colors.success + "55",
+  },
+  refereeBtnText: {
+    color: theme.colors.success,
+    fontWeight: "700",
+    fontSize: 14,
   },
 });
