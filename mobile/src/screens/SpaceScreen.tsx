@@ -234,6 +234,11 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const [gamesPeriodFilter, setGamesPeriodFilter] = useState<"all" | "week" | "month" | "year">("all");
   const [gamesPage, setGamesPage] = useState(1);
   const [gamesLastPage, setGamesLastPage] = useState(1);
+  // — draft filter panel (jeux)
+  const [gamesFilterPanelOpen, setGamesFilterPanelOpen] = useState(false);
+  const [draftGamesStatus, setDraftGamesStatus] = useState<"all" | Game["status"]>("all");
+  const [draftGamesPeriod, setDraftGamesPeriod] = useState<"all" | "week" | "month" | "year">("all");
+  const [draftGamesGameTypeId, setDraftGamesGameTypeId] = useState<number | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [members, setMembers] = useState<SpaceMember[]>([]);
   const [gameTypes, setGameTypes] = useState<GameType[]>([]);
@@ -309,6 +314,9 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const [ticketsPage, setTicketsPage] = useState(1);
   const [ticketsLastPage, setTicketsLastPage] = useState(1);
   const [ticketsStatusFilter, setTicketsStatusFilter] = useState<"all" | ContactTicket["status"]>("all");
+  // — draft filter panel (tickets)
+  const [ticketsFilterPanelOpen, setTicketsFilterPanelOpen] = useState(false);
+  const [draftTicketsStatus, setDraftTicketsStatus] = useState<"all" | ContactTicket["status"]>("all");
   const [contactSubView, setContactSubView] = useState<"list" | "create" | "detail">("list");
   const [selectedTicket, setSelectedTicket] = useState<ContactTicket | null>(null);
   const [ticketMessages, setTicketMessages] = useState<ContactMessage[]>([]);
@@ -1507,84 +1515,57 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
       {currentView === "games" ? (
         <View style={styles.gamesContainer}>
-          <Text style={styles.sectionTitle}>Parties</Text>
+          {/* En-tête avec bouton filtre */}
+          <View style={styles.gamesHeader}>
+            <Text style={styles.sectionTitle}>Parties</Text>
+            <Pressable
+              style={[styles.filterTriggerButton, (gamesStatusFilter !== "all" || gamesPeriodFilter !== "all" || gamesGameTypeFilter !== null) ? styles.filterTriggerButtonActive : undefined]}
+              onPress={() => {
+                setDraftGamesStatus(gamesStatusFilter);
+                setDraftGamesPeriod(gamesPeriodFilter);
+                setDraftGamesGameTypeId(gamesGameTypeFilter);
+                setGamesFilterPanelOpen(true);
+              }}
+            >
+              <Text style={[styles.filterTriggerText, (gamesStatusFilter !== "all" || gamesPeriodFilter !== "all" || gamesGameTypeFilter !== null) ? styles.filterTriggerTextActive : undefined]}>
+                ⚙ Filtrer
+              </Text>
+            </Pressable>
+          </View>
 
-          {/* Filtre : statut */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsScrollContent}>
-            {([
-              ["all", "Toutes"],
-              ["in_progress", "En cours"],
-              ["paused", "En pause"],
-              ["pending", "En attente"],
-              ["completed", "Terminées"],
-            ] as const).map(([status, label]) => (
-              <Pressable
-                key={status}
-                style={[styles.filterChip, gamesStatusFilter === status ? styles.filterChipActive : undefined]}
-                onPress={() => {
-                  setGamesStatusFilter(status);
-                  void loadGames(status, gamesGameTypeFilter, gamesPeriodFilter, 1, false);
-                }}
-              >
-                <Text style={[styles.filterChipText, gamesStatusFilter === status ? styles.filterChipTextActive : undefined]}>
-                  {label}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-
-          {/* Filtre : période */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsScrollContent}>
-            {([
-              ["all", "Toutes périodes"],
-              ["week", "7 derniers jours"],
-              ["month", "30 derniers jours"],
-              ["year", "Cette année"],
-            ] as const).map(([period, label]) => (
-              <Pressable
-                key={period}
-                style={[styles.filterChip, gamesPeriodFilter === period ? styles.filterChipActive : undefined]}
-                onPress={() => {
-                  setGamesPeriodFilter(period);
-                  void loadGames(gamesStatusFilter, gamesGameTypeFilter, period, 1, false);
-                }}
-              >
-                <Text style={[styles.filterChipText, gamesPeriodFilter === period ? styles.filterChipTextActive : undefined]}>
-                  {label}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-
-          {/* Filtre : type de jeu */}
-          {gameTypes.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsScrollContent}>
-              <Pressable
-                style={[styles.filterChip, gamesGameTypeFilter === null ? styles.filterChipActive : undefined]}
-                onPress={() => {
-                  setGamesGameTypeFilter(null);
-                  void loadGames(gamesStatusFilter, null, gamesPeriodFilter, 1, false);
-                }}
-              >
-                <Text style={[styles.filterChipText, gamesGameTypeFilter === null ? styles.filterChipTextActive : undefined]}>
-                  Tous les types
-                </Text>
-              </Pressable>
-              {gameTypes.map((gt) => (
-                <Pressable
-                  key={gt.id}
-                  style={[styles.filterChip, gamesGameTypeFilter === gt.id ? styles.filterChipActive : undefined]}
-                  onPress={() => {
-                    setGamesGameTypeFilter(gt.id);
-                    void loadGames(gamesStatusFilter, gt.id, gamesPeriodFilter, 1, false);
-                  }}
-                >
-                  <Text style={[styles.filterChipText, gamesGameTypeFilter === gt.id ? styles.filterChipTextActive : undefined]}>
-                    {gt.name}
+          {/* Récapitulatif des filtres actifs */}
+          {(gamesStatusFilter !== "all" || gamesPeriodFilter !== "all" || gamesGameTypeFilter !== null) ? (
+            <View style={styles.activeFiltersRow}>
+              {gamesStatusFilter !== "all" ? (
+                <View style={styles.activeFilterBadge}>
+                  <Text style={styles.activeFilterBadgeText}>
+                    {{ in_progress: "En cours", paused: "En pause", pending: "En attente", completed: "Terminées" }[gamesStatusFilter as Exclude<typeof gamesStatusFilter, "all">]}
                   </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+                </View>
+              ) : null}
+              {gamesPeriodFilter !== "all" ? (
+                <View style={styles.activeFilterBadge}>
+                  <Text style={styles.activeFilterBadgeText}>
+                    {{ week: "7 jours", month: "30 jours", year: "Cette année" }[gamesPeriodFilter as Exclude<typeof gamesPeriodFilter, "all">]}
+                  </Text>
+                </View>
+              ) : null}
+              {gamesGameTypeFilter !== null ? (
+                <View style={styles.activeFilterBadge}>
+                  <Text style={styles.activeFilterBadgeText}>
+                    {gameTypes.find((gt) => gt.id === gamesGameTypeFilter)?.name ?? "Type"}
+                  </Text>
+                </View>
+              ) : null}
+              <Pressable onPress={() => {
+                setGamesStatusFilter("all");
+                setGamesPeriodFilter("all");
+                setGamesGameTypeFilter(null);
+                void loadGames("all", null, "all", 1, false);
+              }}>
+                <Text style={styles.clearFiltersText}>✕ Réinitialiser</Text>
+              </Pressable>
+            </View>
           ) : null}
 
           {gamesLoading ? (
@@ -2486,29 +2467,25 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
           {/* ── Vue liste ── */}
           {contactSubView === "list" ? (
             <View style={styles.playerListSection}>
-              {/* Filtre : statut */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsScrollContent}>
-                {([
-                  ["all", "Tous"],
-                  ["open", "Ouverts"],
-                  ["in_progress", "En cours"],
-                  ["closed", "Fermés"],
-                ] as const).map(([s, label]) => (
-                  <Pressable
-                    key={s}
-                    style={[styles.filterChip, ticketsStatusFilter === s ? styles.filterChipActive : undefined]}
-                    onPress={() => {
-                      setTicketsStatusFilter(s);
-                      setTicketsLoaded(false);
-                      void loadTickets(s, 1, false);
-                    }}
-                  >
-                    <Text style={[styles.filterChipText, ticketsStatusFilter === s ? styles.filterChipTextActive : undefined]}>
-                      {label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
+              {/* Barre de filtre */}
+              <View style={styles.gamesHeader}>
+                <Text style={styles.filterRowLabel}>
+                  {ticketsStatusFilter !== "all"
+                    ? `Filtre : ${{ open: "Ouvert", in_progress: "En cours", closed: "Fermé" }[ticketsStatusFilter as Exclude<typeof ticketsStatusFilter, "all">]}`
+                    : "Tous les tickets"}
+                </Text>
+                <Pressable
+                  style={[styles.filterTriggerButton, ticketsStatusFilter !== "all" ? styles.filterTriggerButtonActive : undefined]}
+                  onPress={() => {
+                    setDraftTicketsStatus(ticketsStatusFilter);
+                    setTicketsFilterPanelOpen(true);
+                  }}
+                >
+                  <Text style={[styles.filterTriggerText, ticketsStatusFilter !== "all" ? styles.filterTriggerTextActive : undefined]}>
+                    ⚙ Filtrer
+                  </Text>
+                </Pressable>
+              </View>
 
               {ticketsLoading ? (
                 <ActivityIndicator style={{ marginTop: 16 }} />
@@ -2801,6 +2778,171 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* ── Panneau de filtres avancés – Parties ── */}
+      <Modal
+        visible={gamesFilterPanelOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setGamesFilterPanelOpen(false)}
+      >
+        <Pressable style={styles.filterPanelOverlay} onPress={() => setGamesFilterPanelOpen(false)}>
+          <Pressable style={styles.filterPanelSheet} onPress={() => { /* stopper la propagation */ }}>
+            <View style={styles.filterPanelHandle} />
+            <Text style={styles.filterPanelTitle}>Filtrer les parties</Text>
+
+            {/* Statut */}
+            <Text style={styles.filterPanelSectionLabel}>Statut</Text>
+            <View style={styles.filterPanelChipsRow}>
+              {([
+                ["all", "Toutes"],
+                ["in_progress", "En cours"],
+                ["paused", "En pause"],
+                ["pending", "En attente"],
+                ["completed", "Terminées"],
+              ] as const).map(([status, label]) => (
+                <Pressable
+                  key={status}
+                  style={[styles.filterPanelChip, draftGamesStatus === status ? styles.filterPanelChipActive : undefined]}
+                  onPress={() => setDraftGamesStatus(status)}
+                >
+                  <Text style={[styles.filterPanelChipText, draftGamesStatus === status ? styles.filterPanelChipTextActive : undefined]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* Période */}
+            <Text style={styles.filterPanelSectionLabel}>Période</Text>
+            <View style={styles.filterPanelChipsRow}>
+              {([
+                ["all", "Toutes"],
+                ["week", "7 derniers jours"],
+                ["month", "30 derniers jours"],
+                ["year", "Cette année"],
+              ] as const).map(([period, label]) => (
+                <Pressable
+                  key={period}
+                  style={[styles.filterPanelChip, draftGamesPeriod === period ? styles.filterPanelChipActive : undefined]}
+                  onPress={() => setDraftGamesPeriod(period)}
+                >
+                  <Text style={[styles.filterPanelChipText, draftGamesPeriod === period ? styles.filterPanelChipTextActive : undefined]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* Type de jeu */}
+            {gameTypes.length > 0 ? (
+              <>
+                <Text style={styles.filterPanelSectionLabel}>Type de jeu</Text>
+                <View style={styles.filterPanelChipsRow}>
+                  <Pressable
+                    style={[styles.filterPanelChip, draftGamesGameTypeId === null ? styles.filterPanelChipActive : undefined]}
+                    onPress={() => setDraftGamesGameTypeId(null)}
+                  >
+                    <Text style={[styles.filterPanelChipText, draftGamesGameTypeId === null ? styles.filterPanelChipTextActive : undefined]}>Tous</Text>
+                  </Pressable>
+                  {gameTypes.map((gt) => (
+                    <Pressable
+                      key={gt.id}
+                      style={[styles.filterPanelChip, draftGamesGameTypeId === gt.id ? styles.filterPanelChipActive : undefined]}
+                      onPress={() => setDraftGamesGameTypeId(gt.id)}
+                    >
+                      <Text style={[styles.filterPanelChipText, draftGamesGameTypeId === gt.id ? styles.filterPanelChipTextActive : undefined]}>
+                        {gt.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            ) : null}
+
+            {/* Actions */}
+            <View style={styles.filterPanelActions}>
+              <Pressable
+                style={styles.filterPanelResetButton}
+                onPress={() => {
+                  setDraftGamesStatus("all");
+                  setDraftGamesPeriod("all");
+                  setDraftGamesGameTypeId(null);
+                }}
+              >
+                <Text style={styles.filterPanelResetText}>Réinitialiser</Text>
+              </Pressable>
+              <Pressable
+                style={styles.filterPanelApplyButton}
+                onPress={() => {
+                  setGamesStatusFilter(draftGamesStatus);
+                  setGamesPeriodFilter(draftGamesPeriod);
+                  setGamesGameTypeFilter(draftGamesGameTypeId);
+                  setGamesFilterPanelOpen(false);
+                  void loadGames(draftGamesStatus, draftGamesGameTypeId, draftGamesPeriod, 1, false);
+                }}
+              >
+                <Text style={styles.filterPanelApplyText}>Appliquer</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ── Panneau de filtres avancés – Tickets ── */}
+      <Modal
+        visible={ticketsFilterPanelOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setTicketsFilterPanelOpen(false)}
+      >
+        <Pressable style={styles.filterPanelOverlay} onPress={() => setTicketsFilterPanelOpen(false)}>
+          <Pressable style={styles.filterPanelSheet} onPress={() => { /* stopper la propagation */ }}>
+            <View style={styles.filterPanelHandle} />
+            <Text style={styles.filterPanelTitle}>Filtrer les tickets</Text>
+
+            <Text style={styles.filterPanelSectionLabel}>Statut</Text>
+            <View style={styles.filterPanelChipsRow}>
+              {([
+                ["all", "Tous"],
+                ["open", "Ouvert"],
+                ["in_progress", "En cours"],
+                ["closed", "Fermé"],
+              ] as const).map(([s, label]) => (
+                <Pressable
+                  key={s}
+                  style={[styles.filterPanelChip, draftTicketsStatus === s ? styles.filterPanelChipActive : undefined]}
+                  onPress={() => setDraftTicketsStatus(s)}
+                >
+                  <Text style={[styles.filterPanelChipText, draftTicketsStatus === s ? styles.filterPanelChipTextActive : undefined]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={styles.filterPanelActions}>
+              <Pressable
+                style={styles.filterPanelResetButton}
+                onPress={() => setDraftTicketsStatus("all")}
+              >
+                <Text style={styles.filterPanelResetText}>Réinitialiser</Text>
+              </Pressable>
+              <Pressable
+                style={styles.filterPanelApplyButton}
+                onPress={() => {
+                  setTicketsStatusFilter(draftTicketsStatus);
+                  setTicketsFilterPanelOpen(false);
+                  setTicketsLoaded(false);
+                  void loadTickets(draftTicketsStatus, 1, false);
+                }}
+              >
+                <Text style={styles.filterPanelApplyText}>Appliquer</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </View>
   );
@@ -3270,6 +3412,155 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   gamesContainer: {
     flex: 1,
   },
+  gamesHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  filterTriggerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: theme.colors.card,
+    gap: 5,
+  },
+  filterTriggerButtonActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  filterTriggerText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: theme.colors.mutedText,
+  },
+  filterTriggerTextActive: {
+    color: theme.colors.primary,
+  },
+  activeFiltersRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 10,
+  },
+  activeFilterBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: theme.colors.primarySoft,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  activeFilterBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: theme.colors.primary,
+  },
+  clearFiltersText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: theme.colors.danger,
+  },
+  // ── Filter panel (bottom sheet) ──────────────────────────────────────────
+  filterPanelOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  filterPanelSheet: {
+    backgroundColor: theme.colors.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 28,
+    borderTopWidth: 1,
+    borderColor: theme.colors.border,
+    gap: 0,
+  },
+  filterPanelHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: theme.colors.border,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  filterPanelTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: theme.colors.text,
+    marginBottom: 16,
+  },
+  filterPanelSectionLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: theme.colors.mutedText,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  filterPanelChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 16,
+  },
+  filterPanelChip: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  filterPanelChipActive: {
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: theme.colors.primary,
+  },
+  filterPanelChipText: {
+    color: theme.colors.text,
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  filterPanelChipTextActive: {
+    color: theme.colors.primary,
+  },
+  filterPanelActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  filterPanelResetButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingVertical: 12,
+    alignItems: "center",
+    backgroundColor: theme.colors.background,
+  },
+  filterPanelResetText: {
+    color: theme.colors.mutedText,
+    fontWeight: "700",
+  },
+  filterPanelApplyButton: {
+    flex: 2,
+    borderRadius: theme.radius.md,
+    paddingVertical: 12,
+    alignItems: "center",
+    backgroundColor: theme.colors.primary,
+  },
+  filterPanelApplyText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 15,
+  },
   gamesLoadingInline: {
     paddingVertical: 6,
     alignItems: "center",
@@ -3607,15 +3898,38 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     paddingHorizontal: 14,
   },
   filterChipsScroll: {
-    marginTop: 2,
-    marginBottom: 2,
+    flex: 1,
   },
   filterChipsScrollContent: {
     flexDirection: "row",
-    gap: 8,
-    paddingVertical: 8,
+    gap: 6,
+    paddingVertical: 4,
     paddingHorizontal: 2,
     alignItems: "center",
+  },
+  filtersBlock: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.card,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginBottom: 10,
+    gap: 2,
+  },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 38,
+  },
+  filterRowLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: theme.colors.mutedText,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    width: 52,
+    flexShrink: 0,
   },
   filterChipsRow: {
     flexDirection: "row",
