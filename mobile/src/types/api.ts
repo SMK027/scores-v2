@@ -281,3 +281,104 @@ export type MemberCard = {
   space_role?: string;
   signature_valid?: boolean;
 };
+
+// ─── Arbitrage (Referee) ─────────────────────────────────────────────────────
+
+export type RefereeSession = {
+  session_id: number;
+  session_number: number;
+  competition_id: number;
+  competition_name: string;
+  space_id: number;
+  referee_name: string;
+  is_active: boolean;
+  pause_until: string | null;
+  closed_at: string | null;
+};
+
+export type RefereeLoginResponse = {
+  success: boolean;
+  token: string;
+  session: RefereeSession;
+};
+
+export type RefereeAssignedSession = {
+  session_id: number;
+  session_number: number;
+  competition_id: number;
+  competition_name: string;
+  competition_status: "planned" | "active" | "paused" | "closed";
+  space_id: number;
+  space_name: string;
+  referee_name: string;
+  is_active: boolean;
+  is_locked: boolean;
+  pause_until: string | null;
+  game_count: number;
+};
+
+export type RefereeGameType = {
+  id: number;
+  name: string;
+  win_condition: "highest_score" | "lowest_score" | "ranking" | "win_loss";
+  min_players: number;
+  max_players: number | null;
+};
+
+export type RefereePlayer = {
+  id: number;
+  name: string;
+  linked_username: string | null;
+  is_restricted: boolean;
+};
+
+export type RefereeGame = {
+  id: number;
+  game_type_id: number;
+  game_type_name: string;
+  win_condition: "highest_score" | "lowest_score" | "ranking" | "win_loss";
+  status: "in_progress" | "completed";
+  notes: string | null;
+  created_at: string;
+  ended_at: string | null;
+  player_count: number;
+  round_count: number;
+};
+
+export type RefereeRoundScore = {
+  player_id: number;
+  score: number | null;
+  won: boolean | null;
+  rank: number | null;
+};
+
+export type RefereeRound = {
+  id: number;
+  round_number: number;
+  status: "in_progress" | "paused" | "completed";
+  started_at: string | null;
+  ended_at: string | null;
+  play_seconds?: number;
+  scores: RefereeRoundScore[];
+};
+
+export type RefereeGamePlayer = {
+  player_id: number;
+  name: string;
+  total_score: number | null;
+  wins: number | null;
+  rank: number | null;
+};
+
+export type RefereeGameDetail = RefereeGame & {
+  players: RefereeGamePlayer[];
+  rounds: RefereeRound[];
+};
+
+export type RefereeDashboardResponse = {
+  success: boolean;
+  session: RefereeSession;
+  games: RefereeGame[];
+  game_types: RefereeGameType[];
+  players: RefereePlayer[];
+};

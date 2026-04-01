@@ -22,6 +22,12 @@ import type {
   SpacesResponse,
   User,
   Invitation,
+  RefereeLoginResponse,
+  RefereeAssignedSession,
+  RefereeDashboardResponse,
+  RefereeGameDetail,
+  RefereeRound,
+  RefereeRoundScore,
 } from "../types/api";
 
 class ApiError extends Error {
@@ -682,4 +688,132 @@ export async function deleteMemberCard(
     { method: "DELETE" },
     token
   );
+}
+
+// ─── Arbitrage (Referee) ─────────────────────────────────────────────────────
+
+export async function refereeLogin(
+  competitionId: number,
+  sessionNumber: number,
+  password: string
+): Promise<RefereeLoginResponse> {
+  return request<RefereeLoginResponse>("/api/referee/login", {
+    method: "POST",
+    body: JSON.stringify({ competition_id: competitionId, session_number: sessionNumber, password }),
+  });
+}
+
+export async function refereeOpenAssigned(
+  token: string,
+  sessionId: number
+): Promise<RefereeLoginResponse> {
+  return request<RefereeLoginResponse>(`/api/referee/open/${sessionId}`, { method: "POST" }, token);
+}
+
+export async function refereeGetAssigned(
+  token: string
+): Promise<{ success: boolean; sessions: RefereeAssignedSession[] }> {
+  return request<{ success: boolean; sessions: RefereeAssignedSession[] }>("/api/referee/assigned", {}, token);
+}
+
+export async function refereeDashboard(
+  refereeToken: string
+): Promise<RefereeDashboardResponse> {
+  return request<RefereeDashboardResponse>("/api/referee/dashboard", {}, refereeToken);
+}
+
+export async function refereePauseSession(
+  refereeToken: string,
+  minutes: number
+): Promise<{ success: boolean; message: string; pause_until: string | null }> {
+  return request("/api/referee/session/pause", {
+    method: "POST",
+    body: JSON.stringify({ minutes }),
+  }, refereeToken);
+}
+
+export async function refereeCloseSession(
+  refereeToken: string
+): Promise<{ success: boolean; message: string }> {
+  return request("/api/referee/session/close", { method: "POST" }, refereeToken);
+}
+
+export async function refereeVerifyCard(
+  refereeToken: string,
+  playerId: number,
+  reference: string
+): Promise<{ success: boolean; valid: boolean; message?: string; reason?: string; card?: { player_name: string | null; reference: string; is_active: boolean } }> {
+  return request("/api/referee/participants/verify-card", {
+    method: "POST",
+    body: JSON.stringify({ player_id: playerId, reference }),
+  }, refereeToken);
+}
+
+export async function refereeCreateGame(
+  refereeToken: string,
+  gameTypeId: number,
+  playerIds: number[],
+  notes?: string
+): Promise<{ success: boolean; game: RefereeGameDetail }> {
+  return request("/api/referee/games", {
+    method: "POST",
+    body: JSON.stringify({ game_type_id: gameTypeId, player_ids: playerIds, notes: notes ?? "" }),
+  }, refereeToken);
+}
+
+export async function refereeGetGame(
+  refereeToken: string,
+  gameId: number
+): Promise<{ success: boolean; game: RefereeGameDetail }> {
+  return request(`/api/referee/games/${gameId}`, {}, refereeToken);
+}
+
+export async function refereeCreateRound(
+  refereeToken: string,
+  gameId: number
+): Promise<{ success: boolean; round: RefereeRound }> {
+  return request(`/api/referee/games/${gameId}/rounds`, { method: "POST" }, refereeToken);
+}
+
+export async function refereeUpdateRoundStatus(
+  refereeToken: string,
+  gameId: number,
+  roundId: number,
+  status: "in_progress" | "paused" | "completed"
+): Promise<{ success: boolean; round: RefereeRound }> {
+  return request(`/api/referee/games/${gameId}/rounds/${roundId}/status`, {
+    method: "POST",
+    body: JSON.stringify({ status }),
+  }, refereeToken);
+}
+
+export async function refereeUpdateScores(
+  refereeToken: string,
+  gameId: number,
+  roundId: number,
+  scores: Record<number, number | null>
+): Promise<{ success: boolean; scores: RefereeRoundScore[] }> {
+  return request(`/api/referee/games/${gameId}/rounds/${roundId}/scores`, {
+    method: "POST",
+    body: JSON.stringify({ scores }),
+  }, refereeToken);
+}
+
+export async function refereeDeleteRound(
+  refereeToken: string,
+  gameId: number,
+  roundId: number,
+  reason: string
+): Promise<{ success: boolean; message: string }> {
+  return request(`/api/referee/games/${gameId}/rounds/${roundId}`, {
+    method: "DELETE",
+    body: JSON.stringify({ reason }),
+  }, refereeToken);
+}
+
+export async function refereeCompleteGame(
+  refereeToken: string,
+  gameId: number
+): Promise<{ success: boolean; message: string }> {
+  return request(`/api/referee/games/${gameId}/complete`, { method: "POST" }, refereeToken);
 }
