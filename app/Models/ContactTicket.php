@@ -28,20 +28,46 @@ class ContactTicket extends Model
     ];
 
     /**
-     * Liste les tickets d'un espace.
+     * Liste les tickets d'un espace avec pagination et filtre de statut.
      */
-    public function findBySpace(int $spaceId): array
+    public function findBySpace(int $spaceId, int $page = 1, int $perPage = 20, string $status = ''): array
     {
+        $offset = ($page - 1) * $perPage;
+        $params = ['space_id' => $spaceId];
+        $where  = "t.space_id = :space_id";
+
+        if ($status !== '') {
+            $where .= " AND t.status = :status";
+            $params['status'] = $status;
+        }
+
+        $countStmt = $this->query(
+            "SELECT COUNT(*) FROM {$this->table} t WHERE {$where}",
+            $params
+        );
+        $total = (int) $countStmt->fetchColumn();
+
+        $params['limit']  = $perPage;
+        $params['offset'] = $offset;
+
         $stmt = $this->query(
             "SELECT t.*, u.username AS author_username,
                     (SELECT COUNT(*) FROM contact_messages WHERE ticket_id = t.id) AS message_count
              FROM {$this->table} t
              JOIN users u ON u.id = t.user_id
-             WHERE t.space_id = :space_id
-             ORDER BY t.updated_at DESC",
-            ['space_id' => $spaceId]
+             WHERE {$where}
+             ORDER BY t.updated_at DESC
+             LIMIT :limit OFFSET :offset",
+            $params
         );
-        return $stmt->fetchAll();
+
+        return [
+            'data'     => $stmt->fetchAll(),
+            'total'    => $total,
+            'page'     => $page,
+            'perPage'  => $perPage,
+            'lastPage' => (int) ceil($total / $perPage),
+        ];
     }
 
     /**

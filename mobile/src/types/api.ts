@@ -227,6 +227,15 @@ export type CompetitionDetailsResponse = {
   stats: CompetitionStats;
 };
 
+export type TicketsResponse = {
+  success: boolean;
+  data: ContactTicket[];
+  total: number;
+  page: number;
+  perPage: number;
+  lastPage: number;
+};
+
 export type ContactTicket = {
   id: number;
   space_id: number;

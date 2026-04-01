@@ -54,6 +54,7 @@ class GameApiController extends ApiController
         $filters = [
             'status'       => $_GET['status'] ?? '',
             'game_type_id' => $_GET['game_type_id'] ?? '',
+            'period'       => $_GET['period'] ?? '',
         ];
 
         $result = $this->gameModel->findBySpace((int) $id, $page, 15, $filters);

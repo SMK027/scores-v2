@@ -24,16 +24,19 @@ class TicketApiController extends ApiController
     }
 
     /**
-     * GET /api/spaces/{id}/tickets
+     * GET /api/spaces/{id}/tickets?page=1&status=
      */
     public function index(string $id): void
     {
         $this->requireAuth();
         $this->checkSpaceAccess((int) $id, ['admin', 'manager']);
 
-        $tickets = $this->ticketModel->findBySpace((int) $id);
+        $page   = max(1, (int) ($_GET['page'] ?? 1));
+        $status = $_GET['status'] ?? '';
 
-        $this->json(['success' => true, 'tickets' => $tickets]);
+        $result = $this->ticketModel->findBySpace((int) $id, $page, 20, $status);
+
+        $this->json(['success' => true, ...$result]);
     }
 
     /**

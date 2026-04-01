@@ -17,6 +17,7 @@ import type {
   CompetitionDetailsResponse,
   ContactTicket,
   ContactMessage,
+  TicketsResponse,
   Space,
   SpacesResponse,
   User,
@@ -180,11 +181,20 @@ export async function leaveSpace(token: string, spaceId: number): Promise<void> 
 export async function fetchSpaceGames(
   token: string,
   spaceId: number,
-  status?: "completed" | "in_progress" | "paused"
-): Promise<Game[]> {
-  const query = status ? `?status=${encodeURIComponent(status)}` : "";
-  const response = await request<GamesResponse>(`/api/spaces/${spaceId}/games${query}`, {}, token);
-  return response.data;
+  params?: {
+    status?: Game["status"];
+    game_type_id?: number;
+    period?: "week" | "month" | "year";
+    page?: number;
+  }
+): Promise<GamesResponse> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  if (params?.game_type_id) qs.set("game_type_id", String(params.game_type_id));
+  if (params?.period) qs.set("period", params.period);
+  if (params?.page && params.page > 1) qs.set("page", String(params.page));
+  const query = qs.toString() ? `?${qs.toString()}` : "";
+  return request<GamesResponse>(`/api/spaces/${spaceId}/games${query}`, {}, token);
 }
 
 export async function fetchPlayers(token: string, spaceId: number): Promise<Player[]> {
@@ -556,14 +566,17 @@ export { ApiError };
 
 export async function fetchTickets(
   token: string,
-  spaceId: number
-): Promise<ContactTicket[]> {
-  const response = await request<{ success: boolean; tickets: ContactTicket[] }>(
-    `/api/spaces/${spaceId}/tickets`,
-    {},
-    token
-  );
-  return response.tickets;
+  spaceId: number,
+  params?: {
+    status?: ContactTicket["status"];
+    page?: number;
+  }
+): Promise<TicketsResponse> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  if (params?.page && params.page > 1) qs.set("page", String(params.page));
+  const query = qs.toString() ? `?${qs.toString()}` : "";
+  return request<TicketsResponse>(`/api/spaces/${spaceId}/tickets${query}`, {}, token);
 }
 
 export async function createTicket(

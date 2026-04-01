@@ -50,6 +50,18 @@ class Game extends Model
             $where .= " AND g.game_type_id = :game_type_id";
             $params['game_type_id'] = $filters['game_type_id'];
         }
+        if (!empty($filters['period'])) {
+            $dateFrom = match($filters['period']) {
+                'week'  => date('Y-m-d', strtotime('-7 days')),
+                'month' => date('Y-m-d', strtotime('-30 days')),
+                'year'  => date('Y-m-d', strtotime('-365 days')),
+                default => null,
+            };
+            if ($dateFrom !== null) {
+                $where .= " AND g.created_at >= :date_from";
+                $params['date_from'] = $dateFrom;
+            }
+        }
 
         // Count
         $countStmt = $this->query("SELECT COUNT(*) FROM {$this->table} g WHERE {$where}", $params);

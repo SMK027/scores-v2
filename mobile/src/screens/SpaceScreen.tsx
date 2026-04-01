@@ -227,8 +227,13 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const { width } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
   const [gamesLoading, setGamesLoading] = useState(false);
+  const [gamesLoadingMore, setGamesLoadingMore] = useState(false);
   const [games, setGames] = useState<Game[]>([]);
-  const [gamesStatusFilter, setGamesStatusFilter] = useState<"all" | "completed" | "in_progress" | "paused">("all");
+  const [gamesStatusFilter, setGamesStatusFilter] = useState<"all" | Game["status"]>("all");
+  const [gamesGameTypeFilter, setGamesGameTypeFilter] = useState<number | null>(null);
+  const [gamesPeriodFilter, setGamesPeriodFilter] = useState<"all" | "week" | "month" | "year">("all");
+  const [gamesPage, setGamesPage] = useState(1);
+  const [gamesLastPage, setGamesLastPage] = useState(1);
   const [players, setPlayers] = useState<Player[]>([]);
   const [members, setMembers] = useState<SpaceMember[]>([]);
   const [gameTypes, setGameTypes] = useState<GameType[]>([]);
@@ -298,8 +303,12 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   // ─── Contact / tickets ───────────────────────────────────────────────────
   const [tickets, setTickets] = useState<ContactTicket[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [ticketsLoadingMore, setTicketsLoadingMore] = useState(false);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
   const [ticketsLoaded, setTicketsLoaded] = useState(false);
+  const [ticketsPage, setTicketsPage] = useState(1);
+  const [ticketsLastPage, setTicketsLastPage] = useState(1);
+  const [ticketsStatusFilter, setTicketsStatusFilter] = useState<"all" | ContactTicket["status"]>("all");
   const [contactSubView, setContactSubView] = useState<"list" | "create" | "detail">("list");
   const [selectedTicket, setSelectedTicket] = useState<ContactTicket | null>(null);
   const [ticketMessages, setTicketMessages] = useState<ContactMessage[]>([]);
@@ -350,11 +359,31 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     }));
   };
 
-  const loadGames = useCallback(async () => {
+  const loadGames = useCallback(async (
+    status: "all" | Game["status"] = "all",
+    gameTypeId: number | null = null,
+    period: "all" | "week" | "month" | "year" = "all",
+    page: number = 1,
+    append: boolean = false
+  ) => {
     try {
-      setGamesLoading(true);
-      const gamesData = await fetchSpaceGames(token, space.id);
-      setGames(gamesData);
+      if (append) {
+        setGamesLoadingMore(true);
+      } else {
+        setGamesLoading(true);
+      }
+      const apiParams: Parameters<typeof fetchSpaceGames>[2] = { page };
+      if (status !== "all") apiParams!.status = status;
+      if (gameTypeId) apiParams!.game_type_id = gameTypeId;
+      if (period !== "all") apiParams!.period = period;
+      const response = await fetchSpaceGames(token, space.id, apiParams);
+      setGamesPage(page);
+      setGamesLastPage(response.lastPage);
+      if (append) {
+        setGames((prev) => [...prev, ...response.data]);
+      } else {
+        setGames(response.data);
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -363,6 +392,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       }
     } finally {
       setGamesLoading(false);
+      setGamesLoadingMore(false);
     }
   }, [space.id, token]);
 
@@ -404,13 +434,6 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
     void run();
   }, [loadData]);
-
-  const filteredGames = useMemo(() => {
-    if (gamesStatusFilter === "all") {
-      return games;
-    }
-    return games.filter((game) => game.status === gamesStatusFilter);
-  }, [games, gamesStatusFilter]);
 
   const selectedGameType = useMemo(
     () => gameTypes.find((item) => item.id === selectedGameTypeId) || null,
@@ -492,12 +515,28 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     }
   }, [leaderboardPeriod, token]);
 
-  const loadTickets = useCallback(async () => {
+  const loadTickets = useCallback(async (
+    status: "all" | ContactTicket["status"] = "all",
+    page: number = 1,
+    append: boolean = false
+  ) => {
     try {
       setTicketsError(null);
-      setTicketsLoading(true);
-      const data = await fetchTickets(token, space.id);
-      setTickets(data);
+      if (append) {
+        setTicketsLoadingMore(true);
+      } else {
+        setTicketsLoading(true);
+      }
+      const params: Parameters<typeof fetchTickets>[2] = { page };
+      if (status !== "all") params!.status = status;
+      const response = await fetchTickets(token, space.id, params);
+      setTicketsPage(page);
+      setTicketsLastPage(response.lastPage);
+      if (append) {
+        setTickets((prev) => [...prev, ...response.data]);
+      } else {
+        setTickets(response.data);
+      }
       setTicketsLoaded(true);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -507,6 +546,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       }
     } finally {
       setTicketsLoading(false);
+      setTicketsLoadingMore(false);
     }
   }, [token, space.id]);
 
@@ -609,6 +649,9 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
         setHighlightedPlayerId(null);
         setHighlightedGameTypeId(null);
         setGamesStatusFilter("all");
+        setGamesGameTypeFilter(null);
+        setGamesPeriodFilter("all");
+        setGamesPage(1);
         setCurrentView("games");
         return;
       }
@@ -1465,35 +1508,95 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       {currentView === "games" ? (
         <View style={styles.gamesContainer}>
           <Text style={styles.sectionTitle}>Parties</Text>
-          <View style={styles.filterChipsRow}>
+
+          {/* Filtre : statut */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsScrollContent}>
             {([
               ["all", "Toutes"],
               ["in_progress", "En cours"],
               ["paused", "En pause"],
+              ["pending", "En attente"],
               ["completed", "Terminées"],
             ] as const).map(([status, label]) => (
               <Pressable
                 key={status}
                 style={[styles.filterChip, gamesStatusFilter === status ? styles.filterChipActive : undefined]}
-                onPress={() => setGamesStatusFilter(status)}
+                onPress={() => {
+                  setGamesStatusFilter(status);
+                  void loadGames(status, gamesGameTypeFilter, gamesPeriodFilter, 1, false);
+                }}
               >
-                <Text
-                  style={[styles.filterChipText, gamesStatusFilter === status ? styles.filterChipTextActive : undefined]}
-                >
+                <Text style={[styles.filterChipText, gamesStatusFilter === status ? styles.filterChipTextActive : undefined]}>
                   {label}
                 </Text>
               </Pressable>
             ))}
-          </View>
+          </ScrollView>
+
+          {/* Filtre : période */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsScrollContent}>
+            {([
+              ["all", "Toutes périodes"],
+              ["week", "7 derniers jours"],
+              ["month", "30 derniers jours"],
+              ["year", "Cette année"],
+            ] as const).map(([period, label]) => (
+              <Pressable
+                key={period}
+                style={[styles.filterChip, gamesPeriodFilter === period ? styles.filterChipActive : undefined]}
+                onPress={() => {
+                  setGamesPeriodFilter(period);
+                  void loadGames(gamesStatusFilter, gamesGameTypeFilter, period, 1, false);
+                }}
+              >
+                <Text style={[styles.filterChipText, gamesPeriodFilter === period ? styles.filterChipTextActive : undefined]}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+
+          {/* Filtre : type de jeu */}
+          {gameTypes.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsScrollContent}>
+              <Pressable
+                style={[styles.filterChip, gamesGameTypeFilter === null ? styles.filterChipActive : undefined]}
+                onPress={() => {
+                  setGamesGameTypeFilter(null);
+                  void loadGames(gamesStatusFilter, null, gamesPeriodFilter, 1, false);
+                }}
+              >
+                <Text style={[styles.filterChipText, gamesGameTypeFilter === null ? styles.filterChipTextActive : undefined]}>
+                  Tous les types
+                </Text>
+              </Pressable>
+              {gameTypes.map((gt) => (
+                <Pressable
+                  key={gt.id}
+                  style={[styles.filterChip, gamesGameTypeFilter === gt.id ? styles.filterChipActive : undefined]}
+                  onPress={() => {
+                    setGamesGameTypeFilter(gt.id);
+                    void loadGames(gamesStatusFilter, gt.id, gamesPeriodFilter, 1, false);
+                  }}
+                >
+                  <Text style={[styles.filterChipText, gamesGameTypeFilter === gt.id ? styles.filterChipTextActive : undefined]}>
+                    {gt.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : null}
+
           {gamesLoading ? (
             <View style={styles.gamesLoadingInline}>
               <ActivityIndicator />
             </View>
           ) : null}
+
           <FlatList
-            data={filteredGames}
+            data={games}
             keyExtractor={(item) => String(item.id)}
-            ListEmptyComponent={<Text style={styles.empty}>Aucune partie pour le moment.</Text>}
+            ListEmptyComponent={!gamesLoading ? <Text style={styles.empty}>Aucune partie pour le moment.</Text> : null}
             renderItem={({ item }) => {
               const statusMeta = getStatusMeta(item.status, theme);
               return (
@@ -1503,14 +1606,30 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                 >
                   <View style={styles.gameRow}>
                     <Text style={styles.gameTitle}>{item.game_type_name || "Partie"}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: statusMeta.backgroundColor }]}> 
+                    <View style={[styles.statusBadge, { backgroundColor: statusMeta.backgroundColor }]}>
                       <Text style={[styles.statusText, { color: statusMeta.textColor }]}>{statusMeta.label}</Text>
                     </View>
                   </View>
-                  <Text style={styles.gameMeta}>Joueurs: {item.player_count ?? "-"}</Text>
+                  <Text style={styles.gameMeta}>
+                    Joueurs : {item.player_count ?? "-"} · {formatShortDate(item.created_at)}
+                  </Text>
                 </Pressable>
               );
             }}
+            ListFooterComponent={
+              gamesPage < gamesLastPage ? (
+                <Pressable
+                  style={[styles.ghostButton, { marginTop: 8, marginBottom: 16 }]}
+                  onPress={() => void loadGames(gamesStatusFilter, gamesGameTypeFilter, gamesPeriodFilter, gamesPage + 1, true)}
+                  disabled={gamesLoadingMore}
+                >
+                  {gamesLoadingMore
+                    ? <ActivityIndicator size="small" />
+                    : <Text style={styles.ghostButtonText}>Charger plus</Text>
+                  }
+                </Pressable>
+              ) : null
+            }
           />
         </View>
       ) : null}
@@ -2367,35 +2486,74 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
           {/* ── Vue liste ── */}
           {contactSubView === "list" ? (
             <View style={styles.playerListSection}>
+              {/* Filtre : statut */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsScrollContent}>
+                {([
+                  ["all", "Tous"],
+                  ["open", "Ouverts"],
+                  ["in_progress", "En cours"],
+                  ["closed", "Fermés"],
+                ] as const).map(([s, label]) => (
+                  <Pressable
+                    key={s}
+                    style={[styles.filterChip, ticketsStatusFilter === s ? styles.filterChipActive : undefined]}
+                    onPress={() => {
+                      setTicketsStatusFilter(s);
+                      setTicketsLoaded(false);
+                      void loadTickets(s, 1, false);
+                    }}
+                  >
+                    <Text style={[styles.filterChipText, ticketsStatusFilter === s ? styles.filterChipTextActive : undefined]}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+
               {ticketsLoading ? (
                 <ActivityIndicator style={{ marginTop: 16 }} />
               ) : tickets.length === 0 ? (
                 <Text style={styles.empty}>Aucun ticket pour cet espace.</Text>
               ) : (
-                tickets.map((ticket) => (
-                  <Pressable
-                    key={ticket.id}
-                    style={styles.playerCard}
-                    onPress={() => openTicket(ticket)}
-                  >
-                    <View style={styles.playerCardHeader}>
-                      <View style={styles.playerCardHeaderMain}>
-                        <Text style={styles.playerName} numberOfLines={1}>{ticket.subject}</Text>
-                        <Text style={styles.playerLinkInfo}>
-                          {TICKET_CATEGORY_LABELS[ticket.category]} · {ticket.message_count ?? 0} message{(ticket.message_count ?? 0) !== 1 ? "s" : ""}
-                        </Text>
-                        <Text style={styles.playerLinkInfo}>
-                          Par {ticket.author_username} · {new Date(ticket.updated_at).toLocaleDateString("fr-FR")}
-                        </Text>
+                <>
+                  {tickets.map((ticket) => (
+                    <Pressable
+                      key={ticket.id}
+                      style={styles.playerCard}
+                      onPress={() => openTicket(ticket)}
+                    >
+                      <View style={styles.playerCardHeader}>
+                        <View style={styles.playerCardHeaderMain}>
+                          <Text style={styles.playerName} numberOfLines={1}>{ticket.subject}</Text>
+                          <Text style={styles.playerLinkInfo}>
+                            {TICKET_CATEGORY_LABELS[ticket.category]} · {ticket.message_count ?? 0} message{(ticket.message_count ?? 0) !== 1 ? "s" : ""}
+                          </Text>
+                          <Text style={styles.playerLinkInfo}>
+                            Par {ticket.author_username} · {new Date(ticket.updated_at).toLocaleDateString("fr-FR")}
+                          </Text>
+                        </View>
+                        <View style={[styles.gameTypeGlobalBadge, { borderColor: TICKET_STATUS_COLORS[ticket.status] }]}>
+                          <Text style={[styles.gameTypeGlobalBadgeText, { color: TICKET_STATUS_COLORS[ticket.status] }]}>
+                            {TICKET_STATUS_LABELS[ticket.status]}
+                          </Text>
+                        </View>
                       </View>
-                      <View style={[styles.gameTypeGlobalBadge, { borderColor: TICKET_STATUS_COLORS[ticket.status] }]}>
-                        <Text style={[styles.gameTypeGlobalBadgeText, { color: TICKET_STATUS_COLORS[ticket.status] }]}>
-                          {TICKET_STATUS_LABELS[ticket.status]}
-                        </Text>
-                      </View>
-                    </View>
-                  </Pressable>
-                ))
+                    </Pressable>
+                  ))}
+
+                  {ticketsPage < ticketsLastPage ? (
+                    <Pressable
+                      style={[styles.ghostButton, { marginTop: 8, marginBottom: 8 }]}
+                      onPress={() => void loadTickets(ticketsStatusFilter, ticketsPage + 1, true)}
+                      disabled={ticketsLoadingMore}
+                    >
+                      {ticketsLoadingMore
+                        ? <ActivityIndicator size="small" />
+                        : <Text style={styles.ghostButtonText}>Charger plus</Text>
+                      }
+                    </Pressable>
+                  ) : null}
+                </>
               )}
             </View>
           ) : null}
@@ -3447,6 +3605,17 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   searchButton: {
     marginTop: 0,
     paddingHorizontal: 14,
+  },
+  filterChipsScroll: {
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  filterChipsScrollContent: {
+    flexDirection: "row",
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 2,
+    alignItems: "center",
   },
   filterChipsRow: {
     flexDirection: "row",
