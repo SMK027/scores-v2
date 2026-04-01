@@ -6,9 +6,10 @@ import type { AppTheme } from "../styles";
 
 type Props = {
   onLoginPress: () => void;
+  onRefereePress: () => void;
 };
 
-export function WelcomeScreen({ onLoginPress }: Props) {
+export function WelcomeScreen({ onLoginPress, onRefereePress }: Props) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -37,6 +38,10 @@ export function WelcomeScreen({ onLoginPress }: Props) {
 
         <Pressable style={styles.secondaryButton} onPress={openRegister}>
           <Text style={styles.secondaryButtonText}>S'inscrire</Text>
+        </Pressable>
+
+        <Pressable style={styles.refereeButton} onPress={onRefereePress}>
+          <Text style={styles.refereeButtonText}>🟢 Accéder à l'arbitrage</Text>
         </Pressable>
 
         <Pressable style={styles.termsButton} onPress={openTerms}>
@@ -117,6 +122,20 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: "700",
     fontSize: 16,
+  },
+  refereeButton: {
+    marginTop: 12,
+    backgroundColor: theme.colors.success + "18",
+    borderRadius: theme.radius.md,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.colors.success + "55",
+  },
+  refereeButtonText: {
+    color: theme.colors.success,
+    fontWeight: "700",
+    fontSize: 15,
   },
   termsButton: {
     marginTop: 12,

@@ -15,12 +15,14 @@ import { CreateSpaceScreen } from "./screens/CreateSpaceScreen";
 import { CreatePlayerScreen } from "./screens/CreatePlayerScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
+import { RefereeLoginScreen } from "./screens/RefereeLoginScreen";
+import { RefereeDashboardScreen } from "./screens/RefereeDashboardScreen";
 import { SplashScreen } from "./screens/SplashScreen";
 import { SpaceScreen } from "./screens/SpaceScreen";
 import { SpacesScreen } from "./screens/SpacesScreen";
 import { WelcomeScreen } from "./screens/WelcomeScreen";
 import { ThemeProvider, useAppTheme } from "./context/ThemeContext";
-import type { Space, User } from "./types/api";
+import type { RefereeSession, Space, User } from "./types/api";
 
 type Route =
   | { name: "welcome" }
@@ -32,7 +34,9 @@ type Route =
   | { name: "profile" }
   | { name: "space"; space: Space }
   | { name: "game"; space: Space; gameId: number }
-  | { name: "competition"; space: Space; competitionId: number };
+  | { name: "competition"; space: Space; competitionId: number }
+  | { name: "referee-login"; space?: Space; competitionId?: number }
+  | { name: "referee-dashboard"; refereeToken: string; session: RefereeSession; space?: Space };
 
 const isExpoGo =
   Constants.executionEnvironment === "storeClient" ||
@@ -228,7 +232,12 @@ function MobileAppContent() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar hidden style={resolvedMode === "dark" ? "light" : "dark"} />
-      {route.name === "welcome" ? <WelcomeScreen onLoginPress={() => setRoute({ name: "login" })} /> : null}
+      {route.name === "welcome" ? (
+        <WelcomeScreen
+          onLoginPress={() => setRoute({ name: "login" })}
+          onRefereePress={() => setRoute({ name: "referee-login" })}
+        />
+      ) : null}
 
       {route.name === "login" ? (
         <LoginScreen
@@ -328,6 +337,36 @@ function MobileAppContent() {
           space={route.space}
           competitionId={route.competitionId}
           onBack={() => setRoute({ name: "space", space: route.space })}
+          onOpenReferee={(competitionId) =>
+            setRoute({ name: "referee-login", space: route.space, competitionId })
+          }
+        />
+      ) : null}
+
+      {route.name === "referee-login" ? (
+        <RefereeLoginScreen
+          token={token}
+          initialCompetitionId={route.competitionId}
+          onLogin={(refereeToken, session) =>
+            setRoute({ name: "referee-dashboard", refereeToken, session, space: route.space })
+          }
+          onBack={() =>
+            route.space
+              ? setRoute({ name: "space", space: route.space })
+              : setRoute({ name: "welcome" })
+          }
+        />
+      ) : null}
+
+      {route.name === "referee-dashboard" ? (
+        <RefereeDashboardScreen
+          refereeToken={route.refereeToken}
+          session={route.session}
+          onClose={() =>
+            route.space
+              ? setRoute({ name: "space", space: route.space })
+              : setRoute({ name: "welcome" })
+          }
         />
       ) : null}
     </SafeAreaView>
