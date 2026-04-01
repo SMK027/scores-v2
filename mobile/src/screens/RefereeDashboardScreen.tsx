@@ -380,7 +380,9 @@ function GameDetailView({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editingScores, setEditingScores] = useState<Record<number, Record<number, string>>>({});
+  const [editingWinners, setEditingWinners] = useState<Record<number, Record<number, boolean>>>({});
 
   const loadGame = useCallback(async () => {
     setError(null);
@@ -414,17 +416,75 @@ function GameDetailView({
   const handleRoundStatus = (roundId: number, status: RefereeRound["status"]) =>
     doAction(async () => { await refereeUpdateRoundStatus(refereeToken, gameId, roundId, status); });
 
-  const handleSaveScores = (round: RefereeRound) =>
-    doAction(async () => {
-      const raw = editingScores[round.id] ?? {};
-      const scores: Record<number, number | null> = {};
-      for (const gp of game?.players ?? []) {
-        const val = raw[gp.player_id];
-        scores[gp.player_id] = val !== undefined && val.trim() !== "" ? Number(val) : null;
-      }
-      await refereeUpdateScores(refereeToken, gameId, round.id, scores);
-      setEditingScores((prev) => { const next = { ...prev }; delete next[round.id]; return next; });
+  const cancelEditing = (roundId: number) => {
+    setEditingScores((prev) => { const next = { ...prev }; delete next[roundId]; return next; });
+    setEditingWinners((prev) => { const next = { ...prev }; delete next[roundId]; return next; });
+  };
+
+  const toggleNegativeScore = (roundId: number, playerId: number) => {
+    setEditingScores((prev) => {
+      const val = (prev[roundId]?.[playerId] ?? "").trim();
+      const newVal = !val ? "-" : val.startsWith("-") ? val.slice(1) : `-${val}`;
+      return { ...prev, [roundId]: { ...(prev[roundId] ?? {}), [playerId]: newVal } };
     });
+  };
+
+  const handleSaveScores = async (round: RefereeRound) => {
+    const wc = game?.win_condition ?? "highest_score";
+    setSaving(true);
+    setError(null);
+    try {
+      const normalizedScores: Record<number, number> = {};
+
+      if (wc === "win_loss") {
+        const winMap = editingWinners[round.id] ?? {};
+        let winnerCount = 0;
+        for (const gp of game?.players ?? []) {
+          const isWinner = !!winMap[gp.player_id];
+          normalizedScores[gp.player_id] = isWinner ? 1 : 0;
+          if (isWinner) winnerCount++;
+        }
+        if (winnerCount === 0) {
+          setError("Sélectionnez au moins un gagnant pour cette manche.");
+          return;
+        }
+      } else {
+        const usedRanks: number[] = [];
+        for (const gp of game?.players ?? []) {
+          const raw = (editingScores[round.id]?.[gp.player_id] ?? "").trim();
+          if (!raw || raw === "-") {
+            setError("Renseignez une valeur pour chaque joueur.");
+            return;
+          }
+          const value = Number(raw.replace(",", "."));
+          if (Number.isNaN(value)) {
+            setError("Une valeur contient un format invalide.");
+            return;
+          }
+          if (wc === "ranking") {
+            if (!Number.isInteger(value) || value < 1) {
+              setError("Le classement doit être un entier positif (1, 2, 3...).");
+              return;
+            }
+            if (usedRanks.includes(value)) {
+              setError("Chaque position doit être unique dans le classement.");
+              return;
+            }
+            usedRanks.push(value);
+          }
+          normalizedScores[gp.player_id] = value;
+        }
+      }
+
+      await refereeUpdateScores(refereeToken, gameId, round.id, normalizedScores);
+      cancelEditing(round.id);
+      await loadGame();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erreur lors de l'enregistrement des scores.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleDeleteRound = (roundId: number) => {
     Alert.alert("Supprimer la manche", "Raison :", [
@@ -442,10 +502,18 @@ function GameDetailView({
   };
 
   const startEditingRound = (round: RefereeRound) => {
-    const init: Record<number, string> = {};
-    for (const s of round.scores) { init[s.player_id] = s.score !== null ? String(s.score) : ""; }
-    for (const gp of game?.players ?? []) { if (!(gp.player_id in init)) init[gp.player_id] = ""; }
-    setEditingScores((prev) => ({ ...prev, [round.id]: init }));
+    const wc = game?.win_condition ?? "highest_score";
+    if (wc === "win_loss") {
+      const init: Record<number, boolean> = {};
+      for (const s of round.scores) { init[s.player_id] = s.won === true; }
+      for (const gp of game?.players ?? []) { if (!(gp.player_id in init)) init[gp.player_id] = false; }
+      setEditingWinners((prev) => ({ ...prev, [round.id]: init }));
+    } else {
+      const init: Record<number, string> = {};
+      for (const s of round.scores) { init[s.player_id] = s.score !== null ? String(s.score) : ""; }
+      for (const gp of game?.players ?? []) { if (!(gp.player_id in init)) init[gp.player_id] = ""; }
+      setEditingScores((prev) => ({ ...prev, [round.id]: init }));
+    }
   };
 
   if (loading) {
@@ -518,7 +586,7 @@ function GameDetailView({
         </View>
       ) : (
         (game?.rounds ?? []).map((round) => {
-          const isEditing = round.id in editingScores;
+          const isEditing = round.id in editingScores || round.id in editingWinners;
           return (
             <View key={round.id} style={styles.roundCard}>
               <View style={styles.roundHeader}>
@@ -551,75 +619,115 @@ function GameDetailView({
               ) : null}
 
               <View style={styles.scoresBlock}>
-                {winCondition !== "win_loss" ? (
-                  <>
-                    <Text style={styles.scoresLabel}>Scores</Text>
-                    {isEditing ? (
-                      <>
-                        {(game?.players ?? []).map((gp) => (
-                          <View key={gp.player_id} style={styles.scoreInputRow}>
+                <Text style={styles.scoresLabel}>
+                  {winCondition === "win_loss" ? "Résultats" : "Scores"}
+                </Text>
+
+                {isEditing ? (
+                  winCondition === "win_loss" ? (
+                    <>
+                      <Text style={styles.scoresSubtitle}>Sélectionner le ou les gagnants</Text>
+                      {(game?.players ?? []).map((gp) => {
+                        const isWinner = editingWinners[round.id]?.[gp.player_id] ?? false;
+                        return (
+                          <Pressable
+                            key={gp.player_id}
+                            style={[styles.winnerRow, isWinner && styles.winnerRowActive]}
+                            onPress={() => setEditingWinners((prev) => ({
+                              ...prev,
+                              [round.id]: { ...(prev[round.id] ?? {}), [gp.player_id]: !isWinner },
+                            }))}
+                          >
                             <Text style={styles.scoreInputPlayerName}>{gp.name}</Text>
+                            <Text style={[styles.winnerLabel, isWinner && styles.winnerLabelActive]}>
+                              {isWinner ? "Gagnant ✓" : "Défaite"}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                      <View style={styles.scoreSaveRow}>
+                        <Pressable
+                          onPress={() => { void handleSaveScores(round); }}
+                          style={[styles.smallPrimaryBtn, saving && styles.btnDisabled]}
+                          disabled={saving || actionLoading}
+                        >
+                          {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.smallPrimaryBtnText}>Enregistrer</Text>}
+                        </Pressable>
+                        <Pressable onPress={() => cancelEditing(round.id)} style={styles.cancelBtn} disabled={saving}>
+                          <Text style={styles.cancelBtnText}>Annuler</Text>
+                        </Pressable>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.scoresSubtitle}>
+                        {winCondition === "ranking" ? "Saisir le classement (1er, 2ème...)" : "Saisir les scores"}
+                      </Text>
+                      {(game?.players ?? []).map((gp) => (
+                        <View key={gp.player_id} style={styles.scoreInputRow}>
+                          <Text style={styles.scoreInputPlayerName}>{gp.name}</Text>
+                          <View style={styles.scoreInputGroup}>
+                            {winCondition !== "ranking" ? (
+                              <Pressable
+                                style={styles.scoreSignButton}
+                                onPress={() => toggleNegativeScore(round.id, gp.player_id)}
+                              >
+                                <Text style={styles.scoreSignButtonText}>±</Text>
+                              </Pressable>
+                            ) : null}
                             <TextInput
                               value={editingScores[round.id]?.[gp.player_id] ?? ""}
                               onChangeText={(v) =>
                                 setEditingScores((prev) => ({ ...prev, [round.id]: { ...(prev[round.id] ?? {}), [gp.player_id]: v } }))
                               }
                               keyboardType="numeric"
-                              placeholder="0"
+                              placeholder={winCondition === "ranking" ? "Place" : "0"}
                               placeholderTextColor={theme.colors.mutedText}
                               style={styles.scoreInput}
                             />
                           </View>
-                        ))}
-                        <View style={styles.scoreSaveRow}>
-                          <Pressable onPress={() => handleSaveScores(round)} style={[styles.smallPrimaryBtn, actionLoading && styles.btnDisabled]} disabled={actionLoading}>
-                            {actionLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.smallPrimaryBtnText}>Enregistrer</Text>}
-                          </Pressable>
-                          <Pressable onPress={() => setEditingScores((prev) => { const next = { ...prev }; delete next[round.id]; return next; })} style={styles.cancelBtn}>
-                            <Text style={styles.cancelBtnText}>Annuler</Text>
-                          </Pressable>
                         </View>
-                      </>
-                    ) : (
-                      <>
-                        {round.scores.length === 0 ? (
-                          <Text style={styles.noScoresText}>Aucun score saisi.</Text>
-                        ) : (
-                          round.scores.map((s) => {
-                            const p = game?.players.find((gp) => gp.player_id === s.player_id);
-                            return (
-                              <View key={s.player_id} style={styles.scoreDisplayRow}>
-                                <Text style={styles.scoreDisplayName}>{p?.name ?? `Joueur ${s.player_id}`}</Text>
-                                <Text style={styles.scoreDisplayValue}>{s.score !== null ? `${s.score} pts` : "-"}</Text>
-                              </View>
-                            );
-                          })
-                        )}
-                        {!isCompleted ? (
-                          <Pressable onPress={() => startEditingRound(round)} style={styles.editScoresBtn}>
-                            <Text style={styles.editScoresBtnText}>✏ Saisir / modifier les scores</Text>
-                          </Pressable>
-                        ) : null}
-                      </>
-                    )}
-                  </>
+                      ))}
+                      <View style={styles.scoreSaveRow}>
+                        <Pressable
+                          onPress={() => { void handleSaveScores(round); }}
+                          style={[styles.smallPrimaryBtn, saving && styles.btnDisabled]}
+                          disabled={saving || actionLoading}
+                        >
+                          {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.smallPrimaryBtnText}>Enregistrer</Text>}
+                        </Pressable>
+                        <Pressable onPress={() => cancelEditing(round.id)} style={styles.cancelBtn} disabled={saving}>
+                          <Text style={styles.cancelBtnText}>Annuler</Text>
+                        </Pressable>
+                      </View>
+                    </>
+                  )
                 ) : (
                   <>
-                    <Text style={styles.scoresLabel}>Résultats</Text>
-                    {round.scores.map((s) => {
-                      const p = game?.players.find((gp) => gp.player_id === s.player_id);
-                      return (
-                        <View key={s.player_id} style={styles.scoreDisplayRow}>
-                          <Text style={styles.scoreDisplayName}>{p?.name ?? `Joueur ${s.player_id}`}</Text>
-                          <Text style={[styles.scoreDisplayValue, s.won === true ? { color: theme.colors.success } : s.won === false ? { color: theme.colors.danger } : {}]}>
-                            {s.won === true ? "Victoire" : s.won === false ? "Défaite" : "-"}
-                          </Text>
-                        </View>
-                      );
-                    })}
+                    {round.scores.length === 0 ? (
+                      <Text style={styles.noScoresText}>Aucun score saisi.</Text>
+                    ) : (
+                      round.scores.map((s) => {
+                        const p = game?.players.find((gp) => gp.player_id === s.player_id);
+                        return (
+                          <View key={s.player_id} style={styles.scoreDisplayRow}>
+                            <Text style={styles.scoreDisplayName}>{p?.name ?? `Joueur ${s.player_id}`}</Text>
+                            {winCondition === "win_loss" ? (
+                              <Text style={[styles.scoreDisplayValue, s.won === true ? { color: theme.colors.success } : s.won === false ? { color: theme.colors.danger } : {}]}>
+                                {s.won === true ? "Victoire" : s.won === false ? "Défaite" : "-"}
+                              </Text>
+                            ) : (
+                              <Text style={styles.scoreDisplayValue}>{s.score !== null ? `${s.score} pts` : "-"}</Text>
+                            )}
+                          </View>
+                        );
+                      })
+                    )}
                     {!isCompleted ? (
                       <Pressable onPress={() => startEditingRound(round)} style={styles.editScoresBtn}>
-                        <Text style={styles.editScoresBtnText}>✏ Saisir les résultats</Text>
+                        <Text style={styles.editScoresBtnText}>
+                          {winCondition === "win_loss" ? "✏ Saisir les résultats" : "✏ Saisir / modifier les scores"}
+                        </Text>
                       </Pressable>
                     ) : null}
                   </>
@@ -1058,20 +1166,38 @@ const createStyles = (theme: AppTheme) =>
     roundActionBtnText: { fontSize: 12, color: theme.colors.text, fontWeight: "500" },
     roundActionBtnTextDanger: { fontSize: 12, color: theme.colors.danger, fontWeight: "500" },
     scoresBlock: { marginTop: theme.spacing.xs },
-    scoresLabel: { fontSize: 12, fontWeight: "600", color: theme.colors.mutedText, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 },
+    scoresLabel: { fontSize: 12, fontWeight: "600", color: theme.colors.mutedText, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.4 },
+    scoresSubtitle: { fontSize: 12, color: theme.colors.mutedText, marginBottom: 8, fontStyle: "italic" },
     noScoresText: { fontSize: 13, color: theme.colors.mutedText },
     scoreDisplayRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
     scoreDisplayName: { fontSize: 13, color: theme.colors.text },
     scoreDisplayValue: { fontSize: 13, color: theme.colors.text, fontWeight: "600" },
-    scoreInputRow: { flexDirection: "row", alignItems: "center", marginBottom: 6, gap: 8 },
+    scoreInputRow: { flexDirection: "row", alignItems: "center", marginBottom: 8, gap: 8 },
     scoreInputPlayerName: { flex: 1, fontSize: 13, color: theme.colors.text },
-    scoreInput: {
-      width: 80, backgroundColor: theme.colors.backgroundSoft,
+    scoreInputGroup: { flexDirection: "row", alignItems: "center", gap: 6 },
+    scoreSignButton: {
+      width: 32, height: 32, borderRadius: theme.radius.sm,
       borderWidth: 1, borderColor: theme.colors.border,
-      borderRadius: theme.radius.md, paddingHorizontal: theme.spacing.sm,
-      paddingVertical: 6, color: theme.colors.text, fontSize: 14, textAlign: "right",
+      backgroundColor: theme.colors.backgroundSoft,
+      alignItems: "center", justifyContent: "center",
     },
-    scoreSaveRow: { flexDirection: "row", gap: 8, marginTop: 4 },
+    scoreSignButtonText: { color: theme.colors.text, fontSize: 18, fontWeight: "700", lineHeight: 20 },
+    scoreInput: {
+      width: 90, backgroundColor: theme.colors.card,
+      borderWidth: 1, borderColor: theme.colors.border,
+      borderRadius: theme.radius.sm, paddingHorizontal: 10,
+      paddingVertical: 8, color: theme.colors.text, fontSize: 14, textAlign: "right",
+    },
+    winnerRow: {
+      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+      borderWidth: 1, borderColor: theme.colors.border,
+      borderRadius: theme.radius.sm, paddingHorizontal: 10, paddingVertical: 10,
+      marginBottom: 6, backgroundColor: theme.colors.card,
+    },
+    winnerRowActive: { borderColor: theme.colors.success, backgroundColor: theme.colors.primarySoft ?? theme.colors.backgroundSoft },
+    winnerLabel: { fontSize: 13, color: theme.colors.mutedText, fontWeight: "500" },
+    winnerLabelActive: { color: theme.colors.success, fontWeight: "700" },
+    scoreSaveRow: { flexDirection: "row", gap: 8, marginTop: 8 },
     editScoresBtn: { marginTop: 6, alignSelf: "flex-start" },
     editScoresBtnText: { fontSize: 13, color: theme.colors.primary, fontWeight: "500" },
     primaryBtn: { backgroundColor: theme.colors.primary, borderRadius: theme.radius.md, paddingVertical: 12, alignItems: "center", marginTop: theme.spacing.sm },
