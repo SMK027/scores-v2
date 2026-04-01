@@ -73,13 +73,13 @@ services:
       PMA_PASSWORD: scores_password
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.pma.rule=Host(`pma.scores.leofranz.fr`)"
-      - "traefik.http.routers.pma.entrypoints=websecure"
-      - "traefik.http.routers.pma.tls.certresolver=le"
-      - "traefik.http.services.pma.loadbalancer.server.port=80"
+      - "traefik.http.routers.scores-pma.rule=Host(`pma.scores.leofranz.fr`)"
+      - "traefik.http.routers.scores-pma.entrypoints=websecure"
+      - "traefik.http.routers.scores-pma.tls.certresolver=le"
+      - "traefik.http.services.scores-pma.loadbalancer.server.port=80"
       - "traefik.docker.network=proxy"
-      - "traefik.http.routers.pma.middlewares=pma-ipallowlist"
-      - "traefik.http.middlewares.pma-ipallowlist.ipAllowList.sourceRange=82.66.92.245/32"
+      - "traefik.http.routers.scores-pma.middlewares=scores-pma-ipallowlist"
+      - "traefik.http.middlewares.scores-pma-ipallowlist.ipAllowList.sourceRange=82.66.92.245/32"
     depends_on:
       - db
     networks:
