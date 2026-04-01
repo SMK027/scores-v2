@@ -45,6 +45,7 @@ use App\Controllers\Api\SearchApiController;
 use App\Controllers\Api\LeaderboardApiController;
 use App\Controllers\Api\CompetitionApiController;
 use App\Controllers\Api\TicketApiController;
+use App\Controllers\Api\RefereeApiController;
 use App\Models\IpBan;
 use App\Models\UserBan;
 use App\Models\RememberToken;
@@ -523,6 +524,22 @@ $router->get('/api/leaderboard', LeaderboardApiController::class, 'index');
 // Competitions
 $router->get('/api/spaces/{id}/competitions', CompetitionApiController::class, 'index');
 $router->get('/api/spaces/{id}/competitions/{cid}', CompetitionApiController::class, 'show');
+
+// Arbitrage (referee) — authentification par referee JWT
+$router->post('/api/referee/login', RefereeApiController::class, 'login');
+$router->post('/api/referee/open/{sid}', RefereeApiController::class, 'openAssigned');
+$router->get('/api/referee/assigned', RefereeApiController::class, 'assigned');
+$router->get('/api/referee/dashboard', RefereeApiController::class, 'dashboard');
+$router->post('/api/referee/session/pause', RefereeApiController::class, 'pauseSession');
+$router->post('/api/referee/session/close', RefereeApiController::class, 'closeSession');
+$router->post('/api/referee/participants/verify-card', RefereeApiController::class, 'verifyCard');
+$router->post('/api/referee/games', RefereeApiController::class, 'createGame');
+$router->get('/api/referee/games/{gid}', RefereeApiController::class, 'showGame');
+$router->post('/api/referee/games/{gid}/rounds', RefereeApiController::class, 'createRound');
+$router->post('/api/referee/games/{gid}/rounds/{rid}/status', RefereeApiController::class, 'updateRoundStatus');
+$router->post('/api/referee/games/{gid}/rounds/{rid}/scores', RefereeApiController::class, 'updateScores');
+$router->delete('/api/referee/games/{gid}/rounds/{rid}', RefereeApiController::class, 'deleteRound');
+$router->post('/api/referee/games/{gid}/complete', RefereeApiController::class, 'completeGame');
 
 // Dispatcher la requête
 $method = $_SERVER['REQUEST_METHOD'];
