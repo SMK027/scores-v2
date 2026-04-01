@@ -1935,19 +1935,21 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                     </View>
                   </View>
 
-                  <View style={styles.playerActionsRow}>
-                    <Pressable onPress={() => startEditGameType(gameType)}>
-                      <Text style={styles.linkAction}>Modifier</Text>
-                    </Pressable>
-                    <Pressable
-                      disabled={deletingGameTypeId === gameType.id}
-                      onPress={() => confirmAndDeleteGameType(gameType.id, gameType.name)}
-                    >
-                      <Text style={styles.deleteAction}>
-                        {deletingGameTypeId === gameType.id ? "Suppression..." : "Supprimer"}
-                      </Text>
-                    </Pressable>
-                  </View>
+                  {!gameType.is_global ? (
+                    <View style={styles.playerActionsRow}>
+                      <Pressable onPress={() => startEditGameType(gameType)}>
+                        <Text style={styles.linkAction}>Modifier</Text>
+                      </Pressable>
+                      <Pressable
+                        disabled={deletingGameTypeId === gameType.id}
+                        onPress={() => confirmAndDeleteGameType(gameType.id, gameType.name)}
+                      >
+                        <Text style={styles.deleteAction}>
+                          {deletingGameTypeId === gameType.id ? "Suppression..." : "Supprimer"}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
                 </View>
 
                 {editingGameTypeId === gameType.id ? (
