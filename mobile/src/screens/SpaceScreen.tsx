@@ -30,6 +30,7 @@ import {
   fetchSpaceMembers,
   fetchSpaceGames,
   inviteMember,
+  linkSelfToPlayer,
   removeSpaceMember,
   updateGameType,
   updateMemberRole,
@@ -809,6 +810,23 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     );
   };
 
+  const handleLinkSelf = (playerId: number, playerName: string) => {
+    openConfirmDialog(
+      "Me raccorder",
+      `Vous raccorder au joueur « ${playerName} » ? Cette action est irréversible sans intervention d'un gestionnaire.`,
+      async () => {
+        try {
+          setError(null);
+          await linkSelfToPlayer(token, space.id, playerId);
+          await loadData();
+        } catch (err) {
+          setError(err instanceof ApiError ? err.message : "Impossible de se raccorder à ce joueur.");
+        }
+      },
+      { confirmText: "Me raccorder" }
+    );
+  };
+
   const confirmAndDeleteGameType = (gameTypeId: number, gameTypeName: string) => {
     openConfirmDialog(
       "Supprimer le type de jeu",
@@ -1051,6 +1069,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
   const isAdmin = space.user_role === "admin";
   const canManageMembers = isAdmin || space.user_role === "manager";
+  const canManagePlayers = canManageMembers;
 
   // Joueur lié à l'utilisateur connecté dans cet espace
   const linkedPlayer = players.find((p) => p.user_id === user.id) ?? null;
@@ -1799,10 +1818,12 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       {currentView === "players" ? (
         <ScrollView contentContainerStyle={styles.formCard} keyboardShouldPersistTaps="handled">
           <View style={styles.playersHeader}>
-            <Text style={styles.sectionTitle}>Gérer les joueurs</Text>
-            <Pressable style={styles.addPlayerButton} onPress={onOpenCreatePlayer}>
-              <Text style={styles.addPlayerButtonText}>+ Ajouter un joueur</Text>
-            </Pressable>
+            <Text style={styles.sectionTitle}>{canManagePlayers ? "Gérer les joueurs" : "Joueurs"}</Text>
+            {canManagePlayers ? (
+              <Pressable style={styles.addPlayerButton} onPress={onOpenCreatePlayer}>
+                <Text style={styles.addPlayerButtonText}>+ Ajouter un joueur</Text>
+              </Pressable>
+            ) : null}
           </View>
 
           <View style={styles.playerListSection}>
@@ -1821,17 +1842,25 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                   </View>
 
                   <View style={styles.playerActionsRow}>
-                    <Pressable onPress={() => startEditPlayer(player)}>
-                      <Text style={styles.linkAction}>Modifier</Text>
-                    </Pressable>
-                    <Pressable
-                      disabled={deletingPlayerId === player.id}
-                      onPress={() => confirmAndDeletePlayer(player.id, player.name)}
-                    >
-                      <Text style={styles.deleteAction}>
-                        {deletingPlayerId === player.id ? "Suppression..." : "Supprimer"}
-                      </Text>
-                    </Pressable>
+                    {canManagePlayers ? (
+                      <>
+                        <Pressable onPress={() => startEditPlayer(player)}>
+                          <Text style={styles.linkAction}>Modifier</Text>
+                        </Pressable>
+                        <Pressable
+                          disabled={deletingPlayerId === player.id}
+                          onPress={() => confirmAndDeletePlayer(player.id, player.name)}
+                        >
+                          <Text style={styles.deleteAction}>
+                            {deletingPlayerId === player.id ? "Suppression..." : "Supprimer"}
+                          </Text>
+                        </Pressable>
+                      </>
+                    ) : !player.user_id && !linkedPlayer ? (
+                      <Pressable onPress={() => handleLinkSelf(player.id, player.name)}>
+                        <Text style={styles.linkAction}>🔗 Me raccorder</Text>
+                      </Pressable>
+                    ) : null}
                   </View>
                 </View>
 

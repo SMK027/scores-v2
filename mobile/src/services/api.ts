@@ -389,6 +389,19 @@ export async function deletePlayer(token: string, spaceId: number, playerId: num
   }, token);
 }
 
+export async function linkSelfToPlayer(
+  token: string,
+  spaceId: number,
+  playerId: number
+): Promise<Player> {
+  const response = await request<{ success: boolean; player: Player }>(
+    `/api/spaces/${spaceId}/players/${playerId}/link`,
+    { method: "POST" },
+    token
+  );
+  return response.player;
+}
+
 export async function fetchGameDetails(
   token: string,
   spaceId: number,
