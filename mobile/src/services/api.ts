@@ -15,6 +15,8 @@ import type {
   SpaceMember,
   Competition,
   CompetitionDetailsResponse,
+  ContactTicket,
+  ContactMessage,
   Space,
   SpacesResponse,
   User,
@@ -550,7 +552,59 @@ export async function fetchCompetitionDetails(
 
 export { ApiError };
 
-// ─── Cartes de membre ────────────────────────────────────────────────────────
+// ─── Tickets de contact ────────────────────────────────────────────────────────
+
+export async function fetchTickets(
+  token: string,
+  spaceId: number
+): Promise<ContactTicket[]> {
+  const response = await request<{ success: boolean; tickets: ContactTicket[] }>(
+    `/api/spaces/${spaceId}/tickets`,
+    {},
+    token
+  );
+  return response.tickets;
+}
+
+export async function createTicket(
+  token: string,
+  spaceId: number,
+  data: { category: string; subject: string; body: string }
+): Promise<{ ticket: ContactTicket; messages: ContactMessage[] }> {
+  const response = await request<{ success: boolean; ticket: ContactTicket; messages: ContactMessage[] }>(
+    `/api/spaces/${spaceId}/tickets`,
+    { method: "POST", body: JSON.stringify(data) },
+    token
+  );
+  return { ticket: response.ticket, messages: response.messages };
+}
+
+export async function fetchTicketDetail(
+  token: string,
+  spaceId: number,
+  ticketId: number
+): Promise<{ ticket: ContactTicket; messages: ContactMessage[] }> {
+  const response = await request<{ success: boolean; ticket: ContactTicket; messages: ContactMessage[] }>(
+    `/api/spaces/${spaceId}/tickets/${ticketId}`,
+    {},
+    token
+  );
+  return { ticket: response.ticket, messages: response.messages };
+}
+
+export async function replyToTicket(
+  token: string,
+  spaceId: number,
+  ticketId: number,
+  body: string
+): Promise<{ ticket: ContactTicket; messages: ContactMessage[] }> {
+  const response = await request<{ success: boolean; ticket: ContactTicket; messages: ContactMessage[] }>(
+    `/api/spaces/${spaceId}/tickets/${ticketId}/reply`,
+    { method: "POST", body: JSON.stringify({ body }) },
+    token
+  );
+  return { ticket: response.ticket, messages: response.messages };
+}
 
 export async function fetchMemberCard(
   token: string,

@@ -40,10 +40,14 @@ import {
   generateMemberCard,
   regenerateMemberCard,
   toggleMemberCard,
+  fetchTickets,
+  createTicket,
+  fetchTicketDetail,
+  replyToTicket,
 } from "../services/api";
 import { useAppTheme } from "../context/ThemeContext";
 import type { AppTheme } from "../styles";
-import type { Competition, Game, GameType, LeaderboardEntry, MemberCard, Player, SearchResults, Space, SpaceMember, User } from "../types/api";
+import type { Competition, ContactMessage, ContactTicket, Game, GameType, LeaderboardEntry, MemberCard, Player, SearchResults, Space, SpaceMember, User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
 import { getRoleLabel } from "../utils/roles";
 
@@ -67,6 +71,7 @@ type SpaceView =
   | "players"
   | "gameTypes"
   | "members"
+  | "contact"
   | "search"
   | "leaderboard"
   | "competitions"
@@ -194,6 +199,26 @@ function formatShortDate(value?: string | null): string {
   });
 }
 
+const TICKET_CATEGORY_LABELS: Record<ContactTicket["category"], string> = {
+  assistance: "Demande d'assistance",
+  competition_request: "Demande de compétition",
+  restriction_contest: "Contestation de restriction",
+  member_report: "Signalement de membre(s)",
+  bug_report: "Signalement de bug",
+};
+
+const TICKET_STATUS_LABELS: Record<ContactTicket["status"], string> = {
+  open: "Ouvert",
+  in_progress: "En cours",
+  closed: "Fermé",
+};
+
+const TICKET_STATUS_COLORS: Record<ContactTicket["status"], string> = {
+  open: "#22c55e",
+  in_progress: "#f59e0b",
+  closed: "#9ca3af",
+};
+
 export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenGame, onOpenCompetition, onOpenCreatePlayer, onOpenCreateGameType }: Props) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -269,6 +294,22 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const [cardLoading, setCardLoading] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
   const [cardSaving, setCardSaving] = useState(false);
+
+  // ─── Contact / tickets ───────────────────────────────────────────────────
+  const [tickets, setTickets] = useState<ContactTicket[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [ticketsError, setTicketsError] = useState<string | null>(null);
+  const [ticketsLoaded, setTicketsLoaded] = useState(false);
+  const [contactSubView, setContactSubView] = useState<"list" | "create" | "detail">("list");
+  const [selectedTicket, setSelectedTicket] = useState<ContactTicket | null>(null);
+  const [ticketMessages, setTicketMessages] = useState<ContactMessage[]>([]);
+  const [ticketDetailLoading, setTicketDetailLoading] = useState(false);
+  const [newTicketCategory, setNewTicketCategory] = useState<ContactTicket["category"]>("assistance");
+  const [newTicketSubject, setNewTicketSubject] = useState("");
+  const [newTicketBody, setNewTicketBody] = useState("");
+  const [sendingTicket, setSendingTicket] = useState(false);
+  const [replyBody, setReplyBody] = useState("");
+  const [sendingReply, setSendingReply] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     visible: boolean;
     title: string;
@@ -451,6 +492,80 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     }
   }, [leaderboardPeriod, token]);
 
+  const loadTickets = useCallback(async () => {
+    try {
+      setTicketsError(null);
+      setTicketsLoading(true);
+      const data = await fetchTickets(token, space.id);
+      setTickets(data);
+      setTicketsLoaded(true);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setTicketsError(err.message);
+      } else {
+        setTicketsError("Impossible de charger les tickets.");
+      }
+    } finally {
+      setTicketsLoading(false);
+    }
+  }, [token, space.id]);
+
+  const openTicket = useCallback(async (ticket: ContactTicket) => {
+    setSelectedTicket(ticket);
+    setContactSubView("detail");
+    setReplyBody("");
+    try {
+      setTicketDetailLoading(true);
+      const data = await fetchTicketDetail(token, space.id, ticket.id);
+      setSelectedTicket(data.ticket);
+      setTicketMessages(data.messages);
+    } catch {
+      // conserve la version liste si l'appel échoue
+    } finally {
+      setTicketDetailLoading(false);
+    }
+  }, [token, space.id]);
+
+  const handleCreateTicket = useCallback(async () => {
+    if (!newTicketSubject.trim() || !newTicketBody.trim()) return;
+    try {
+      setSendingTicket(true);
+      setTicketsError(null);
+      const { ticket, messages } = await createTicket(token, space.id, {
+        category: newTicketCategory,
+        subject: newTicketSubject.trim(),
+        body: newTicketBody.trim(),
+      });
+      setTickets((prev) => [ticket, ...prev]);
+      setNewTicketSubject("");
+      setNewTicketBody("");
+      setSelectedTicket(ticket);
+      setTicketMessages(messages);
+      setContactSubView("detail");
+    } catch (err) {
+      setTicketsError(err instanceof ApiError ? err.message : "Impossible de créer le ticket.");
+    } finally {
+      setSendingTicket(false);
+    }
+  }, [token, space.id, newTicketCategory, newTicketSubject, newTicketBody]);
+
+  const handleReplyTicket = useCallback(async () => {
+    if (!selectedTicket || !replyBody.trim()) return;
+    try {
+      setSendingReply(true);
+      setTicketsError(null);
+      const { ticket, messages } = await replyToTicket(token, space.id, selectedTicket.id, replyBody.trim());
+      setSelectedTicket(ticket);
+      setTicketMessages(messages);
+      setTickets((prev) => prev.map((t) => (t.id === ticket.id ? ticket : t)));
+      setReplyBody("");
+    } catch (err) {
+      setTicketsError(err instanceof ApiError ? err.message : "Impossible d'envoyer la réponse.");
+    } finally {
+      setSendingReply(false);
+    }
+  }, [token, space.id, selectedTicket, replyBody]);
+
   const submitSearch = useCallback(async () => {
     const query = searchText.trim();
 
@@ -516,6 +631,12 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       void loadLeaderboard();
     }
   }, [currentView, loadLeaderboard]);
+
+  useEffect(() => {
+    if (currentView === "contact" && !ticketsLoaded && !ticketsLoading) {
+      void loadTickets();
+    }
+  }, [currentView, ticketsLoaded, ticketsLoading, loadTickets]);
 
   const selectGameType = (id: number) => {
     const gameType = gameTypes.find((item) => item.id === id);
@@ -1181,6 +1302,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
 
   if (canManageMembers) {
     manageGroupItems.push({ key: "members", label: "Membres", icon: "🤝" });
+    manageGroupItems.push({ key: "contact", label: "Contact", icon: "📬" });
   }
 
   const viewGroupKeys = viewGroupItems.map((i) => i.key);
@@ -2218,6 +2340,186 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
               </View>
             ) : null}
           </View>
+        </ScrollView>
+      ) : null}
+
+      {currentView === "contact" ? (
+        <ScrollView contentContainerStyle={styles.formCard} keyboardShouldPersistTaps="handled">
+          {/* ── En-tête ── */}
+          <View style={styles.playersHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>📬 Contact modération</Text>
+              {contactSubView !== "list" ? (
+                <Pressable onPress={() => setContactSubView("list")}>
+                  <Text style={styles.linkAction}>← Retour à la liste</Text>
+                </Pressable>
+              ) : null}
+            </View>
+            {contactSubView === "list" ? (
+              <Pressable style={styles.addPlayerButton} onPress={() => { setContactSubView("create"); setTicketsError(null); }}>
+                <Text style={styles.addPlayerButtonText}>+ Nouveau ticket</Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          {ticketsError ? <Text style={styles.error}>{ticketsError}</Text> : null}
+
+          {/* ── Vue liste ── */}
+          {contactSubView === "list" ? (
+            <View style={styles.playerListSection}>
+              {ticketsLoading ? (
+                <ActivityIndicator style={{ marginTop: 16 }} />
+              ) : tickets.length === 0 ? (
+                <Text style={styles.empty}>Aucun ticket pour cet espace.</Text>
+              ) : (
+                tickets.map((ticket) => (
+                  <Pressable
+                    key={ticket.id}
+                    style={styles.playerCard}
+                    onPress={() => openTicket(ticket)}
+                  >
+                    <View style={styles.playerCardHeader}>
+                      <View style={styles.playerCardHeaderMain}>
+                        <Text style={styles.playerName} numberOfLines={1}>{ticket.subject}</Text>
+                        <Text style={styles.playerLinkInfo}>
+                          {TICKET_CATEGORY_LABELS[ticket.category]} · {ticket.message_count ?? 0} message{(ticket.message_count ?? 0) !== 1 ? "s" : ""}
+                        </Text>
+                        <Text style={styles.playerLinkInfo}>
+                          Par {ticket.author_username} · {new Date(ticket.updated_at).toLocaleDateString("fr-FR")}
+                        </Text>
+                      </View>
+                      <View style={[styles.gameTypeGlobalBadge, { borderColor: TICKET_STATUS_COLORS[ticket.status] }]}>
+                        <Text style={[styles.gameTypeGlobalBadgeText, { color: TICKET_STATUS_COLORS[ticket.status] }]}>
+                          {TICKET_STATUS_LABELS[ticket.status]}
+                        </Text>
+                      </View>
+                    </View>
+                  </Pressable>
+                ))
+              )}
+            </View>
+          ) : null}
+
+          {/* ── Vue création ── */}
+          {contactSubView === "create" ? (
+            <View style={styles.inlineEditor}>
+              <Text style={styles.label}>Catégorie</Text>
+              <View style={styles.conditionOptionsRow}>
+                {(Object.entries(TICKET_CATEGORY_LABELS) as [ContactTicket["category"], string][]).map(([key, label]) => (
+                  <Pressable
+                    key={key}
+                    style={[styles.conditionOption, newTicketCategory === key ? styles.conditionOptionActive : undefined]}
+                    onPress={() => setNewTicketCategory(key)}
+                  >
+                    <Text style={[styles.conditionOptionText, newTicketCategory === key ? styles.conditionOptionTextActive : undefined]}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={styles.label}>Sujet</Text>
+              <TextInput
+                value={newTicketSubject}
+                onChangeText={setNewTicketSubject}
+                placeholder="Sujet du ticket (255 caractères max.)"
+                placeholderTextColor={theme.colors.mutedText}
+                style={styles.input}
+                maxLength={255}
+              />
+
+              <Text style={styles.label}>Message</Text>
+              <TextInput
+                value={newTicketBody}
+                onChangeText={setNewTicketBody}
+                placeholder="Décrivez votre demande..."
+                placeholderTextColor={theme.colors.mutedText}
+                style={[styles.input, styles.notes]}
+                multiline
+              />
+
+              <View style={styles.inlineEditorActions}>
+                <Pressable
+                  style={[styles.secondaryButton, (sendingTicket || !newTicketSubject.trim() || !newTicketBody.trim()) ? styles.disabledButton : undefined]}
+                  disabled={sendingTicket || !newTicketSubject.trim() || !newTicketBody.trim()}
+                  onPress={handleCreateTicket}
+                >
+                  <Text style={styles.secondaryButtonText}>{sendingTicket ? "Envoi..." : "Envoyer"}</Text>
+                </Pressable>
+                <Pressable style={styles.ghostButton} onPress={() => setContactSubView("list")}>
+                  <Text style={styles.ghostButtonText}>Annuler</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+
+          {/* ── Vue détail ── */}
+          {contactSubView === "detail" && selectedTicket ? (
+            <View>
+              <View style={styles.playerCard}>
+                <Text style={styles.playerName}>{selectedTicket.subject}</Text>
+                <Text style={styles.playerLinkInfo}>
+                  {TICKET_CATEGORY_LABELS[selectedTicket.category]} · Par {selectedTicket.author_username}
+                </Text>
+                <Text style={styles.playerLinkInfo}>
+                  Statut : <Text style={{ color: TICKET_STATUS_COLORS[selectedTicket.status], fontWeight: "700" }}>
+                    {TICKET_STATUS_LABELS[selectedTicket.status]}
+                  </Text>
+                </Text>
+              </View>
+
+              {ticketDetailLoading ? (
+                <ActivityIndicator style={{ marginTop: 16 }} />
+              ) : (
+                <View style={{ gap: 8, marginTop: 8 }}>
+                  {ticketMessages.map((msg) => {
+                    const isStaff = msg.global_role && ["admin", "superadmin", "moderator"].includes(msg.global_role);
+                    return (
+                      <View
+                        key={msg.id}
+                        style={[
+                          styles.ticketMessage,
+                          isStaff ? styles.ticketMessageStaff : styles.ticketMessageSpace,
+                        ]}
+                      >
+                        <Text style={styles.ticketMessageAuthor}>
+                          {msg.username}{isStaff ? " 🛡️" : ""}
+                          {" · "}{new Date(msg.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                        </Text>
+                        <Text style={styles.ticketMessageBody}>{msg.body}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
+              {selectedTicket.status !== "closed" ? (
+                <View style={[styles.inlineEditor, { marginTop: 16 }]}>
+                  <TextInput
+                    value={replyBody}
+                    onChangeText={setReplyBody}
+                    placeholder="Votre réponse..."
+                    placeholderTextColor={theme.colors.mutedText}
+                    style={[styles.input, styles.notes]}
+                    multiline
+                  />
+                  <View style={styles.inlineEditorActions}>
+                    <Pressable
+                      style={[styles.secondaryButton, (sendingReply || !replyBody.trim()) ? styles.disabledButton : undefined]}
+                      disabled={sendingReply || !replyBody.trim()}
+                      onPress={handleReplyTicket}
+                    >
+                      <Text style={styles.secondaryButtonText}>{sendingReply ? "Envoi..." : "Répondre"}</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : (
+                <Text style={[styles.playerLinkInfo, { marginTop: 12, fontStyle: "italic" }]}>
+                  Ce ticket est fermé, il n'est plus possible d'y répondre.
+                </Text>
+              )}
+            </View>
+          ) : null}
         </ScrollView>
       ) : null}
 
@@ -3366,5 +3668,32 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   confirmSubmitText: {
     color: "#fff",
     fontWeight: "700",
+  },
+  ticketMessage: {
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.backgroundSoft,
+  },
+  ticketMessageStaff: {
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  ticketMessageSpace: {
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.border,
+  },
+  ticketMessageAuthor: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: theme.colors.mutedText,
+    marginBottom: 4,
+  },
+  ticketMessageBody: {
+    fontSize: 14,
+    color: theme.colors.text,
+    lineHeight: 20,
   },
 });

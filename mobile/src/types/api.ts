@@ -227,6 +227,35 @@ export type CompetitionDetailsResponse = {
   stats: CompetitionStats;
 };
 
+export type ContactTicket = {
+  id: number;
+  space_id: number;
+  user_id: number;
+  category: "assistance" | "competition_request" | "restriction_contest" | "member_report" | "bug_report";
+  subject: string;
+  status: "open" | "in_progress" | "closed";
+  closed_by?: number | null;
+  closed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Champs joints
+  author_username?: string;
+  space_name?: string;
+  message_count?: number;
+};
+
+export type ContactMessage = {
+  id: number;
+  ticket_id: number;
+  user_id: number;
+  body: string;
+  created_at: string;
+  // Champs joints
+  username?: string;
+  global_role?: string;
+  avatar?: string | null;
+};
+
 export type MemberCard = {
   id: number;
   player_id: number;

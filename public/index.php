@@ -44,6 +44,7 @@ use App\Controllers\Api\StatApiController;
 use App\Controllers\Api\SearchApiController;
 use App\Controllers\Api\LeaderboardApiController;
 use App\Controllers\Api\CompetitionApiController;
+use App\Controllers\Api\TicketApiController;
 use App\Models\IpBan;
 use App\Models\UserBan;
 use App\Models\RememberToken;
@@ -478,6 +479,12 @@ $router->post('/api/spaces/{id}/players', PlayerApiController::class, 'create');
 $router->put('/api/spaces/{id}/players/{pid}', PlayerApiController::class, 'update');
 $router->delete('/api/spaces/{id}/players/{pid}', PlayerApiController::class, 'delete');
 $router->post('/api/spaces/{id}/players/{pid}/link', PlayerApiController::class, 'linkSelf');
+
+// Tickets de contact
+$router->get('/api/spaces/{id}/tickets', TicketApiController::class, 'index');
+$router->post('/api/spaces/{id}/tickets', TicketApiController::class, 'create');
+$router->get('/api/spaces/{id}/tickets/{tid}', TicketApiController::class, 'show');
+$router->post('/api/spaces/{id}/tickets/{tid}/reply', TicketApiController::class, 'reply');
 
 // Cartes de membre
 $router->get('/api/spaces/{id}/players/{pid}/card', MemberCardApiController::class, 'show');
