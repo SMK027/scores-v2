@@ -129,6 +129,7 @@ class RefereeApiController extends ApiController
             'space_id'         => (int) $competition['space_id'],
             'referee_name'     => (string) $session['referee_name'],
             'session_number'   => (int) $session['session_number'],
+            'referee_user_id'  => !empty($session['referee_user_id']) ? (int) $session['referee_user_id'] : null,
         ], 86400 * 7); // 7 jours
     }
 
@@ -689,7 +690,7 @@ class RefereeApiController extends ApiController
             'status'         => 'in_progress',
             'started_at'     => date('Y-m-d H:i:s'),
             'notes'          => $notes ?: null,
-            'created_by'     => 1,
+            'created_by'     => !empty($payload['referee_user_id']) ? (int) $payload['referee_user_id'] : null,
         ]);
 
         try {
