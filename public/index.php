@@ -7,6 +7,9 @@ declare(strict_types=1);
  * Toutes les requêtes HTTP passent par ce fichier.
  */
 
+// Tampon de sortie global : évite que des warnings PHP contaminent les réponses JSON de l'API
+ob_start();
+
 // Charger l'autoloader Composer
 require_once __DIR__ . '/../vendor/autoload.php';
 

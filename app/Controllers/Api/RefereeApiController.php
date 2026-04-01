@@ -775,7 +775,7 @@ class RefereeApiController extends ApiController
             $base['players'] = array_values(array_map(static function (array $p): array {
                 return [
                     'player_id'   => (int) $p['player_id'],
-                    'name'        => $p['name'],
+                    'name'        => $p['player_name'] ?? $p['name'] ?? null,
                     'total_score' => $p['total_score'] !== null ? (float) $p['total_score'] : null,
                     'wins'        => isset($p['wins']) ? (int) $p['wins'] : null,
                     'rank'        => isset($p['rank']) ? (int) $p['rank'] : null,
