@@ -50,7 +50,7 @@ services:
       MYSQL_USER: scores_user
       MYSQL_PASSWORD: scores_password
     ports:
-      - "3307:3306"
+      - "127.0.0.1:3307:3306"
     volumes:
       - ./data/mysql:/var/lib/mysql
     healthcheck:
