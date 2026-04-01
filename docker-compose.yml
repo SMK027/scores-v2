@@ -69,8 +69,6 @@ services:
       - "127.0.0.1:8090:80"
     environment:
       PMA_HOST: db
-      PMA_USER: scores_user
-      PMA_PASSWORD: scores_password
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.scores-pma.rule=Host(`pma.scores.leofranz.fr`)"
