@@ -1956,43 +1956,66 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
           ) : memberCard ? (
             <View>
               {/* Widget carte visuel */}
-              <View style={[styles.cardWidget, memberCard.is_active ? styles.cardWidgetActive : styles.cardWidgetInactive]}>
+              <View style={[styles.cardWidget, !memberCard.is_active && styles.cardWidgetInactive]}>
+                {/* Décoration circulaire coin haut-droit */}
+                <View style={styles.cardDecor} pointerEvents="none" />
+
+                {/* En-tête : logo + nom de l'espace */}
                 <View style={styles.cardWidgetHeader}>
+                  <Text style={styles.cardWidgetLogo}>🎲 Scores</Text>
                   <Text style={styles.cardWidgetSpaceName}>{memberCard.space_name ?? space.name}</Text>
-                  <View style={[styles.cardStatusBadge, memberCard.is_active ? styles.badgeActive : styles.badgeInactive]}>
-                    <Text style={styles.cardStatusText}>{memberCard.is_active ? "Active" : "Désactivée"}</Text>
+                </View>
+
+                {/* Corps : avatar + infos joueur */}
+                <View style={styles.cardWidgetBody}>
+                  <View style={styles.cardAvatar}>
+                    <Text style={styles.cardAvatarText}>
+                      {(memberCard.player_name ?? linkedPlayer?.name ?? "?")[0].toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.cardPlayerName}>{memberCard.player_name ?? linkedPlayer?.name}</Text>
+                    <Text style={styles.cardRoleText}>{getRoleLabel(memberCard.space_role ?? "member")}</Text>
+                    {memberCard.player_joined_at ? (
+                      <Text style={styles.cardJoinedText}>
+                        Membre depuis le {memberCard.player_joined_at.slice(0, 10)}
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
-                <Text style={styles.cardPlayerName}>{memberCard.player_name ?? linkedPlayer?.name}</Text>
-                <View style={styles.cardRoleBadge}>
-                  <Text style={styles.cardRoleBadgeText}>{getRoleLabel(memberCard.space_role ?? "member")}</Text>
-                </View>
+
+                {/* Pied : référence + badge statut */}
                 <View style={styles.cardWidgetFooter}>
                   <View>
                     <Text style={styles.cardLabel}>RÉFÉRENCE</Text>
                     <Text style={styles.cardReference}>{memberCard.reference}</Text>
                   </View>
-                  <View style={styles.cardSigContainer}>
-                    <Text style={styles.cardLabel}>SIGNATURE</Text>
-                    <Text style={styles.cardSignatureText}>
-                      {memberCard.signature_valid === true ? "✅ valide" : memberCard.signature_valid === false ? "❌ invalide" : "—"}
-                    </Text>
-                  </View>
+                  {!memberCard.is_active ? (
+                    <View style={styles.cardInactiveBadge}>
+                      <Text style={styles.cardInactiveBadgeText}>DÉSACTIVÉE</Text>
+                    </View>
+                  ) : memberCard.signature_valid === true ? (
+                    <View style={styles.cardValidBadge}>
+                      <Text style={styles.cardValidBadgeText}>✔ VALIDE</Text>
+                    </View>
+                  ) : null}
                 </View>
               </View>
 
-              {/* Informations */}
+              {/* Informations complémentaires */}
               <View style={styles.cardInfoSection}>
                 <Text style={styles.cardInfoRow}>
                   <Text style={styles.cardInfoLabel}>Émise le : </Text>
                   {memberCard.created_at ? memberCard.created_at.slice(0, 10) : "—"}
                 </Text>
-                {memberCard.player_joined_at ? (
-                  <Text style={styles.cardInfoRow}>
-                    <Text style={styles.cardInfoLabel}>Membre depuis : </Text>
-                    {memberCard.player_joined_at.slice(0, 10)}
-                  </Text>
-                ) : null}
+                <Text style={styles.cardInfoRow}>
+                  <Text style={styles.cardInfoLabel}>Signature : </Text>
+                  {memberCard.signature_valid === true
+                    ? "✅ valide"
+                    : memberCard.signature_valid === false
+                      ? "❌ invalide"
+                      : "—"}
+                </Text>
               </View>
 
               {/* Actions */}
@@ -3233,71 +3256,90 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     marginTop: 8,
     gap: 10,
   },
+  // ── Carte de membre : fond bleu marine façon carte physique ──────────
   cardWidget: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.lg,
-    padding: 14,
+    borderRadius: 14,
+    padding: 20,
     marginTop: 6,
-    backgroundColor: theme.colors.background,
-    ...theme.shadow.card,
+    backgroundColor: "#0d1f45",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 10,
   },
-  cardWidgetActive: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primarySoft,
+  cardDecor: {
+    position: "absolute",
+    top: -40,
+    right: -40,
+    width: 180,
+    height: 180,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.04)",
   },
   cardWidgetInactive: {
-    opacity: 0.8,
+    opacity: 0.6,
   },
   cardWidgetHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
-    gap: 10,
+    marginBottom: 20,
+    opacity: 0.8,
   },
-  cardWidgetSpaceName: {
-    color: theme.colors.text,
-    fontSize: 16,
-    fontWeight: "800",
-    flex: 1,
-  },
-  cardStatusBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  badgeActive: {
-    backgroundColor: theme.colors.success,
-  },
-  badgeInactive: {
-    backgroundColor: theme.colors.danger,
-  },
-  cardStatusText: {
+  cardWidgetLogo: {
     color: "#fff",
     fontWeight: "700",
+    fontSize: 15,
+  },
+  cardWidgetSpaceName: {
+    color: "#fff",
     fontSize: 12,
+  },
+  cardWidgetBody: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginBottom: 20,
+  },
+  cardAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  cardAvatarText: {
+    color: "#fff",
+    fontSize: 26,
+    fontWeight: "700",
+  },
+  cardInfo: {
+    flex: 1,
   },
   cardPlayerName: {
-    color: theme.colors.text,
+    color: "#fff",
     fontSize: 20,
-    fontWeight: "800",
-  },
-  cardRoleBadge: {
-    marginTop: 4,
-    marginBottom: 12,
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.55)",
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  cardRoleBadgeText: {
-    color: theme.colors.primary,
     fontWeight: "700",
-    fontSize: 12,
+    letterSpacing: 0.3,
+  },
+  cardRoleText: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginTop: 3,
+  },
+  cardJoinedText: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 11,
+    marginTop: 4,
   },
   gameTypeNameRow: {
     flexDirection: "row",
@@ -3332,25 +3374,49 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.12)",
+    paddingTop: 14,
     gap: 10,
   },
   cardLabel: {
-    color: theme.colors.mutedText,
-    fontSize: 11,
-    letterSpacing: 0.5,
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 10,
+    letterSpacing: 1,
     fontWeight: "700",
-    marginBottom: 2,
+    textTransform: "uppercase",
+    marginBottom: 3,
   },
   cardReference: {
-    color: theme.colors.text,
-    fontWeight: "800",
+    color: "#fff",
+    fontFamily: "monospace" as "monospace",
+    fontWeight: "600",
+    fontSize: 14,
+    letterSpacing: 0.5,
   },
-  cardSigContainer: {
-    alignItems: "flex-end",
+  cardInactiveBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: "#ef4444",
   },
-  cardSignatureText: {
-    color: theme.colors.text,
+  cardInactiveBadgeText: {
+    color: "#fff",
     fontWeight: "700",
+    fontSize: 10,
+    letterSpacing: 0.5,
+  },
+  cardValidBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: "#22c55e",
+  },
+  cardValidBadgeText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 10,
+    letterSpacing: 0.5,
   },
   cardInfoSection: {
     marginTop: 12,
