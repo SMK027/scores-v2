@@ -1909,13 +1909,30 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
               <View key={gameType.id} style={[styles.playerCard, gameType.id === highlightedGameTypeId ? styles.targetCard : undefined]}>
                 <View style={styles.playerCardHeader}>
                   <View style={styles.playerCardHeaderMain}>
-                    <Text style={styles.playerName}>{gameType.name}</Text>
+                    <View style={styles.gameTypeNameRow}>
+                      <Text style={styles.playerName}>{gameType.name}</Text>
+                      {gameType.is_global ? (
+                        <View style={styles.gameTypeGlobalBadge}>
+                          <Text style={styles.gameTypeGlobalBadgeText}>Global</Text>
+                        </View>
+                      ) : null}
+                    </View>
                     <Text style={styles.playerLinkInfo}>{getWinConditionLabel(gameType.win_condition)}</Text>
                     <Text style={styles.playerLinkInfo}>
                       Joueurs: min {gameType.min_players ?? 1}
                       {gameType.max_players ? ` / max ${gameType.max_players}` : " / max illimité"}
                     </Text>
                     {gameType.description ? <Text style={styles.playerLinkInfo}>{gameType.description}</Text> : null}
+                    <View style={styles.gameTypeStatsRow}>
+                      <Text style={styles.gameTypeStat}>
+                        🎮 {gameType.game_count ?? 0} partie{(gameType.game_count ?? 0) !== 1 ? "s" : ""}
+                      </Text>
+                      {gameType.avg_round_duration != null ? (
+                        <Text style={styles.gameTypeStat}>
+                          ⏱ {Math.round(gameType.avg_round_duration / 60)} min/manche moy.
+                        </Text>
+                      ) : null}
+                    </View>
                   </View>
 
                   <View style={styles.playerActionsRow}>
@@ -2647,6 +2664,35 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   cardRoleBadgeText: {
     color: theme.colors.primary,
     fontWeight: "700",
+    fontSize: 12,
+  },
+  gameTypeNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  gameTypeGlobalBadge: {
+    backgroundColor: theme.colors.primarySoft,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  gameTypeGlobalBadgeText: {
+    color: theme.colors.primary,
+    fontWeight: "700",
+    fontSize: 11,
+  },
+  gameTypeStatsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 6,
+  },
+  gameTypeStat: {
+    color: theme.colors.mutedText,
     fontSize: 12,
   },
   cardWidgetFooter: {

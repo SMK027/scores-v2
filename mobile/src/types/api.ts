@@ -49,6 +49,9 @@ export type GameType = {
   win_condition: "highest_score" | "lowest_score" | "ranking" | "win_loss";
   min_players?: number;
   max_players?: number | null;
+  is_global?: number;
+  game_count?: number;
+  avg_round_duration?: number | null;
 };
 
 export type Player = {
