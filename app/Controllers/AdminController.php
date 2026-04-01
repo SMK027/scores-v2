@@ -87,13 +87,21 @@ class AdminController extends Controller
         $role = \App\Core\Session::get('global_role');
         $canAdminOnly = in_array($role, ['admin', 'superadmin'], true);
 
+        // Tickets non résolus (open + in_progress)
+        $stmt = $this->pdo->prepare("
+            SELECT COUNT(*) FROM contact_tickets WHERE status IN ('open', 'in_progress')
+        ");
+        $stmt->execute();
+        $openTicketsCount = (int) $stmt->fetchColumn();
+
         $this->render('admin/dashboard', [
-            'title'        => 'Administration',
-            'activeMenu'   => 'admin',
-            'stats'        => $stats,
-            'recentUsers'  => $recentUsers,
-            'recentSpaces' => $recentSpaces,
-            'canAdminOnly' => $canAdminOnly,
+            'title'           => 'Administration',
+            'activeMenu'      => 'admin',
+            'stats'           => $stats,
+            'recentUsers'     => $recentUsers,
+            'recentSpaces'    => $recentSpaces,
+            'canAdminOnly'    => $canAdminOnly,
+            'openTicketsCount' => $openTicketsCount,
         ]);
     }
 

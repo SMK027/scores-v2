@@ -23,20 +23,65 @@
 </div>
 
 <?php $canAdminOnly = $canAdminOnly ?? false; ?>
-<div class="d-flex gap-1 mb-3 flex-wrap">
-    <a href="/admin/users" class="btn btn-outline">👥 Gérer les utilisateurs</a>
-    <a href="/admin/spaces" class="btn btn-outline">📦 Gérer les espaces</a>
-    <a href="/admin/players/deleted" class="btn btn-outline">♻️ Restaurer des joueurs</a>
-    <a href="/admin/bans/users" class="btn btn-outline">🚫 Bannissements comptes</a>
-    <a href="/admin/bans/ips" class="btn btn-outline">🌐 Bannissements IP</a>
-    <a href="/admin/contact" class="btn btn-outline">📬 Tickets de contact</a>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-bottom:1.5rem;">
+
+    <!-- Gestion du contenu -->
+    <div class="card">
+        <div class="card-body">
+            <h3 style="margin:0 0 .75rem;font-size:.85rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted,#6c757d);">Contenu</h3>
+            <div class="d-flex gap-1 flex-wrap">
+                <a href="/admin/users" class="btn btn-outline">👥 Utilisateurs</a>
+                <a href="/admin/spaces" class="btn btn-outline">📦 Espaces</a>
+                <a href="/admin/players/deleted" class="btn btn-outline">♻️ Restaurer des joueurs</a>
+                <?php if ($canAdminOnly): ?>
+                <a href="/admin/game-types" class="btn btn-outline">🃏 Types de jeux globaux</a>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modération -->
+    <div class="card">
+        <div class="card-body">
+            <h3 style="margin:0 0 .75rem;font-size:.85rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted,#6c757d);">Modération</h3>
+            <div class="d-flex gap-1 flex-wrap">
+                <a href="/admin/contact" class="btn btn-outline" style="position:relative;">
+                    📬 Tickets de contact
+                    <?php if (($openTicketsCount ?? 0) > 0): ?>
+                    <span style="position:absolute;top:-6px;right:-6px;background:var(--danger,#e63946);color:#fff;font-size:.7rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;"><?= $openTicketsCount ?></span>
+                    <?php endif; ?>
+                </a>
+                <a href="/admin/bans/users" class="btn btn-outline">🚫 Bannissements comptes</a>
+                <a href="/admin/bans/ips" class="btn btn-outline">🌐 Bannissements IP</a>
+            </div>
+        </div>
+    </div>
+
     <?php if ($canAdminOnly): ?>
-    <a href="/admin/game-types" class="btn btn-outline">🃏 Types de jeux globaux</a>
-    <a href="/admin/password-policy" class="btn btn-outline">🔐 Politique de mot de passe</a>
-    <a href="/admin/fail2ban" class="btn btn-outline">🛡️ Fail2ban</a>
-    <a href="/admin/leaderboard-criteria" class="btn btn-outline">🏆 Critères leaderboard</a>
-    <a href="/admin/logs" class="btn btn-outline">📋 Journal d'activité</a>
+    <!-- Configuration -->
+    <div class="card">
+        <div class="card-body">
+            <h3 style="margin:0 0 .75rem;font-size:.85rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted,#6c757d);">Configuration</h3>
+            <div class="d-flex gap-1 flex-wrap">
+                <a href="/admin/password-policy" class="btn btn-outline">🔐 Mots de passe</a>
+                <a href="/admin/fail2ban" class="btn btn-outline">🛡️ Fail2ban</a>
+                <a href="/admin/leaderboard-criteria" class="btn btn-outline">🏆 Critères leaderboard</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supervision -->
+    <div class="card">
+        <div class="card-body">
+            <h3 style="margin:0 0 .75rem;font-size:.85rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted,#6c757d);">Supervision</h3>
+            <div class="d-flex gap-1 flex-wrap">
+                <a href="/admin/logs" class="btn btn-outline">📋 Journal d'activité</a>
+            </div>
+        </div>
+    </div>
     <?php endif; ?>
+
 </div>
 
 <div class="card mb-3">
