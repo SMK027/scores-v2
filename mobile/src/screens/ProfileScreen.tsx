@@ -5,27 +5,7 @@ import { useAppTheme } from "../context/ThemeContext";
 import type { AppTheme, ResolvedTheme, ThemePreference } from "../styles";
 import type { ProfileStats, User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
-import { getRoleLabel } from "../utils/roles";
-
-function getRoleBadgeStyle(theme: AppTheme, role?: string): { backgroundColor: string; textColor: string } {
-  switch (role) {
-    case "superadmin":
-      return { backgroundColor: theme.colors.primarySoft, textColor: theme.colors.danger };
-    case "admin":
-      return { backgroundColor: theme.colors.primarySoft, textColor: theme.colors.primary };
-    case "moderator":
-      return { backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.primaryStrong };
-    case "manager":
-      return { backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.success };
-    case "member":
-      return { backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.mutedText };
-    case "guest":
-      return { backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.warning };
-    case "user":
-    default:
-      return { backgroundColor: theme.colors.backgroundSoft, textColor: theme.colors.mutedText };
-  }
-}
+import { getRoleLabel, getRoleBadgeColors } from "../utils/roles";
 
 type Props = {
   token: string;
@@ -113,7 +93,7 @@ export function ProfileScreen({
 
   const joinedLabel = useMemo(() => formatDate(profile.created_at), [profile.created_at]);
   const avatarUri = useMemo(() => getAvatarUri(profile.avatar), [profile.avatar]);
-  const roleBadgeStyle = useMemo(() => getRoleBadgeStyle(theme, profile.global_role), [profile.global_role, theme]);
+  const roleBadgeStyle = useMemo(() => getRoleBadgeColors(theme, profile.global_role), [profile.global_role, theme]);
 
   const saveBio = async () => {
     try {
@@ -172,8 +152,8 @@ export function ProfileScreen({
         <Text style={styles.sectionTitle}>Informations</Text>
         <View style={styles.roleRow}>
           <Text style={styles.metaLabel}>Rôle global</Text>
-          <View style={[styles.roleBadge, { backgroundColor: roleBadgeStyle.backgroundColor }]}>
-            <Text style={[styles.roleBadgeText, { color: roleBadgeStyle.textColor }]}>
+          <View style={[styles.roleBadge, { backgroundColor: roleBadgeStyle.bg, borderColor: roleBadgeStyle.border, borderWidth: 1 }]}>
+            <Text style={[styles.roleBadgeText, { color: roleBadgeStyle.text }]}>
               {getRoleLabel(profile.global_role)}
             </Text>
           </View>
