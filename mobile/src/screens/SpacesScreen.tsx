@@ -16,7 +16,7 @@ import type { AppTheme } from "../styles";
 import { ApiError, deleteSpace, leaveSpace, fetchSpaces, acceptInvitation, declineInvitation } from "../services/api";
 import type { Space, User, Invitation } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
-import { getRoleLabel } from "../utils/roles";
+import { getRoleLabel, getRoleBadgeColors } from "../utils/roles";
 
 type Props = {
   token: string;
@@ -355,11 +355,14 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
                 </View>
                 <View style={styles.cardHeaderTextWrap}>
                   <Text style={styles.spaceName}>{item.name}</Text>
-                  {item.user_role ? (
-                    <View style={styles.roleBadge}>
-                      <Text style={styles.roleBadgeText}>{getRoleLabel(item.user_role)}</Text>
-                    </View>
-                  ) : null}
+                  {item.user_role ? (() => {
+                    const roleColors = getRoleBadgeColors(theme, item.user_role);
+                    return (
+                      <View style={[styles.roleBadge, { backgroundColor: roleColors.bg, borderColor: roleColors.border }]}>
+                        <Text style={[styles.roleBadgeText, { color: roleColors.text }]}>{getRoleLabel(item.user_role)}</Text>
+                      </View>
+                    );
+                  })() : null}
                 </View>
               </View>
 
@@ -652,16 +655,16 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     flexShrink: 1,
   },
   roleBadge: {
-    backgroundColor: theme.colors.primarySoft,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginLeft: 8,
+    borderWidth: 1,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    marginTop: 4,
+    alignSelf: "flex-start",
   },
   roleBadgeText: {
-    color: theme.colors.primary,
     fontWeight: "700",
-    fontSize: 12,
+    fontSize: 11,
   },
   description: {
     marginTop: 8,
