@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { AppState, StyleSheet, View, ActivityIndicator, Platform } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Animated, AppState, StyleSheet, View, ActivityIndicator, Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { StatusBar } from "expo-status-bar";
@@ -64,6 +64,13 @@ function MobileAppContent() {
   const [bootstrapping, setBootstrapping] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
   const [registeredPushToken, setRegisteredPushToken] = useState<string | null>(null);
+
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    fadeAnim.setValue(0);
+    Animated.timing(fadeAnim, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+  }, [route.name, fadeAnim]);
 
   const goToSpaces = () => setRoute({ name: "spaces" });
 
@@ -232,14 +239,15 @@ function MobileAppContent() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar hidden style={resolvedMode === "dark" ? "light" : "dark"} />
-      {route.name === "welcome" ? (
-        <WelcomeScreen
-          onLoginPress={() => setRoute({ name: "login" })}
-          onRefereePress={() => setRoute({ name: "referee-login" })}
-        />
-      ) : null}
+      <Animated.View style={[styles.fill, { opacity: fadeAnim }]}>
+        {route.name === "welcome" ? (
+          <WelcomeScreen
+            onLoginPress={() => setRoute({ name: "login" })}
+            onRefereePress={() => setRoute({ name: "referee-login" })}
+          />
+        ) : null}
 
-      {route.name === "login" ? (
+        {route.name === "login" ? (
         <LoginScreen
           onBack={() => setRoute({ name: "welcome" })}
           onLoginSuccess={({ token: authToken, user: authUser }) => {
@@ -369,6 +377,7 @@ function MobileAppContent() {
           }
         />
       ) : null}
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -386,6 +395,9 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>["theme"]) =>
     safeArea: {
       flex: 1,
       backgroundColor: theme.colors.background,
+    },
+    fill: {
+      flex: 1,
     },
     centered: {
       flex: 1,

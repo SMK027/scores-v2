@@ -41,7 +41,7 @@ export function WelcomeScreen({ onLoginPress, onRefereePress }: Props) {
         </Pressable>
 
         <Pressable style={styles.refereeButton} onPress={onRefereePress}>
-          <Text style={styles.refereeButtonText}>🟢 Accéder à l'arbitrage</Text>
+          <Text style={styles.refereeButtonText}>Accéder à l'arbitrage</Text>
         </Pressable>
 
         <Pressable style={styles.termsButton} onPress={openTerms}>
