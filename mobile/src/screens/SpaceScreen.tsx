@@ -1398,7 +1398,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             </Pressable>
           ) : (
             <Pressable style={styles.navButton} onPress={() => setCurrentView("menu")}>
-              <Text style={styles.navButtonText}>↩ Espace</Text>
+              <Text style={styles.navButtonText}>← Accueil</Text>
             </Pressable>
           )}
         </View>
@@ -1431,19 +1431,59 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {currentView === "menu" ? (
-        <View style={styles.menuContainer}>
-          <Text style={styles.sectionTitle}>Navigation</Text>
-          <Text style={styles.menuHint}>Utilisez la barre en bas pour changer de section.</Text>
+        <ScrollView contentContainerStyle={styles.menuContainer}>
+          {space.description ? (
+            <Text style={styles.menuHint}>{space.description}</Text>
+          ) : null}
 
-          <View style={styles.quickStatsGrid}>
-            {menuStats.map((entry) => (
-              <View key={entry.label} style={styles.quickStatCard}>
-                <Text style={styles.quickStatValue}>{entry.value}</Text>
-                <Text style={styles.quickStatLabel}>{entry.label}</Text>
-              </View>
-            ))}
+          <View style={styles.menuActionsGrid}>
+            <Pressable style={styles.menuActionTile} onPress={() => { setCurrentView("games"); setActiveGroup(null); }}>
+              <Text style={styles.menuActionIcon}>🎮</Text>
+              <Text style={styles.menuActionLabel}>Parties</Text>
+              {games.length > 0 ? <Text style={styles.menuActionBadge}>{games.length}</Text> : null}
+            </Pressable>
+
+            <Pressable style={styles.menuActionTile} onPress={() => { setCurrentView("create"); setActiveGroup(null); }}>
+              <Text style={styles.menuActionIcon}>＋</Text>
+              <Text style={styles.menuActionLabel}>Créer une partie</Text>
+            </Pressable>
+
+            <Pressable style={styles.menuActionTile} onPress={() => { setCurrentView("leaderboard"); setActiveGroup(null); }}>
+              <Text style={styles.menuActionIcon}>🏆</Text>
+              <Text style={styles.menuActionLabel}>Classement</Text>
+            </Pressable>
+
+            <Pressable style={styles.menuActionTile} onPress={() => { setCurrentView("stats"); setActiveGroup(null); }}>
+              <Text style={styles.menuActionIcon}>📊</Text>
+              <Text style={styles.menuActionLabel}>Statistiques</Text>
+            </Pressable>
+
+            {linkedPlayer ? (
+              <Pressable style={styles.menuActionTile} onPress={() => { setCurrentView("card"); setActiveGroup(null); }}>
+                <Text style={styles.menuActionIcon}>🪪</Text>
+                <Text style={styles.menuActionLabel}>Ma carte</Text>
+              </Pressable>
+            ) : null}
+
+            {canManageMembers ? (
+              <Pressable style={styles.menuActionTile} onPress={() => { setCurrentView("members"); setActiveGroup(null); }}>
+                <Text style={styles.menuActionIcon}>🤝</Text>
+                <Text style={styles.menuActionLabel}>Membres</Text>
+                {members.length > 0 ? <Text style={styles.menuActionBadge}>{members.length}</Text> : null}
+              </Pressable>
+            ) : null}
+
+            <Pressable style={styles.menuActionTile} onPress={() => { setCurrentView("search"); setActiveGroup(null); }}>
+              <Text style={styles.menuActionIcon}>🔍</Text>
+              <Text style={styles.menuActionLabel}>Recherche</Text>
+            </Pressable>
+
+            <Pressable style={styles.menuActionTile} onPress={() => { setCurrentView("competitions"); setActiveGroup(null); }}>
+              <Text style={styles.menuActionIcon}>🏁</Text>
+              <Text style={styles.menuActionLabel}>Compétitions</Text>
+            </Pressable>
           </View>
-        </View>
+        </ScrollView>
       ) : null}
 
       {currentView === "create" ? (
@@ -3083,6 +3123,46 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   menuHint: {
     color: theme.colors.mutedText,
     fontSize: 13,
+    marginBottom: 4,
+  },
+  menuActionsGrid: {
+    marginTop: 8,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  menuActionTile: {
+    width: "47%",
+    minHeight: 88,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.card,
+    padding: 14,
+    justifyContent: "space-between",
+    ...theme.shadow.card,
+  },
+  menuActionIcon: {
+    fontSize: 26,
+    marginBottom: 6,
+  },
+  menuActionLabel: {
+    color: theme.colors.text,
+    fontWeight: "700",
+    fontSize: 13,
+    lineHeight: 17,
+  },
+  menuActionBadge: {
+    alignSelf: "flex-start",
+    marginTop: 4,
+    backgroundColor: theme.colors.primarySoft,
+    color: theme.colors.primary,
+    fontSize: 11,
+    fontWeight: "700",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: theme.radius.pill,
+    overflow: "hidden",
   },
   quickStatsGrid: {
     marginTop: 4,
