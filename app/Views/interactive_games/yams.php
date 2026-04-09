@@ -229,7 +229,7 @@ $categories = [
                     cellP1.classList.remove('yams-score--available');
                     totalP1 += s1;
                     if (upperCats.includes(cat)) upperP1 += s1;
-                } else if (gameStatus === 'in_progress' && currentTurn === currentUserId && playerKey === 'player1' && currentState.rolls_left < 3) {
+                } else if (gameStatus === 'in_progress' && currentTurn === currentUserId && playerKey === 'player1' && (currentState.rolls_left < 3 || devMode)) {
                     cellP1.textContent = '✎';
                     cellP1.classList.add('yams-score--available');
                 } else {
@@ -244,7 +244,7 @@ $categories = [
                     cellP2.classList.remove('yams-score--available');
                     totalP2 += s2;
                     if (upperCats.includes(cat)) upperP2 += s2;
-                } else if (gameStatus === 'in_progress' && currentTurn === currentUserId && playerKey === 'player2' && currentState.rolls_left < 3) {
+                } else if (gameStatus === 'in_progress' && currentTurn === currentUserId && playerKey === 'player2' && (currentState.rolls_left < 3 || devMode)) {
                     cellP2.textContent = '✎';
                     cellP2.classList.add('yams-score--available');
                 } else {
