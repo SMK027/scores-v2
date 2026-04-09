@@ -45,6 +45,19 @@ class InteractiveGameController extends Controller
     }
 
     /**
+     * Retrouve les infos d'un joueur dans une session.
+     */
+    private function getPlayerInfo(array $session, int $userId): ?array
+    {
+        foreach ($session['players'] as $p) {
+            if ((int) $p['user_id'] === $userId) {
+                return $p;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Lobby : liste des jeux disponibles et sessions actives.
      */
     public function index(string $id): void
@@ -78,10 +91,15 @@ class InteractiveGameController extends Controller
             return;
         }
 
+        $game = InteractiveGameSession::GAMES[$gameKey];
+        $maxPlayers = (int) ($_POST['max_players'] ?? $game['max_players']);
+        $maxPlayers = max($game['min_players'], min($game['max_players'], $maxPlayers));
+
         $sessionId = $this->sessionModel->createSession(
             (int) $id,
             $gameKey,
-            $this->getCurrentUserId()
+            $this->getCurrentUserId(),
+            $maxPlayers
         );
 
         $this->redirect("/spaces/{$id}/play/{$sessionId}");
@@ -175,12 +193,14 @@ class InteractiveGameController extends Controller
             'id'            => (int) $session['id'],
             'status'        => $session['status'],
             'game_key'      => $session['game_key'],
+            'max_players'   => (int) $session['max_players'],
             'game_state'    => $session['game_state'],
             'current_turn'  => $session['current_turn'] ? (int) $session['current_turn'] : null,
-            'player1_id'    => (int) $session['player1_id'],
-            'player2_id'    => $session['player2_id'] ? (int) $session['player2_id'] : null,
-            'player1_name'  => $session['player1_name'],
-            'player2_name'  => $session['player2_name'] ?? null,
+            'players'       => array_map(fn($p) => [
+                'player_number' => (int) $p['player_number'],
+                'user_id'       => (int) $p['user_id'],
+                'username'      => $p['username'],
+            ], $session['players']),
             'winner_id'     => $session['winner_id'] ? (int) $session['winner_id'] : null,
             'winner_name'   => $session['winner_name'] ?? null,
             'dev_mode'      => Middleware::isGlobalStaff(),
@@ -212,6 +232,13 @@ class InteractiveGameController extends Controller
         }
 
         $userId = $this->getCurrentUserId();
+
+        $myPlayer = $this->getPlayerInfo($session, $userId);
+        if (!$myPlayer) {
+            $this->json(['error' => 'Vous ne participez pas à cette partie.'], 403);
+            return;
+        }
+
         if ((int) $session['current_turn'] !== $userId) {
             $this->json(['error' => 'Ce n\'est pas votre tour.'], 403);
             return;
@@ -220,8 +247,8 @@ class InteractiveGameController extends Controller
         $state = $session['game_state'];
 
         $result = match ($session['game_key']) {
-            'morpion' => $this->playMorpion($session, $state, $input, $userId),
-            'yams'    => $this->playYams($session, $state, $input, $userId),
+            'morpion' => $this->playMorpion($session, $state, $input, $userId, $myPlayer),
+            'yams'    => $this->playYams($session, $state, $input, $userId, $myPlayer),
             default   => ['error' => 'Jeu non supporté.'],
         };
 
@@ -235,7 +262,7 @@ class InteractiveGameController extends Controller
 
     // ─── LOGIQUE MORPION ───────────────────────────────────────────
 
-    private function playMorpion(array $session, array $state, array $input, int $userId): array
+    private function playMorpion(array $session, array $state, array $input, int $userId, array $myPlayer): array
     {
         $cell = $input['cell'] ?? null;
         if ($cell === null || $cell < 0 || $cell > 8) {
@@ -246,8 +273,7 @@ class InteractiveGameController extends Controller
             return ['error' => 'Case déjà occupée.'];
         }
 
-        // X = player1, O = player2
-        $symbol = ($userId === (int) $session['player1_id']) ? 'X' : 'O';
+        $symbol = $myPlayer['player_number'] === 1 ? 'X' : 'O';
         $state['board'][$cell] = $symbol;
         $state['moves']++;
 
@@ -256,21 +282,28 @@ class InteractiveGameController extends Controller
 
         if ($winner || $isDraw) {
             $winnerId = null;
-            if ($winner === 'X') {
-                $winnerId = (int) $session['player1_id'];
-            } elseif ($winner === 'O') {
-                $winnerId = (int) $session['player2_id'];
+            if ($winner) {
+                $winnerNumber = $winner === 'X' ? 1 : 2;
+                foreach ($session['players'] as $p) {
+                    if ((int) $p['player_number'] === $winnerNumber) {
+                        $winnerId = (int) $p['user_id'];
+                        break;
+                    }
+                }
             }
             $this->sessionModel->updateState((int) $session['id'], $state, null);
             $this->sessionModel->endSession((int) $session['id'], $winnerId);
         } else {
-            $nextTurn = ($userId === (int) $session['player1_id'])
-                ? (int) $session['player2_id']
-                : (int) $session['player1_id'];
+            $nextTurn = null;
+            foreach ($session['players'] as $p) {
+                if ((int) $p['user_id'] !== $userId) {
+                    $nextTurn = (int) $p['user_id'];
+                    break;
+                }
+            }
             $this->sessionModel->updateState((int) $session['id'], $state, $nextTurn);
         }
 
-        // Re-fetch pour renvoyer l'état à jour
         $updated = $this->sessionModel->findWithPlayers((int) $session['id']);
         return [
             'status'       => $updated['status'],
@@ -301,11 +334,11 @@ class InteractiveGameController extends Controller
 
     // ─── LOGIQUE YAMS ─────────────────────────────────────────────
 
-    private function playYams(array $session, array $state, array $input, int $userId): array
+    private function playYams(array $session, array $state, array $input, int $userId, array $myPlayer): array
     {
         $action = $input['action'] ?? '';
-
-        $playerKey = ($userId === (int) $session['player1_id']) ? 'player1' : 'player2';
+        $playerKey = 'player' . $myPlayer['player_number'];
+        $players = $session['players'];
 
         if ($action === 'roll') {
             $isDevMode = Middleware::isGlobalStaff() && !empty($input['dev_mode']);
@@ -386,37 +419,46 @@ class InteractiveGameController extends Controller
             $score = $this->calculateYamsScore($category, $dice);
             $state['scores'][$playerKey][$category] = $score;
 
-            // Passer au joueur suivant ou à la manche suivante
-            $otherKey = ($playerKey === 'player1') ? 'player2' : 'player1';
-            $otherUserId = ($userId === (int) $session['player1_id'])
-                ? (int) $session['player2_id']
-                : (int) $session['player1_id'];
+            // Vérifier si la partie est terminée (tous les joueurs ont 13 catégories)
+            $allDone = true;
+            foreach ($players as $p) {
+                $pk = 'player' . $p['player_number'];
+                if (count($state['scores'][$pk] ?? []) < 13) {
+                    $allDone = false;
+                    break;
+                }
+            }
 
-            $playerFilledCount = count($state['scores'][$playerKey]);
-            $otherFilledCount  = count($state['scores'][$otherKey]);
-
-            // Vérifier si la partie est terminée (13 catégories chacun)
-            if ($playerFilledCount >= 13 && $otherFilledCount >= 13) {
-                $total1 = array_sum($state['scores']['player1']);
-                $total2 = array_sum($state['scores']['player2']);
-
-                // Bonus partie haute (>= 63)
-                $upper1 = $this->yamsUpperTotal($state['scores']['player1']);
-                $upper2 = $this->yamsUpperTotal($state['scores']['player2']);
-                if ($upper1 >= 63) $total1 += 35;
-                if ($upper2 >= 63) $total2 += 35;
-
-                $state['final_scores'] = [
-                    'player1' => $total1,
-                    'player2' => $total2,
-                    'bonus1'  => $upper1 >= 63 ? 35 : 0,
-                    'bonus2'  => $upper2 >= 63 ? 35 : 0,
-                ];
-
+            if ($allDone) {
+                $finalScores = [];
+                $maxTotal = -1;
                 $winnerId = null;
-                if ($total1 > $total2) $winnerId = (int) $session['player1_id'];
-                elseif ($total2 > $total1) $winnerId = (int) $session['player2_id'];
+                $tie = false;
 
+                foreach ($players as $p) {
+                    $pk = 'player' . $p['player_number'];
+                    $total = array_sum($state['scores'][$pk]);
+                    $upper = $this->yamsUpperTotal($state['scores'][$pk]);
+                    $bonus = $upper >= 63 ? 35 : 0;
+                    $total += $bonus;
+
+                    $finalScores[$pk] = $total;
+                    $finalScores['bonus' . $p['player_number']] = $bonus;
+
+                    if ($total > $maxTotal) {
+                        $maxTotal = $total;
+                        $winnerId = (int) $p['user_id'];
+                        $tie = false;
+                    } elseif ($total === $maxTotal) {
+                        $tie = true;
+                    }
+                }
+
+                if ($tie) {
+                    $winnerId = null;
+                }
+
+                $state['final_scores'] = $finalScores;
                 $state['current_dice'] = [1, 1, 1, 1, 1];
                 $state['kept'] = [false, false, false, false, false];
                 $state['rolls_left'] = 0;
@@ -424,18 +466,27 @@ class InteractiveGameController extends Controller
                 $this->sessionModel->updateState((int) $session['id'], $state, null);
                 $this->sessionModel->endSession((int) $session['id'], $winnerId);
             } else {
-                // Tour suivant : alterner entre les joueurs
-                // Si les deux ont le même nombre de catégories, c'est au joueur1
-                if ($playerFilledCount > $otherFilledCount) {
-                    $nextTurn = $otherUserId;
-                } else {
-                    $nextTurn = (int) $session['player1_id'];
+                // Tour suivant : prochain joueur dans l'ordre
+                $currentIndex = null;
+                foreach ($players as $i => $p) {
+                    if ((int) $p['user_id'] === $userId) {
+                        $currentIndex = $i;
+                        break;
+                    }
                 }
+                $nextIndex = ($currentIndex + 1) % count($players);
+                $nextTurn = (int) $players[$nextIndex]['user_id'];
 
                 $state['current_dice'] = [1, 1, 1, 1, 1];
                 $state['kept'] = [false, false, false, false, false];
                 $state['rolls_left'] = 3;
-                $state['round'] = min($playerFilledCount, $otherFilledCount) + 1;
+
+                $minFilled = PHP_INT_MAX;
+                foreach ($players as $p) {
+                    $pk = 'player' . $p['player_number'];
+                    $minFilled = min($minFilled, count($state['scores'][$pk] ?? []));
+                }
+                $state['round'] = $minFilled + 1;
 
                 $this->sessionModel->updateState((int) $session['id'], $state, $nextTurn);
             }

@@ -1,16 +1,23 @@
 <?php
-$isPlayer = ($currentUserId === (int)$session['player1_id'] || $currentUserId === (int)($session['player2_id'] ?? 0));
-$mySymbol = ($currentUserId === (int)$session['player1_id']) ? 'X' : 'O';
+$players = $session['players'];
+$myPlayer = null;
+foreach ($players as $p) {
+    if ((int)$p['user_id'] === $currentUserId) { $myPlayer = $p; break; }
+}
+$isPlayer = ($myPlayer !== null);
+$mySymbol = ($myPlayer && (int)$myPlayer['player_number'] === 1) ? 'X' : 'O';
 $state = $session['game_state'];
+$player1 = $players[0] ?? null;
+$player2 = $players[1] ?? null;
 ?>
 
 <div class="page-header">
     <div>
         <h1>❌⭕ Morpion</h1>
         <p class="text-muted text-small">
-            <?= e($session['player1_name']) ?> (X)
+            <?= $player1 ? e($player1['username']) . ' (X)' : '?' ?>
             vs
-            <?= $session['player2_name'] ? e($session['player2_name']) . ' (O)' : '<em>En attente d\'un adversaire…</em>' ?>
+            <?= $player2 ? e($player2['username']) . ' (O)' : '<em>En attente d\'un adversaire…</em>' ?>
         </p>
     </div>
     <div class="d-flex gap-1">
@@ -65,6 +72,7 @@ $state = $session['game_state'];
     const sessionId = <?= (int)$session['id'] ?>;
     const currentUserId = <?= $currentUserId ?>;
     const mySymbol = '<?= $mySymbol ?>';
+    const players = <?= json_encode(array_values($players)) ?>;
     const stateUrl = `/spaces/${spaceId}/play/${sessionId}/state`;
     const playUrl = `/spaces/${spaceId}/play/${sessionId}/play`;
 

@@ -26,46 +26,59 @@ class InteractiveGameSession extends Model
             'name'        => 'YAMS',
             'icon'        => '🎲',
             'description' => 'Lancez 5 dés et réalisez les meilleures combinaisons !',
-            'min_players' => 2,
-            'max_players' => 2,
+            'min_players' => 1,
+            'max_players' => 4,
         ],
     ];
 
     /**
      * Retourne l'état initial du jeu selon la clé.
      */
-    public static function initialState(string $gameKey): array
+    public static function initialState(string $gameKey, int $maxPlayers = 2): array
     {
         return match ($gameKey) {
             'morpion' => [
                 'board'  => array_fill(0, 9, null),
                 'moves'  => 0,
             ],
-            'yams' => [
-                'scores'       => ['player1' => [], 'player2' => []],
-                'current_dice' => [1, 1, 1, 1, 1],
-                'kept'         => [false, false, false, false, false],
-                'rolls_left'   => 3,
-                'round'        => 1,
-                'max_rounds'   => 13,
-            ],
+            'yams' => self::initialYamsState($maxPlayers),
             default => [],
         };
+    }
+
+    private static function initialYamsState(int $maxPlayers): array
+    {
+        $scores = [];
+        for ($i = 1; $i <= $maxPlayers; $i++) {
+            $scores["player{$i}"] = [];
+        }
+        return [
+            'scores'       => $scores,
+            'current_dice' => [1, 1, 1, 1, 1],
+            'kept'         => [false, false, false, false, false],
+            'rolls_left'   => 3,
+            'round'        => 1,
+            'max_rounds'   => 13,
+        ];
     }
 
     /**
      * Crée une nouvelle session.
      */
-    public function createSession(int $spaceId, string $gameKey, int $userId): int
+    public function createSession(int $spaceId, string $gameKey, int $userId, int $maxPlayers = 2): int
     {
-        $state = self::initialState($gameKey);
+        $state = self::initialState($gameKey, $maxPlayers);
+        $isSolo = ($maxPlayers <= 1);
+        $status = $isSolo ? 'in_progress' : 'waiting';
 
         $this->query(
-            "INSERT INTO {$this->table} (space_id, game_key, status, created_by, player1_id, current_turn, game_state)
-             VALUES (:space_id, :game_key, 'waiting', :created_by, :player1_id, :current_turn, :game_state)",
+            "INSERT INTO {$this->table} (space_id, game_key, max_players, status, created_by, player1_id, current_turn, game_state)
+             VALUES (:space_id, :game_key, :max_players, :status, :created_by, :player1_id, :current_turn, :game_state)",
             [
                 'space_id'     => $spaceId,
                 'game_key'     => $gameKey,
+                'max_players'  => $maxPlayers,
+                'status'       => $status,
                 'created_by'   => $userId,
                 'player1_id'   => $userId,
                 'current_turn' => $userId,
@@ -73,7 +86,15 @@ class InteractiveGameSession extends Model
             ]
         );
 
-        return (int) $this->db->lastInsertId();
+        $sessionId = (int) $this->db->lastInsertId();
+
+        // Inscrire le créateur comme joueur 1
+        $this->query(
+            "INSERT INTO interactive_game_players (session_id, user_id, player_number) VALUES (:sid, :uid, 1)",
+            ['sid' => $sessionId, 'uid' => $userId]
+        );
+
+        return $sessionId;
     }
 
     /**
@@ -81,41 +102,93 @@ class InteractiveGameSession extends Model
      */
     public function joinSession(int $sessionId, int $userId): bool
     {
+        $session = $this->find($sessionId);
+        if (!$session || $session['status'] !== 'waiting') {
+            return false;
+        }
+
+        // Vérifier si déjà inscrit
         $stmt = $this->query(
-            "UPDATE {$this->table}
-             SET player2_id = :player2_id, status = 'in_progress', updated_at = NOW()
-             WHERE id = :id AND status = 'waiting' AND player1_id != :uid",
-            [
-                'player2_id' => $userId,
-                'id'         => $sessionId,
-                'uid'        => $userId,
-            ]
+            "SELECT COUNT(*) AS cnt FROM interactive_game_players WHERE session_id = :sid AND user_id = :uid",
+            ['sid' => $sessionId, 'uid' => $userId]
         );
-        return $stmt->rowCount() > 0;
+        if ((int) $stmt->fetch()['cnt'] > 0) {
+            return false;
+        }
+
+        // Compter les joueurs actuels
+        $stmt = $this->query(
+            "SELECT COUNT(*) AS cnt FROM interactive_game_players WHERE session_id = :sid",
+            ['sid' => $sessionId]
+        );
+        $currentCount = (int) $stmt->fetch()['cnt'];
+        $maxPlayers = (int) $session['max_players'];
+
+        if ($currentCount >= $maxPlayers) {
+            return false;
+        }
+
+        $playerNumber = $currentCount + 1;
+
+        $this->query(
+            "INSERT INTO interactive_game_players (session_id, user_id, player_number) VALUES (:sid, :uid, :pn)",
+            ['sid' => $sessionId, 'uid' => $userId, 'pn' => $playerNumber]
+        );
+
+        // Mettre à jour game_state si nécessaire (YAMS : ajouter les scores)
+        $state = json_decode($session['game_state'], true);
+        $playerKey = 'player' . $playerNumber;
+        if ($session['game_key'] === 'yams' && !isset($state['scores'][$playerKey])) {
+            $state['scores'][$playerKey] = [];
+        }
+
+        // Si la session est pleine, la démarrer
+        if ($currentCount + 1 >= $maxPlayers) {
+            $this->query(
+                "UPDATE {$this->table} SET player2_id = :p2, status = 'in_progress', game_state = :state, updated_at = NOW() WHERE id = :id",
+                ['p2' => $userId, 'state' => json_encode($state), 'id' => $sessionId]
+            );
+        } else {
+            $this->query(
+                "UPDATE {$this->table} SET game_state = :state, updated_at = NOW() WHERE id = :id",
+                ['state' => json_encode($state), 'id' => $sessionId]
+            );
+        }
+
+        return true;
     }
 
     /**
-     * Récupère une session avec les noms des joueurs.
+     * Récupère une session avec les joueurs.
      */
     public function findWithPlayers(int $id): ?array
     {
         $stmt = $this->query(
-            "SELECT s.*,
-                    u1.username AS player1_name,
-                    u2.username AS player2_name,
-                    uw.username AS winner_name
+            "SELECT s.*, uw.username AS winner_name
              FROM {$this->table} s
-             JOIN users u1 ON u1.id = s.player1_id
-             LEFT JOIN users u2 ON u2.id = s.player2_id
              LEFT JOIN users uw ON uw.id = s.winner_id
              WHERE s.id = :id",
             ['id' => $id]
         );
         $row = $stmt->fetch();
-        if ($row) {
-            $row['game_state'] = json_decode($row['game_state'], true);
+        if (!$row) {
+            return null;
         }
-        return $row ?: null;
+
+        $row['game_state'] = json_decode($row['game_state'], true);
+
+        // Charger les joueurs
+        $stmt = $this->query(
+            "SELECT igp.player_number, igp.user_id, u.username
+             FROM interactive_game_players igp
+             JOIN users u ON u.id = igp.user_id
+             WHERE igp.session_id = :sid
+             ORDER BY igp.player_number",
+            ['sid' => $id]
+        );
+        $row['players'] = $stmt->fetchAll();
+
+        return $row;
     }
 
     /**
@@ -133,12 +206,18 @@ class InteractiveGameSession extends Model
 
         $stmt = $this->query(
             "SELECT s.*,
-                    u1.username AS player1_name,
-                    u2.username AS player2_name
+                    uc.username AS creator_name,
+                    uw.username AS winner_name,
+                    GROUP_CONCAT(u.username ORDER BY igp.player_number SEPARATOR ', ') AS player_names,
+                    GROUP_CONCAT(igp.user_id ORDER BY igp.player_number) AS player_user_ids,
+                    COUNT(igp.id) AS player_count
              FROM {$this->table} s
-             JOIN users u1 ON u1.id = s.player1_id
-             LEFT JOIN users u2 ON u2.id = s.player2_id
+             JOIN users uc ON uc.id = s.created_by
+             LEFT JOIN users uw ON uw.id = s.winner_id
+             LEFT JOIN interactive_game_players igp ON igp.session_id = s.id
+             LEFT JOIN users u ON u.id = igp.user_id
              WHERE {$where}
+             GROUP BY s.id
              ORDER BY FIELD(s.status, 'waiting', 'in_progress', 'completed', 'cancelled'),
                       s.updated_at DESC
              LIMIT 50",

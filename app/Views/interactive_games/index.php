@@ -14,6 +14,18 @@
             <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/play/create" style="margin-top:.75rem;">
                 <?= csrf_field() ?>
                 <input type="hidden" name="game_key" value="<?= $key ?>">
+                <?php if ($game['min_players'] !== $game['max_players']): ?>
+                    <div style="margin-bottom:.5rem;">
+                        <label class="text-small">Nombre de joueurs :</label>
+                        <select name="max_players" style="padding:.25rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);">
+                            <?php for ($p = $game['min_players']; $p <= $game['max_players']; $p++): ?>
+                                <option value="<?= $p ?>"<?= $p === 2 ? ' selected' : '' ?>><?= $p === 1 ? 'Solo' : "$p joueurs" ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                <?php else: ?>
+                    <input type="hidden" name="max_players" value="<?= $game['max_players'] ?>">
+                <?php endif; ?>
                 <button type="submit" class="btn btn-primary btn-sm">Créer une partie</button>
             </form>
         </div>
@@ -38,22 +50,26 @@
                     <thead>
                         <tr>
                             <th>Jeu</th>
-                            <th>Créée par</th>
-                            <th>Adversaire</th>
+                            <th>Joueurs</th>
                             <th>Statut</th>
                             <th>Date</th>
                             <th></th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($activeSessions as $s): ?>
+                        <?php foreach ($activeSessions as $s):
+                            $playerIds = $s['player_user_ids'] ? array_map('intval', explode(',', $s['player_user_ids'])) : [];
+                            $isInGame = in_array($currentUserId, $playerIds, true);
+                        ?>
                         <tr>
                             <td>
                                 <?= \App\Models\InteractiveGameSession::GAMES[$s['game_key']]['icon'] ?? '' ?>
                                 <?= e(\App\Models\InteractiveGameSession::GAMES[$s['game_key']]['name'] ?? $s['game_key']) ?>
                             </td>
-                            <td><?= e($s['player1_name']) ?></td>
-                            <td><?= $s['player2_name'] ? e($s['player2_name']) : '<em class="text-muted">En attente…</em>' ?></td>
+                            <td>
+                                <?= e($s['player_names'] ?? '') ?>
+                                <span class="text-muted text-small">(<?= (int)$s['player_count'] ?>/<?= (int)$s['max_players'] ?>)</span>
+                            </td>
                             <td>
                                 <?php if ($s['status'] === 'waiting'): ?>
                                     <span class="badge badge-warning">En attente</span>
@@ -63,7 +79,7 @@
                             </td>
                             <td><?= date('d/m/Y H:i', strtotime($s['created_at'])) ?></td>
                             <td>
-                                <?php if ($s['status'] === 'waiting' && (int)$s['player1_id'] !== $currentUserId): ?>
+                                <?php if ($s['status'] === 'waiting' && !$isInGame): ?>
                                     <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/play/<?= $s['id'] ?>/join" style="display:inline;">
                                         <?= csrf_field() ?>
                                         <button type="submit" class="btn btn-success btn-sm">Rejoindre</button>
@@ -102,8 +118,7 @@ $completedSessions = array_filter($sessions, fn($s) => in_array($s['status'], ['
                 <thead>
                     <tr>
                         <th>Jeu</th>
-                        <th>Joueur 1</th>
-                        <th>Joueur 2</th>
+                        <th>Joueurs</th>
                         <th>Résultat</th>
                         <th>Date</th>
                         <th></th>
@@ -116,14 +131,13 @@ $completedSessions = array_filter($sessions, fn($s) => in_array($s['status'], ['
                             <?= \App\Models\InteractiveGameSession::GAMES[$s['game_key']]['icon'] ?? '' ?>
                             <?= e(\App\Models\InteractiveGameSession::GAMES[$s['game_key']]['name'] ?? $s['game_key']) ?>
                         </td>
-                        <td><?= e($s['player1_name']) ?></td>
-                        <td><?= $s['player2_name'] ? e($s['player2_name']) : '—' ?></td>
+                        <td><?= e($s['player_names'] ?? '—') ?></td>
                         <td>
                             <?php if ($s['status'] === 'cancelled'): ?>
                                 <span class="badge badge-secondary">Annulée</span>
                             <?php elseif ($s['winner_id']): ?>
                                 <span class="badge badge-success">
-                                    🏆 <?= e($s['winner_id'] == $s['player1_id'] ? $s['player1_name'] : $s['player2_name']) ?>
+                                    🏆 <?= e($s['winner_name'] ?? '?') ?>
                                 </span>
                             <?php else: ?>
                                 <span class="badge badge-secondary">Égalité</span>

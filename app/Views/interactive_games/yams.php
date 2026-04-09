@@ -1,8 +1,14 @@
 <?php
-$isPlayer = ($currentUserId === (int)$session['player1_id'] || $currentUserId === (int)($session['player2_id'] ?? 0));
-$playerKey = ($currentUserId === (int)$session['player1_id']) ? 'player1' : 'player2';
+$players = $session['players'];
+$myPlayer = null;
+foreach ($players as $p) {
+    if ((int)$p['user_id'] === $currentUserId) { $myPlayer = $p; break; }
+}
+$isPlayer = ($myPlayer !== null);
+$playerKey = $myPlayer ? 'player' . $myPlayer['player_number'] : null;
 $state = $session['game_state'];
 $isGlobalStaff = $isGlobalStaff ?? false;
+$isSolo = (count($players) === 1 && (int)$session['max_players'] === 1);
 
 $categories = [
     'ones'            => ['label' => 'As (1)',          'section' => 'upper'],
@@ -25,9 +31,17 @@ $categories = [
     <div>
         <h1>🎲 YAMS</h1>
         <p class="text-muted text-small">
-            <?= e($session['player1_name']) ?>
-            vs
-            <?= $session['player2_name'] ? e($session['player2_name']) : '<em>En attente d\'un adversaire…</em>' ?>
+            <?php if ($isSolo): ?>
+                <?= e($players[0]['username']) ?> — Partie solo
+            <?php else: ?>
+                <?php
+                $names = array_map(fn($p) => e($p['username']), $players);
+                echo implode(' vs ', $names);
+                if (count($players) < (int)$session['max_players'] && $session['status'] === 'waiting') {
+                    echo ' — <em>En attente de joueurs…</em>';
+                }
+                ?>
+            <?php endif; ?>
         </p>
     </div>
     <div class="d-flex gap-1">
@@ -45,20 +59,26 @@ $categories = [
 <div id="yams-status" class="card mb-3">
     <div class="card-body" style="text-align:center;padding:.75rem;">
         <?php if ($session['status'] === 'waiting'): ?>
-            <span class="badge badge-warning">⏳ En attente d'un adversaire…</span>
+            <span class="badge badge-warning">⏳ En attente de joueurs… (<span id="player-count"><?= count($players) ?>/<?= $session['max_players'] ?></span>)</span>
         <?php elseif ($session['status'] === 'completed'): ?>
             <?php if ($session['winner_id']): ?>
                 <span class="badge badge-success" style="font-size:1.1em;">🏆 <?= e($session['winner_name']) ?> a gagné !</span>
+            <?php elseif ($isSolo): ?>
+                <span class="badge badge-success" style="font-size:1.1em;">🏁 Partie terminée !</span>
             <?php else: ?>
                 <span class="badge badge-secondary" style="font-size:1.1em;">🤝 Égalité !</span>
             <?php endif; ?>
             <?php if (!empty($state['final_scores'])): ?>
                 <div style="margin-top:.5rem;" class="text-small">
-                    <?= e($session['player1_name']) ?> : <strong><?= $state['final_scores']['player1'] ?></strong>
-                    <?php if ($state['final_scores']['bonus1'] > 0): ?><span class="text-muted">(+35 bonus)</span><?php endif; ?>
-                    &nbsp;|&nbsp;
-                    <?= e($session['player2_name']) ?> : <strong><?= $state['final_scores']['player2'] ?></strong>
-                    <?php if ($state['final_scores']['bonus2'] > 0): ?><span class="text-muted">(+35 bonus)</span><?php endif; ?>
+                    <?php foreach ($players as $i => $p):
+                        $pk = 'player' . $p['player_number'];
+                    ?>
+                        <?php if ($i > 0): ?>&nbsp;|&nbsp;<?php endif; ?>
+                        <?= e($p['username']) ?> : <strong><?= $state['final_scores'][$pk] ?? 0 ?></strong>
+                        <?php if (($state['final_scores']['bonus' . $p['player_number']] ?? 0) > 0): ?>
+                            <span class="text-muted">(+35 bonus)</span>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
                 </div>
             <?php endif; ?>
         <?php elseif ($session['status'] === 'cancelled'): ?>
@@ -105,7 +125,7 @@ $categories = [
                 </select>
             <?php endfor; ?>
             <button id="btn-dev-set" class="btn btn-warning btn-sm">Appliquer</button>
-            <span class="text-small text-muted" style="margin-left:.5rem;">|  Lancers illimités activés</span>
+            <span class="text-small text-muted" style="margin-left:.5rem;">|  Lancers illimités activés</span>
         </div>
     </div>
 </div>
@@ -122,8 +142,9 @@ $categories = [
                 <thead>
                     <tr>
                         <th>Catégorie</th>
-                        <th style="text-align:center;"><?= e($session['player1_name']) ?></th>
-                        <th style="text-align:center;"><?= e($session['player2_name'] ?? '—') ?></th>
+                        <?php foreach ($players as $p): ?>
+                            <th style="text-align:center;"><?= e($p['username']) ?></th>
+                        <?php endforeach; ?>
                     </tr>
                 </thead>
                 <tbody>
@@ -134,32 +155,35 @@ $categories = [
                             $lastSection = $cat['section'];
                     ?>
                         <tr class="yams-section-header">
-                            <td colspan="3"><strong><?= $cat['section'] === 'upper' ? '🔢 Partie haute' : '🎯 Combinaisons' ?></strong></td>
+                            <td colspan="<?= 1 + count($players) ?>"><strong><?= $cat['section'] === 'upper' ? '🔢 Partie haute' : '🎯 Combinaisons' ?></strong></td>
                         </tr>
                     <?php endif; ?>
                     <tr data-category="<?= $key ?>">
                         <td><?= $cat['label'] ?></td>
-                        <td style="text-align:center;" class="score-cell" data-player="player1">
-                            <?= isset($state['scores']['player1'][$key]) ? (int)$state['scores']['player1'][$key] : '—' ?>
-                        </td>
-                        <td style="text-align:center;" class="score-cell" data-player="player2">
-                            <?= isset($state['scores']['player2'][$key]) ? (int)$state['scores']['player2'][$key] : '—' ?>
-                        </td>
+                        <?php foreach ($players as $p):
+                            $pk = 'player' . $p['player_number'];
+                        ?>
+                            <td style="text-align:center;" class="score-cell" data-player="<?= $pk ?>">
+                                <?= isset($state['scores'][$pk][$key]) ? (int)$state['scores'][$pk][$key] : '—' ?>
+                            </td>
+                        <?php endforeach; ?>
                     </tr>
                     <?php endforeach; ?>
                     <!-- Bonus partie haute -->
                     <tr class="yams-section-header">
-                        <td colspan="3"><strong>📊 Totaux</strong></td>
+                        <td colspan="<?= 1 + count($players) ?>"><strong>📊 Totaux</strong></td>
                     </tr>
                     <tr>
                         <td>Bonus (≥63 partie haute → +35)</td>
-                        <td style="text-align:center;" id="bonus-p1">—</td>
-                        <td style="text-align:center;" id="bonus-p2">—</td>
+                        <?php foreach ($players as $p): ?>
+                            <td style="text-align:center;" id="bonus-player<?= $p['player_number'] ?>">—</td>
+                        <?php endforeach; ?>
                     </tr>
                     <tr style="font-weight:bold;">
                         <td>Total</td>
-                        <td style="text-align:center;" id="total-p1">0</td>
-                        <td style="text-align:center;" id="total-p2">0</td>
+                        <?php foreach ($players as $p): ?>
+                            <td style="text-align:center;" id="total-player<?= $p['player_number'] ?>">0</td>
+                        <?php endforeach; ?>
                     </tr>
                 </tbody>
             </table>
@@ -175,12 +199,12 @@ $categories = [
     const spaceId = <?= (int)$currentSpace['id'] ?>;
     const sessionId = <?= (int)$session['id'] ?>;
     const currentUserId = <?= $currentUserId ?>;
-    const player1Id = <?= (int)$session['player1_id'] ?>;
-    const player2Id = <?= (int)($session['player2_id'] ?? 0) ?>;
-    const playerKey = currentUserId === player1Id ? 'player1' : 'player2';
+    const players = <?= json_encode(array_values($players)) ?>;
+    const playerKey = 'player' + <?= $myPlayer ? (int)$myPlayer['player_number'] : 0 ?>;
     const stateUrl = `/spaces/${spaceId}/play/${sessionId}/state`;
     const playUrl = `/spaces/${spaceId}/play/${sessionId}/play`;
     const devMode = <?= $isGlobalStaff ? 'true' : 'false' ?>;
+    const isSolo = <?= $isSolo ? 'true' : 'false' ?>;
 
     let currentState = <?= json_encode($state) ?>;
     let currentTurn = <?= $session['current_turn'] ? (int)$session['current_turn'] : 'null' ?>;
@@ -209,65 +233,60 @@ $categories = [
             'small_straight', 'large_straight', 'yams', 'chance'
         ];
 
-        let totalP1 = 0, totalP2 = 0;
-        let upperP1 = 0, upperP2 = 0;
         const upperCats = ['ones', 'twos', 'threes', 'fours', 'fives', 'sixes'];
+        let totals = {};
+        let uppers = {};
+        players.forEach(p => {
+            const pk = 'player' + p.player_number;
+            totals[pk] = 0;
+            uppers[pk] = 0;
+        });
 
         categories.forEach(cat => {
             const row = document.querySelector(`tr[data-category="${cat}"]`);
             if (!row) return;
 
-            const cellP1 = row.querySelector('.score-cell[data-player="player1"]');
-            const cellP2 = row.querySelector('.score-cell[data-player="player2"]');
+            players.forEach(p => {
+                const pk = 'player' + p.player_number;
+                const cell = row.querySelector(`.score-cell[data-player="${pk}"]`);
+                if (!cell) return;
 
-            const s1 = currentState.scores.player1[cat];
-            const s2 = currentState.scores.player2[cat];
+                const score = currentState.scores[pk]?.[cat];
 
-            if (cellP1) {
-                if (s1 !== undefined) {
-                    cellP1.textContent = s1;
-                    cellP1.classList.remove('yams-score--available');
-                    totalP1 += s1;
-                    if (upperCats.includes(cat)) upperP1 += s1;
-                } else if (gameStatus === 'in_progress' && currentTurn === currentUserId && playerKey === 'player1' && (currentState.rolls_left < 3 || devMode)) {
-                    cellP1.textContent = '✎';
-                    cellP1.classList.add('yams-score--available');
+                if (score !== undefined) {
+                    cell.textContent = score;
+                    cell.classList.remove('yams-score--available');
+                    totals[pk] += score;
+                    if (upperCats.includes(cat)) uppers[pk] += score;
+                } else if (gameStatus === 'in_progress' && currentTurn === currentUserId && pk === playerKey && (currentState.rolls_left < 3 || devMode)) {
+                    cell.textContent = '✎';
+                    cell.classList.add('yams-score--available');
                 } else {
-                    cellP1.textContent = '—';
-                    cellP1.classList.remove('yams-score--available');
+                    cell.textContent = '—';
+                    cell.classList.remove('yams-score--available');
                 }
-            }
-
-            if (cellP2) {
-                if (s2 !== undefined) {
-                    cellP2.textContent = s2;
-                    cellP2.classList.remove('yams-score--available');
-                    totalP2 += s2;
-                    if (upperCats.includes(cat)) upperP2 += s2;
-                } else if (gameStatus === 'in_progress' && currentTurn === currentUserId && playerKey === 'player2' && (currentState.rolls_left < 3 || devMode)) {
-                    cellP2.textContent = '✎';
-                    cellP2.classList.add('yams-score--available');
-                } else {
-                    cellP2.textContent = '—';
-                    cellP2.classList.remove('yams-score--available');
-                }
-            }
+            });
         });
 
-        const bonusP1 = upperP1 >= 63 ? 35 : 0;
-        const bonusP2 = upperP2 >= 63 ? 35 : 0;
-        document.getElementById('bonus-p1').textContent = bonusP1 > 0 ? `+${bonusP1}` : `(${upperP1}/63)`;
-        document.getElementById('bonus-p2').textContent = bonusP2 > 0 ? `+${bonusP2}` : `(${upperP2}/63)`;
-        document.getElementById('total-p1').textContent = totalP1 + bonusP1;
-        document.getElementById('total-p2').textContent = totalP2 + bonusP2;
+        // Totaux
+        players.forEach(p => {
+            const pk = 'player' + p.player_number;
+            const upper = uppers[pk];
+            const bonus = upper >= 63 ? 35 : 0;
+            const bonusEl = document.getElementById('bonus-' + pk);
+            const totalEl = document.getElementById('total-' + pk);
+            if (bonusEl) bonusEl.textContent = bonus > 0 ? '+' + bonus : '(' + upper + '/63)';
+            if (totalEl) totalEl.textContent = totals[pk] + bonus;
+        });
 
         // Tour
         if (turnIndicator) {
             if (currentTurn === currentUserId) {
-                turnIndicator.textContent = '🟢 C\'est votre tour !';
+                turnIndicator.textContent = isSolo ? '🟢 À vous de jouer !' : '🟢 C\'est votre tour !';
                 turnIndicator.style.color = 'var(--success, #22c55e)';
-            } else {
-                turnIndicator.textContent = '⏳ Tour de l\'adversaire…';
+            } else if (!isSolo) {
+                const cp = players.find(p => p.user_id === currentTurn);
+                turnIndicator.textContent = '⏳ Tour de ' + (cp ? cp.username : "l'adversaire") + '…';
                 turnIndicator.style.color = 'var(--text-muted, #6b7280)';
             }
         }
@@ -276,7 +295,7 @@ $categories = [
             if (devMode) {
                 rollsLeft.textContent = 'Lancers restants : ∞ (dev)';
             } else {
-                rollsLeft.textContent = `Lancers restants : ${currentState.rolls_left ?? 0}`;
+                rollsLeft.textContent = 'Lancers restants : ' + (currentState.rolls_left ?? 0);
             }
         }
 
@@ -288,8 +307,6 @@ $categories = [
                 btnRoll.disabled = (gameStatus !== 'in_progress' || currentTurn !== currentUserId || (currentState.rolls_left ?? 0) <= 0);
             }
         }
-
-        // Sync dev panel selects only on explicit sync call
     }
 
     function syncDevSelects() {
@@ -309,7 +326,7 @@ $categories = [
     dice.forEach(die => {
         die.addEventListener('click', function() {
             if (gameStatus !== 'in_progress' || currentTurn !== currentUserId) return;
-            if (currentState.rolls_left >= 3) return; // Doit avoir lancé au moins une fois
+            if (currentState.rolls_left >= 3) return;
             const idx = parseInt(this.dataset.index);
             kept[idx] = !kept[idx];
             this.classList.toggle('yams-die--kept', kept[idx]);
@@ -391,10 +408,23 @@ $categories = [
         if (!statusDiv) return;
         const body = statusDiv.querySelector('.card-body');
         let html = '';
-        if (data.winner_id) {
-            html += `<span class="badge badge-success" style="font-size:1.1em;">🏆 ${escapeHtml(data.winner_name || 'Gagnant')} a gagné !</span>`;
+        if (data.winner_id && !isSolo) {
+            html += '<span class="badge badge-success" style="font-size:1.1em;">🏆 ' + escapeHtml(data.winner_name || 'Gagnant') + ' a gagné !</span>';
+        } else if (isSolo) {
+            html += '<span class="badge badge-success" style="font-size:1.1em;">🏁 Partie terminée !</span>';
         } else {
             html += '<span class="badge badge-secondary" style="font-size:1.1em;">🤝 Égalité !</span>';
+        }
+        if (data.game_state && data.game_state.final_scores) {
+            html += '<div style="margin-top:.5rem;" class="text-small">';
+            players.forEach(function(p, i) {
+                const pk = 'player' + p.player_number;
+                if (i > 0) html += '&nbsp;|&nbsp;';
+                html += escapeHtml(p.username) + ' : <strong>' + (data.game_state.final_scores[pk] ?? 0) + '</strong>';
+                const bonus = data.game_state.final_scores['bonus' + p.player_number] ?? 0;
+                if (bonus > 0) html += ' <span class="text-muted">(+35 bonus)</span>';
+            });
+            html += '</div>';
         }
         body.innerHTML = html;
         if (btnRoll) btnRoll.style.display = 'none';
@@ -471,6 +501,10 @@ $categories = [
         try {
             const resp = await fetch(stateUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
             const data = await resp.json();
+            const counter = document.getElementById('player-count');
+            if (counter && data.players) {
+                counter.textContent = data.players.length + '/' + data.max_players;
+            }
             if (data.status !== 'waiting') {
                 clearInterval(poll);
                 location.reload();
