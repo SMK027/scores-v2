@@ -1719,6 +1719,11 @@ select.form-control {
     color: var(--primary, #6366f1);
     font-weight: bold;
 }
+.yams-score--available.yams-score--zero {
+    color: var(--text-muted, #9ca3af);
+    font-weight: normal;
+    opacity: .6;
+}
 .yams-score--available:hover {
     background: var(--primary-light, #eef2ff);
 }

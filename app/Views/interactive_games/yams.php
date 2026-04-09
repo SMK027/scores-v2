@@ -218,6 +218,45 @@ $categories = [
 
     const dieFaces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
+    // Calcul de preview des scores selon les dés actuels
+    function previewScore(category, dice) {
+        const counts = {};
+        let sum = 0;
+        dice.forEach(d => { counts[d] = (counts[d] || 0) + 1; sum += d; });
+        const maxCount = Math.max(...Object.values(counts));
+        const sorted = [...dice].sort((a,b) => a - b);
+
+        switch (category) {
+            case 'ones':   return (counts[1] || 0) * 1;
+            case 'twos':   return (counts[2] || 0) * 2;
+            case 'threes': return (counts[3] || 0) * 3;
+            case 'fours':  return (counts[4] || 0) * 4;
+            case 'fives':  return (counts[5] || 0) * 5;
+            case 'sixes':  return (counts[6] || 0) * 6;
+            case 'three_of_kind': return maxCount >= 3 ? sum : 0;
+            case 'four_of_kind':  return maxCount >= 4 ? sum : 0;
+            case 'full_house': {
+                const vals = Object.values(counts);
+                return (vals.includes(3) && vals.includes(2)) ? 25 : 0;
+            }
+            case 'small_straight': return hasStraight(sorted, 4) ? 30 : 0;
+            case 'large_straight': return hasStraight(sorted, 5) ? 40 : 0;
+            case 'yams':   return maxCount >= 5 ? 50 : 0;
+            case 'chance': return sum;
+            default: return 0;
+        }
+    }
+
+    function hasStraight(sorted, length) {
+        const unique = [...new Set(sorted)];
+        let consec = 1;
+        for (let i = 1; i < unique.length; i++) {
+            if (unique[i] === unique[i-1] + 1) { consec++; if (consec >= length) return true; }
+            else consec = 1;
+        }
+        return false;
+    }
+
     function updateUI() {
         // Dés
         dice.forEach((die, i) => {
@@ -259,8 +298,10 @@ $categories = [
                     totals[pk] += score;
                     if (upperCats.includes(cat)) uppers[pk] += score;
                 } else if (gameStatus === 'in_progress' && currentTurn === currentUserId && pk === playerKey && (currentState.rolls_left < 3 || devMode)) {
-                    cell.textContent = '✎';
+                    const pv = previewScore(cat, currentState.current_dice);
+                    cell.textContent = pv;
                     cell.classList.add('yams-score--available');
+                    cell.classList.toggle('yams-score--zero', pv === 0);
                 } else {
                     cell.textContent = '—';
                     cell.classList.remove('yams-score--available');
