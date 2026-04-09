@@ -65,11 +65,27 @@ class InteractiveGameSession extends Model
     /**
      * Crée une nouvelle session.
      */
-    public function createSession(int $spaceId, string $gameKey, int $userId, int $maxPlayers = 2): int
+    /**
+     * Retourne l'ID de l'utilisateur robot.
+     */
+    public function getBotUserId(): ?int
     {
+        $stmt = $this->query("SELECT id FROM users WHERE is_bot = 1 LIMIT 1");
+        $row = $stmt->fetch();
+        return $row ? (int) $row['id'] : null;
+    }
+
+    /**
+     * Crée une nouvelle session.
+     */
+    public function createSession(int $spaceId, string $gameKey, int $userId, int $maxPlayers = 2, bool $vsBot = false): int
+    {
+        if ($vsBot) {
+            $maxPlayers = 2;
+        }
         $state = self::initialState($gameKey, $maxPlayers);
-        $isSolo = ($maxPlayers <= 1);
-        $status = $isSolo ? 'in_progress' : 'waiting';
+        $isSolo = (!$vsBot && $maxPlayers <= 1);
+        $status = ($isSolo || $vsBot) ? 'in_progress' : 'waiting';
 
         $this->query(
             "INSERT INTO {$this->table} (space_id, game_key, max_players, status, created_by, player1_id, current_turn, game_state)
@@ -93,6 +109,17 @@ class InteractiveGameSession extends Model
             "INSERT INTO interactive_game_players (session_id, user_id, player_number) VALUES (:sid, :uid, 1)",
             ['sid' => $sessionId, 'uid' => $userId]
         );
+
+        // Ajouter le robot comme joueur 2
+        if ($vsBot) {
+            $botUserId = $this->getBotUserId();
+            if ($botUserId) {
+                $this->query(
+                    "INSERT INTO interactive_game_players (session_id, user_id, player_number) VALUES (:sid, :uid, 2)",
+                    ['sid' => $sessionId, 'uid' => $botUserId]
+                );
+            }
+        }
 
         return $sessionId;
     }
@@ -179,7 +206,7 @@ class InteractiveGameSession extends Model
 
         // Charger les joueurs
         $stmt = $this->query(
-            "SELECT igp.player_number, igp.user_id, u.username
+            "SELECT igp.player_number, igp.user_id, u.username, u.is_bot
              FROM interactive_game_players igp
              JOIN users u ON u.id = igp.user_id
              WHERE igp.session_id = :sid

@@ -28,6 +28,13 @@
                 <?php endif; ?>
                 <button type="submit" class="btn btn-primary btn-sm">Créer une partie</button>
             </form>
+            <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/play/create" style="margin-top:.5rem;">
+                <?= csrf_field() ?>
+                <input type="hidden" name="game_key" value="<?= $key ?>">
+                <input type="hidden" name="max_players" value="2">
+                <input type="hidden" name="vs_bot" value="1">
+                <button type="submit" class="btn btn-outline btn-sm">🤖 vs Robot</button>
+            </form>
         </div>
     </div>
     <?php endforeach; ?>

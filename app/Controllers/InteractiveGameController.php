@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\BotAI;
 use App\Core\Controller;
 use App\Core\Middleware;
 use App\Models\InteractiveGameSession;
@@ -94,12 +95,14 @@ class InteractiveGameController extends Controller
         $game = InteractiveGameSession::GAMES[$gameKey];
         $maxPlayers = (int) ($_POST['max_players'] ?? $game['max_players']);
         $maxPlayers = max($game['min_players'], min($game['max_players'], $maxPlayers));
+        $vsBot = !empty($_POST['vs_bot']);
 
         $sessionId = $this->sessionModel->createSession(
             (int) $id,
             $gameKey,
             $this->getCurrentUserId(),
-            $maxPlayers
+            $maxPlayers,
+            $vsBot
         );
 
         $this->redirect("/spaces/{$id}/play/{$sessionId}");
@@ -187,6 +190,12 @@ class InteractiveGameController extends Controller
         if (!$session || (int) $session['space_id'] !== (int) $id) {
             $this->json(['error' => 'Session introuvable.'], 404);
             return;
+        }
+
+        // Auto-jouer le robot si c'est son tour
+        if ($session['status'] === 'in_progress') {
+            $this->playBotTurns((int) $sid);
+            $session = $this->sessionModel->findWithPlayers((int) $sid);
         }
 
         $this->json([
@@ -303,6 +312,9 @@ class InteractiveGameController extends Controller
             }
             $this->sessionModel->updateState((int) $session['id'], $state, $nextTurn);
         }
+
+        // Auto-jouer le robot si c'est son tour
+        $this->playBotTurns((int) $session['id']);
 
         $updated = $this->sessionModel->findWithPlayers((int) $session['id']);
         return [
@@ -491,6 +503,9 @@ class InteractiveGameController extends Controller
                 $this->sessionModel->updateState((int) $session['id'], $state, $nextTurn);
             }
 
+            // Auto-jouer le robot si c'est son tour
+            $this->playBotTurns((int) $session['id']);
+
             $updated = $this->sessionModel->findWithPlayers((int) $session['id']);
             return [
                 'status'       => $updated['status'],
@@ -551,5 +566,171 @@ class InteractiveGameController extends Controller
             $total += $scores[$cat] ?? 0;
         }
         return $total;
+    }
+
+    // ─── LOGIQUE ROBOTS ──────────────────────────────────────────────────────
+
+    /**
+     * Joue automatiquement tous les tours consécutifs de robots.
+     */
+    private function playBotTurns(int $sessionId): void
+    {
+        for ($i = 0; $i < 10; $i++) {
+            $session = $this->sessionModel->findWithPlayers($sessionId);
+            if (!$session || $session['status'] !== 'in_progress' || !$session['current_turn']) {
+                return;
+            }
+
+            $botPlayer = null;
+            foreach ($session['players'] as $p) {
+                if ((int) $p['user_id'] === (int) $session['current_turn'] && !empty($p['is_bot'])) {
+                    $botPlayer = $p;
+                    break;
+                }
+            }
+            if (!$botPlayer) {
+                return;
+            }
+
+            if ($session['game_key'] === 'morpion') {
+                $this->executeBotMorpion($session, $botPlayer);
+            } elseif ($session['game_key'] === 'yams') {
+                $this->executeBotYams($session, $botPlayer);
+            } else {
+                return;
+            }
+        }
+    }
+
+    /**
+     * Exécute un coup de robot au morpion (minimax).
+     */
+    private function executeBotMorpion(array $session, array $botPlayer): void
+    {
+        $state = $session['game_state'];
+        $botSymbol = (int) $botPlayer['player_number'] === 1 ? 'X' : 'O';
+
+        $cell = BotAI::morpionMove($state['board'], $botSymbol);
+        if ($cell < 0) {
+            return;
+        }
+
+        $state['board'][$cell] = $botSymbol;
+        $state['moves']++;
+
+        $winner = $this->checkMorpionWinner($state['board']);
+        $isDraw = !$winner && $state['moves'] >= 9;
+
+        if ($winner || $isDraw) {
+            $winnerId = null;
+            if ($winner) {
+                $winnerNumber = $winner === 'X' ? 1 : 2;
+                foreach ($session['players'] as $p) {
+                    if ((int) $p['player_number'] === $winnerNumber) {
+                        $winnerId = (int) $p['user_id'];
+                        break;
+                    }
+                }
+            }
+            $this->sessionModel->updateState((int) $session['id'], $state, null);
+            $this->sessionModel->endSession((int) $session['id'], $winnerId);
+        } else {
+            $nextTurn = null;
+            foreach ($session['players'] as $p) {
+                if ((int) $p['user_id'] !== (int) $botPlayer['user_id']) {
+                    $nextTurn = (int) $p['user_id'];
+                    break;
+                }
+            }
+            $this->sessionModel->updateState((int) $session['id'], $state, $nextTurn);
+        }
+    }
+
+    /**
+     * Exécute un tour complet de YAMS pour le robot.
+     */
+    private function executeBotYams(array $session, array $botPlayer): void
+    {
+        $state = $session['game_state'];
+        $playerKey = 'player' . $botPlayer['player_number'];
+        $players = $session['players'];
+
+        $result = BotAI::yamsTurn($state, $playerKey);
+        $state['current_dice'] = $result['dice'];
+        $state['rolls_left'] = 0;
+
+        $category = $result['category'];
+        $score = $this->calculateYamsScore($category, $result['dice']);
+        $state['scores'][$playerKey][$category] = $score;
+
+        // Vérifier fin de partie
+        $allDone = true;
+        foreach ($players as $p) {
+            $pk = 'player' . $p['player_number'];
+            if (count($state['scores'][$pk] ?? []) < 13) {
+                $allDone = false;
+                break;
+            }
+        }
+
+        if ($allDone) {
+            $finalScores = [];
+            $maxTotal = -1;
+            $winnerId = null;
+            $tie = false;
+
+            foreach ($players as $p) {
+                $pk = 'player' . $p['player_number'];
+                $total = array_sum($state['scores'][$pk]);
+                $upper = $this->yamsUpperTotal($state['scores'][$pk]);
+                $bonus = $upper >= 63 ? 35 : 0;
+                $total += $bonus;
+                $finalScores[$pk] = $total;
+                $finalScores['bonus' . $p['player_number']] = $bonus;
+
+                if ($total > $maxTotal) {
+                    $maxTotal = $total;
+                    $winnerId = (int) $p['user_id'];
+                    $tie = false;
+                } elseif ($total === $maxTotal) {
+                    $tie = true;
+                }
+            }
+
+            if ($tie) {
+                $winnerId = null;
+            }
+
+            $state['final_scores'] = $finalScores;
+            $state['current_dice'] = [1, 1, 1, 1, 1];
+            $state['kept'] = [false, false, false, false, false];
+            $state['rolls_left'] = 0;
+
+            $this->sessionModel->updateState((int) $session['id'], $state, null);
+            $this->sessionModel->endSession((int) $session['id'], $winnerId);
+        } else {
+            $currentIndex = null;
+            foreach ($players as $i => $p) {
+                if ((int) $p['user_id'] === (int) $botPlayer['user_id']) {
+                    $currentIndex = $i;
+                    break;
+                }
+            }
+            $nextIndex = ($currentIndex + 1) % count($players);
+            $nextTurn = (int) $players[$nextIndex]['user_id'];
+
+            $state['current_dice'] = [1, 1, 1, 1, 1];
+            $state['kept'] = [false, false, false, false, false];
+            $state['rolls_left'] = 3;
+
+            $minFilled = PHP_INT_MAX;
+            foreach ($players as $p) {
+                $pk = 'player' . $p['player_number'];
+                $minFilled = min($minFilled, count($state['scores'][$pk] ?? []));
+            }
+            $state['round'] = $minFilled + 1;
+
+            $this->sessionModel->updateState((int) $session['id'], $state, $nextTurn);
+        }
     }
 }
