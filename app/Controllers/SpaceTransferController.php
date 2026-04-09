@@ -247,6 +247,7 @@ class SpaceTransferController extends Controller
         $this->pdo->prepare('DELETE FROM space_invitations WHERE space_id = :space_id')->execute(['space_id' => $spaceId]);
         $this->pdo->prepare('DELETE FROM space_invites WHERE space_id = :space_id')->execute(['space_id' => $spaceId]);
 
+        $this->pdo->prepare('DELETE FROM member_cards WHERE space_id = :space_id')->execute(['space_id' => $spaceId]);
         $this->pdo->prepare('DELETE FROM games WHERE space_id = :space_id')->execute(['space_id' => $spaceId]);
         $this->pdo->prepare('DELETE FROM competitions WHERE space_id = :space_id')->execute(['space_id' => $spaceId]);
         $this->pdo->prepare('DELETE FROM game_types WHERE space_id = :space_id')->execute(['space_id' => $spaceId]);
@@ -274,7 +275,12 @@ class SpaceTransferController extends Controller
     private function importGameTypes(int $spaceId, array $rows): array
     {
         $map = [];
-        $stmt = $this->pdo->prepare(
+
+        // Charger les types globaux existants pour le remapping
+        $globalStmt = $this->pdo->query('SELECT id, name, win_condition FROM game_types WHERE is_global = 1');
+        $existingGlobals = $globalStmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $localStmt = $this->pdo->prepare(
             'INSERT INTO game_types (space_id, name, description, win_condition, min_players, max_players, created_at, updated_at)
              VALUES (:space_id, :name, :description, :win_condition, :min_players, :max_players, :created_at, :updated_at)'
         );
@@ -288,7 +294,24 @@ class SpaceTransferController extends Controller
                 continue;
             }
 
-            $stmt->execute([
+            // Type global : remapper vers le global existant par nom + win_condition
+            if (!empty($row['is_global'])) {
+                $matched = null;
+                foreach ($existingGlobals as $eg) {
+                    if ($eg['name'] === ($row['name'] ?? '') && $eg['win_condition'] === ($row['win_condition'] ?? '')) {
+                        $matched = (int) $eg['id'];
+                        break;
+                    }
+                }
+                if ($matched !== null) {
+                    $map[$oldId] = $matched;
+                }
+                // Si aucun global correspondant n'existe, on ignore (le type n'est pas disponible)
+                continue;
+            }
+
+            // Type local : créer dans l'espace
+            $localStmt->execute([
                 'space_id'      => $spaceId,
                 'name'          => (string) ($row['name'] ?? 'Type importé'),
                 'description'   => $row['description'] ?? null,
@@ -574,8 +597,33 @@ class SpaceTransferController extends Controller
 
     private function buildExportData(int $spaceId): array
     {
-        $gameTypes = $this->pdo->prepare('SELECT id, name, description, win_condition, min_players, max_players, created_at, updated_at FROM game_types WHERE space_id = :space_id ORDER BY id ASC');
+        // Types locaux de l'espace
+        $gameTypes = $this->pdo->prepare(
+            'SELECT id, name, description, win_condition, min_players, max_players, is_global, created_at, updated_at
+             FROM game_types WHERE space_id = :space_id ORDER BY id ASC'
+        );
         $gameTypes->execute(['space_id' => $spaceId]);
+        $localTypes = $gameTypes->fetchAll(\PDO::FETCH_ASSOC);
+
+        // Types globaux utilisés par les parties de l'espace
+        $globalTypesStmt = $this->pdo->prepare(
+            'SELECT DISTINCT gt.id, gt.name, gt.description, gt.win_condition, gt.min_players, gt.max_players, gt.is_global, gt.created_at, gt.updated_at
+             FROM game_types gt
+             INNER JOIN games g ON g.game_type_id = gt.id
+             WHERE g.space_id = :space_id AND gt.is_global = 1
+             ORDER BY gt.id ASC'
+        );
+        $globalTypesStmt->execute(['space_id' => $spaceId]);
+        $globalTypes = $globalTypesStmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        // Fusion : locaux + globaux (sans doublons)
+        $allGameTypes = $localTypes;
+        $existingIds = array_column($localTypes, 'id');
+        foreach ($globalTypes as $gt) {
+            if (!in_array((int) $gt['id'], $existingIds, true)) {
+                $allGameTypes[] = $gt;
+            }
+        }
 
         $players = $this->pdo->prepare('SELECT id, name, created_at, updated_at FROM players WHERE space_id = :space_id ORDER BY id ASC');
         $players->execute(['space_id' => $spaceId]);
@@ -641,7 +689,7 @@ class SpaceTransferController extends Controller
         unset($game);
 
         return [
-            'game_types'   => $gameTypes->fetchAll(\PDO::FETCH_ASSOC),
+            'game_types'   => $allGameTypes,
             'players'      => $players->fetchAll(\PDO::FETCH_ASSOC),
             'competitions' => $competitions,
             'games'        => $games,
