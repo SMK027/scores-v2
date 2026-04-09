@@ -170,19 +170,41 @@ $categories = [
                     </tr>
                     <?php endforeach; ?>
                     <!-- Bonus partie haute -->
+                    <?php
+                    $upperCats = ['ones', 'twos', 'threes', 'fours', 'fives', 'sixes'];
+                    $phpTotals = [];
+                    $phpBonuses = [];
+                    foreach ($players as $p) {
+                        $pk = 'player' . $p['player_number'];
+                        $upperSum = 0;
+                        $total = 0;
+                        foreach ($state['scores'][$pk] ?? [] as $cat => $val) {
+                            $total += (int)$val;
+                            if (in_array($cat, $upperCats, true)) $upperSum += (int)$val;
+                        }
+                        $bonus = $upperSum >= 63 ? 35 : 0;
+                        $phpBonuses[$pk] = $bonus;
+                        $phpTotals[$pk] = $total + $bonus;
+                        $phpUpperSums[$pk] = $upperSum;
+                    }
+                    ?>
                     <tr class="yams-section-header">
                         <td colspan="<?= 1 + count($players) ?>"><strong>📊 Totaux</strong></td>
                     </tr>
                     <tr>
                         <td>Bonus (≥63 partie haute → +35)</td>
-                        <?php foreach ($players as $p): ?>
-                            <td style="text-align:center;" id="bonus-player<?= $p['player_number'] ?>">—</td>
+                        <?php foreach ($players as $p):
+                            $pk = 'player' . $p['player_number'];
+                        ?>
+                            <td style="text-align:center;" id="bonus-player<?= $p['player_number'] ?>"><?= $phpBonuses[$pk] > 0 ? '+35' : '(' . $phpUpperSums[$pk] . '/63)' ?></td>
                         <?php endforeach; ?>
                     </tr>
                     <tr style="font-weight:bold;">
                         <td>Total</td>
-                        <?php foreach ($players as $p): ?>
-                            <td style="text-align:center;" id="total-player<?= $p['player_number'] ?>">0</td>
+                        <?php foreach ($players as $p):
+                            $pk = 'player' . $p['player_number'];
+                        ?>
+                            <td style="text-align:center;" id="total-player<?= $p['player_number'] ?>"><?= $phpTotals[$pk] ?></td>
                         <?php endforeach; ?>
                     </tr>
                 </tbody>
