@@ -7,7 +7,13 @@ namespace App\Controllers;
 use App\Core\BotAI;
 use App\Core\Controller;
 use App\Core\Middleware;
+use App\Models\Game;
+use App\Models\GamePlayer;
+use App\Models\GameType;
 use App\Models\InteractiveGameSession;
+use App\Models\Player;
+use App\Models\Round;
+use App\Models\RoundScore;
 use App\Models\Space;
 
 /**
@@ -17,11 +23,23 @@ class InteractiveGameController extends Controller
 {
     private InteractiveGameSession $sessionModel;
     private Space $spaceModel;
+    private Game $gameModel;
+    private GamePlayer $gamePlayerModel;
+    private Player $playerModel;
+    private Round $roundModel;
+    private RoundScore $roundScoreModel;
+    private GameType $gameTypeModel;
 
     public function __construct()
     {
-        $this->sessionModel = new InteractiveGameSession();
-        $this->spaceModel   = new Space();
+        $this->sessionModel     = new InteractiveGameSession();
+        $this->spaceModel       = new Space();
+        $this->gameModel        = new Game();
+        $this->gamePlayerModel  = new GamePlayer();
+        $this->playerModel      = new Player();
+        $this->roundModel       = new Round();
+        $this->roundScoreModel  = new RoundScore();
+        $this->gameTypeModel    = new GameType();
     }
 
     /**
@@ -302,6 +320,9 @@ class InteractiveGameController extends Controller
             }
             $this->sessionModel->updateState((int) $session['id'], $state, null);
             $this->sessionModel->endSession((int) $session['id'], $winnerId);
+
+            // Enregistrer dans le leaderboard (morpion humain)
+            $this->recordResult($session, 'morpion', $winnerId);
         } else {
             $nextTurn = null;
             foreach ($session['players'] as $p) {
@@ -477,6 +498,9 @@ class InteractiveGameController extends Controller
 
                 $this->sessionModel->updateState((int) $session['id'], $state, null);
                 $this->sessionModel->endSession((int) $session['id'], $winnerId);
+
+                // Enregistrer dans le leaderboard (yams humain)
+                $this->recordResult($session, 'yams', $winnerId, $finalScores);
             } else {
                 // Tour suivant : prochain joueur dans l'ordre
                 $currentIndex = null;
@@ -732,5 +756,115 @@ class InteractiveGameController extends Controller
 
             $this->sessionModel->updateState((int) $session['id'], $state, $nextTurn);
         }
+    }
+
+    // ─── ENREGISTREMENT LEADERBOARD ──────────────────────────────
+
+    /**
+     * Enregistre le résultat d'une partie interactive dans le système de jeux classiques
+     * (game_types / games / game_players / rounds / round_scores)
+     * pour que le leaderboard puisse les comptabiliser.
+     *
+     * Ignoré si la session contient un bot.
+     */
+    private function recordResult(array $session, string $gameKey, ?int $winnerId, ?array $finalScores = null): void
+    {
+        $players = $session['players'];
+
+        // Ne pas enregistrer les parties avec des bots
+        foreach ($players as $p) {
+            if (!empty($p['is_bot'])) {
+                return;
+            }
+        }
+
+        // Ne pas enregistrer les parties solo
+        if (count($players) < 2) {
+            return;
+        }
+
+        $spaceId = (int) $session['space_id'];
+
+        // Trouver le game_type global correspondant
+        $gameName = $gameKey === 'morpion' ? 'Morpion' : 'YAMS';
+        $gameType = $this->gameTypeModel->findOneBy(['name' => $gameName, 'is_global' => 1]);
+        if (!$gameType) {
+            return;
+        }
+
+        // S'assurer que chaque joueur a une entrée dans la table `players` de l'espace
+        $playerIds = [];
+        foreach ($players as $p) {
+            $existingPlayer = $this->playerModel->findByUserInSpace($spaceId, (int) $p['user_id']);
+            if ($existingPlayer) {
+                $playerIds[(int) $p['user_id']] = (int) $existingPlayer['id'];
+            } else {
+                $newId = $this->playerModel->create([
+                    'space_id' => $spaceId,
+                    'name'     => $p['username'],
+                    'user_id'  => (int) $p['user_id'],
+                ]);
+                $playerIds[(int) $p['user_id']] = $newId;
+            }
+        }
+
+        // Créer la partie classique
+        $gameId = $this->gameModel->create([
+            'space_id'     => $spaceId,
+            'game_type_id' => (int) $gameType['id'],
+            'status'       => 'completed',
+            'started_at'   => $session['created_at'],
+            'ended_at'     => date('Y-m-d H:i:s'),
+            'notes'        => "Partie interactive #{$session['id']}",
+            'created_by'   => (int) $session['created_by'],
+        ]);
+
+        // Ajouter les joueurs à la partie
+        foreach ($players as $p) {
+            $uid = (int) $p['user_id'];
+            $pid = $playerIds[$uid];
+            $isWinner = ($winnerId !== null && $uid === $winnerId) ? 1 : 0;
+
+            if ($gameKey === 'morpion') {
+                $score = $isWinner ? 1 : 0;
+            } else {
+                $pk = 'player' . $p['player_number'];
+                $score = $finalScores[$pk] ?? 0;
+            }
+
+            $this->gamePlayerModel->create([
+                'game_id'    => $gameId,
+                'player_id'  => $pid,
+                'total_score' => $score,
+                'is_winner'  => $isWinner,
+            ]);
+        }
+
+        // Créer une manche unique
+        $roundId = $this->roundModel->create([
+            'game_id'      => $gameId,
+            'round_number' => 1,
+            'status'       => 'completed',
+            'started_at'   => $session['created_at'],
+            'ended_at'     => date('Y-m-d H:i:s'),
+        ]);
+
+        // Enregistrer les scores dans round_scores
+        $scores = [];
+        foreach ($players as $p) {
+            $uid = (int) $p['user_id'];
+            $pid = $playerIds[$uid];
+
+            if ($gameKey === 'morpion') {
+                $scores[$pid] = ($winnerId !== null && $uid === $winnerId) ? 1 : 0;
+            } else {
+                $pk = 'player' . $p['player_number'];
+                $scores[$pid] = $finalScores[$pk] ?? 0;
+            }
+        }
+        $this->roundScoreModel->saveScores($roundId, $scores, $gameType['win_condition'], $gameId);
+
+        // Recalculer les totaux et rangs
+        $this->gameModel->recalculateTotals($gameId);
     }
 }
