@@ -2,6 +2,7 @@
 $isPlayer = ($currentUserId === (int)$session['player1_id'] || $currentUserId === (int)($session['player2_id'] ?? 0));
 $playerKey = ($currentUserId === (int)$session['player1_id']) ? 'player1' : 'player2';
 $state = $session['game_state'];
+$isGlobalStaff = $isGlobalStaff ?? false;
 
 $categories = [
     'ones'            => ['label' => 'As (1)',          'section' => 'upper'],
@@ -87,6 +88,29 @@ $categories = [
 </div>
 <?php endif; ?>
 
+<?php if ($isGlobalStaff && $session['status'] === 'in_progress'): ?>
+<!-- Panneau mode développeur (admin global uniquement) -->
+<div id="dev-panel" class="card mb-3" style="border:2px dashed var(--warning,#f59e0b);">
+    <div class="card-header" style="background:rgba(245,158,11,.1);">
+        <h3 style="margin:0;font-size:.9em;">🛠️ Mode développeur</h3>
+    </div>
+    <div class="card-body">
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;justify-content:center;">
+            <label class="text-small">Dés :</label>
+            <?php for ($i = 0; $i < 5; $i++): ?>
+                <select class="dev-die-select" data-index="<?= $i ?>" style="width:50px;padding:.25rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);text-align:center;">
+                    <?php for ($v = 1; $v <= 6; $v++): ?>
+                        <option value="<?= $v ?>" <?= ($state['current_dice'][$i] ?? 1) === $v ? 'selected' : '' ?>><?= $v ?></option>
+                    <?php endfor; ?>
+                </select>
+            <?php endfor; ?>
+            <button id="btn-dev-set" class="btn btn-warning btn-sm">Appliquer</button>
+            <span class="text-small text-muted" style="margin-left:.5rem;">|  Lancers illimités activés</span>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- Tableau des scores -->
 <div class="card">
     <div class="card-header">
@@ -156,6 +180,7 @@ $categories = [
     const playerKey = currentUserId === player1Id ? 'player1' : 'player2';
     const stateUrl = `/spaces/${spaceId}/play/${sessionId}/state`;
     const playUrl = `/spaces/${spaceId}/play/${sessionId}/play`;
+    const devMode = <?= $isGlobalStaff ? 'true' : 'false' ?>;
 
     let currentState = <?= json_encode($state) ?>;
     let currentTurn = <?= $session['current_turn'] ? (int)$session['current_turn'] : 'null' ?>;
@@ -248,12 +273,27 @@ $categories = [
         }
 
         if (rollsLeft) {
-            rollsLeft.textContent = `Lancers restants : ${currentState.rolls_left ?? 0}`;
+            if (devMode) {
+                rollsLeft.textContent = 'Lancers restants : ∞ (dev)';
+            } else {
+                rollsLeft.textContent = `Lancers restants : ${currentState.rolls_left ?? 0}`;
+            }
         }
 
         // Bouton lancer
         if (btnRoll) {
-            btnRoll.disabled = (gameStatus !== 'in_progress' || currentTurn !== currentUserId || (currentState.rolls_left ?? 0) <= 0);
+            if (devMode) {
+                btnRoll.disabled = (gameStatus !== 'in_progress' || currentTurn !== currentUserId);
+            } else {
+                btnRoll.disabled = (gameStatus !== 'in_progress' || currentTurn !== currentUserId || (currentState.rolls_left ?? 0) <= 0);
+            }
+        }
+
+        // Sync dev panel selects
+        if (devMode) {
+            document.querySelectorAll('.dev-die-select').forEach((sel, i) => {
+                sel.value = currentState.current_dice[i];
+            });
         }
     }
 
@@ -278,15 +318,17 @@ $categories = [
     if (btnRoll) {
         btnRoll.addEventListener('click', async function() {
             if (gameStatus !== 'in_progress' || currentTurn !== currentUserId) return;
-            if ((currentState.rolls_left ?? 0) <= 0) return;
+            if (!devMode && (currentState.rolls_left ?? 0) <= 0) return;
 
             btnRoll.disabled = true;
 
             try {
+                const payload = { action: 'roll', kept: kept };
+                if (devMode) payload.dev_mode = true;
                 const resp = await fetch(playUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify({ action: 'roll', kept: kept }),
+                    body: JSON.stringify(payload),
                 });
                 const data = await resp.json();
                 if (data.error) {
@@ -382,6 +424,37 @@ $categories = [
 
     // Init
     updateUI();
+
+    // Dev mode: bouton "Appliquer" pour forcer les valeurs des dés
+    if (devMode) {
+        const btnDevSet = document.getElementById('btn-dev-set');
+        if (btnDevSet) {
+            btnDevSet.addEventListener('click', async function() {
+                if (gameStatus !== 'in_progress' || currentTurn !== currentUserId) return;
+                const newDice = [];
+                document.querySelectorAll('.dev-die-select').forEach(sel => {
+                    newDice.push(parseInt(sel.value));
+                });
+
+                btnDevSet.disabled = true;
+                try {
+                    const resp = await fetch(playUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: JSON.stringify({ action: 'set_dice', dice: newDice }),
+                    });
+                    const data = await resp.json();
+                    if (!data.error) {
+                        currentState = data.game_state;
+                        currentTurn = data.current_turn;
+                        gameStatus = data.status;
+                        updateUI();
+                    }
+                } catch(e) {}
+                btnDevSet.disabled = false;
+            });
+        }
+    }
 })();
 </script>
 <?php endif; ?>

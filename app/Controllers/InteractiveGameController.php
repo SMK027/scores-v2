@@ -139,6 +139,7 @@ class InteractiveGameController extends Controller
             'activeMenu'    => 'play',
             'session'       => $session,
             'currentUserId' => $this->getCurrentUserId(),
+            'isGlobalStaff' => Middleware::isGlobalStaff(),
         ]);
     }
 
@@ -182,6 +183,7 @@ class InteractiveGameController extends Controller
             'player2_name'  => $session['player2_name'] ?? null,
             'winner_id'     => $session['winner_id'] ? (int) $session['winner_id'] : null,
             'winner_name'   => $session['winner_name'] ?? null,
+            'dev_mode'      => Middleware::isGlobalStaff(),
         ]);
     }
 
@@ -306,7 +308,8 @@ class InteractiveGameController extends Controller
         $playerKey = ($userId === (int) $session['player1_id']) ? 'player1' : 'player2';
 
         if ($action === 'roll') {
-            if (($state['rolls_left'] ?? 0) <= 0) {
+            $isDevMode = Middleware::isGlobalStaff() && !empty($input['dev_mode']);
+            if (!$isDevMode && ($state['rolls_left'] ?? 0) <= 0) {
                 return ['error' => 'Plus de lancers disponibles.'];
             }
 
@@ -321,8 +324,37 @@ class InteractiveGameController extends Controller
 
             $state['current_dice'] = $dice;
             $state['kept'] = $kept;
-            $state['rolls_left']--;
+            if (!$isDevMode) {
+                $state['rolls_left']--;
+            }
 
+            $this->sessionModel->updateState((int) $session['id'], $state, $userId);
+
+            $updated = $this->sessionModel->findWithPlayers((int) $session['id']);
+            return [
+                'status'       => $updated['status'],
+                'game_state'   => $updated['game_state'],
+                'current_turn' => $updated['current_turn'] ? (int) $updated['current_turn'] : null,
+                'winner_id'    => null,
+            ];
+        }
+
+        if ($action === 'set_dice') {
+            if (!Middleware::isGlobalStaff()) {
+                return ['error' => 'Accès réservé aux administrateurs.'];
+            }
+
+            $newDice = $input['dice'] ?? null;
+            if (!is_array($newDice) || count($newDice) !== 5) {
+                return ['error' => 'Valeurs de dés invalides.'];
+            }
+            foreach ($newDice as $v) {
+                if (!is_int($v) || $v < 1 || $v > 6) {
+                    return ['error' => 'Chaque dé doit être entre 1 et 6.'];
+                }
+            }
+
+            $state['current_dice'] = $newDice;
             $this->sessionModel->updateState((int) $session['id'], $state, $userId);
 
             $updated = $this->sessionModel->findWithPlayers((int) $session['id']);
