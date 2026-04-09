@@ -3,7 +3,7 @@
     <a href="/spaces/<?= $currentSpace['id'] ?>/contact/create" class="btn btn-primary">+ Nouveau ticket</a>
 </div>
 
-<?php if (empty($tickets)): ?>
+<?php if (empty($tickets['data'])): ?>
     <div class="empty-state">
         <div class="empty-icon">📬</div>
         <p>Aucun ticket de contact.</p>
@@ -25,7 +25,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($tickets as $t):
+                        <?php foreach ($tickets['data'] as $t):
                             $statusBadge = match ($t['status']) {
                                 'open'        => 'badge-success',
                                 'in_progress' => 'badge-warning',
