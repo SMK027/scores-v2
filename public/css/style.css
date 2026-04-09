@@ -1631,3 +1631,108 @@ select.form-control {
         height: 230px;
     }
 }
+
+/* ============================================================
+   Jeux interactifs en ligne
+   ============================================================ */
+
+/* --- Morpion --- */
+.morpion-board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    width: 300px;
+    max-width: 90vw;
+    aspect-ratio: 1;
+    background: var(--border, #e5e7eb);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.morpion-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--card-bg, #fff);
+    font-size: 2.5rem;
+    cursor: default;
+    transition: background .15s;
+    aspect-ratio: 1;
+    user-select: none;
+}
+
+.morpion-cell--clickable {
+    cursor: pointer;
+}
+.morpion-cell--clickable:hover {
+    background: var(--bg-hover, #f3f4f6);
+}
+
+.morpion-x {
+    color: var(--primary, #6366f1);
+    font-weight: bold;
+}
+.morpion-o {
+    color: var(--danger, #ef4444);
+    font-weight: bold;
+}
+
+/* --- YAMS --- */
+.yams-die {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--card-bg, #fff);
+    border: 2px solid var(--border, #e5e7eb);
+    border-radius: 10px;
+    font-size: 2rem;
+    cursor: pointer;
+    transition: all .2s;
+    user-select: none;
+}
+
+.yams-die:hover {
+    border-color: var(--primary, #6366f1);
+    transform: translateY(-2px);
+}
+
+.yams-die--kept {
+    border-color: var(--primary, #6366f1);
+    background: var(--primary-light, #eef2ff);
+    box-shadow: 0 0 0 2px var(--primary, #6366f1);
+}
+
+.yams-die-value {
+    line-height: 1;
+}
+
+.yams-section-header td {
+    background: var(--bg-hover, #f9fafb);
+    font-size: .85em;
+    padding: .4rem .75rem !important;
+}
+
+.yams-score--available {
+    cursor: pointer;
+    color: var(--primary, #6366f1);
+    font-weight: bold;
+}
+.yams-score--available:hover {
+    background: var(--primary-light, #eef2ff);
+}
+
+@media (max-width: 480px) {
+    .morpion-board {
+        width: 240px;
+    }
+    .morpion-cell {
+        font-size: 2rem;
+    }
+    .yams-die {
+        width: 48px;
+        height: 48px;
+        font-size: 1.6rem;
+    }
+}

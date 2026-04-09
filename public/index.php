@@ -36,6 +36,7 @@ use App\Controllers\SpaceTransferController;
 use App\Controllers\LeaderboardController;
 use App\Controllers\MemberCardController;
 use App\Controllers\ContactController;
+use App\Controllers\InteractiveGameController;
 use App\Controllers\Api\AuthApiController;
 use App\Controllers\Api\SpaceApiController;
 use App\Controllers\Api\GameApiController;
@@ -309,6 +310,17 @@ $router->post('/spaces/{id}/games/{gid}/rounds/create', RoundController::class, 
 $router->post('/spaces/{id}/games/{gid}/rounds/{rid}/scores', RoundController::class, 'updateScores');
 $router->post('/spaces/{id}/games/{gid}/rounds/{rid}/status', RoundController::class, 'updateStatus');
 $router->post('/spaces/{id}/games/{gid}/rounds/{rid}/delete', RoundController::class, 'delete');
+
+// ============================================================
+// Jeux interactifs en ligne
+// ============================================================
+$router->get('/spaces/{id}/play', InteractiveGameController::class, 'index');
+$router->post('/spaces/{id}/play/create', InteractiveGameController::class, 'create');
+$router->post('/spaces/{id}/play/{sid}/join', InteractiveGameController::class, 'join');
+$router->get('/spaces/{id}/play/{sid}', InteractiveGameController::class, 'show');
+$router->post('/spaces/{id}/play/{sid}/cancel', InteractiveGameController::class, 'cancel');
+$router->get('/spaces/{id}/play/{sid}/state', InteractiveGameController::class, 'state');
+$router->post('/spaces/{id}/play/{sid}/play', InteractiveGameController::class, 'play');
 
 // ============================================================
 // Statistiques

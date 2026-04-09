@@ -83,6 +83,9 @@
                 <a href="/spaces/<?= $currentSpace['id'] ?>/game-types" class="sidebar-link <?= ($activeMenu ?? '') === 'game-types' ? 'active' : '' ?>">
                     🃏 Types de jeux
                 </a>
+                <a href="/spaces/<?= $currentSpace['id'] ?>/play" class="sidebar-link <?= ($activeMenu ?? '') === 'play' ? 'active' : '' ?>">
+                    🕹️ Jouer en ligne
+                </a>
                 <a href="/spaces/<?= $currentSpace['id'] ?>/stats" class="sidebar-link <?= ($activeMenu ?? '') === 'stats' ? 'active' : '' ?>">
                     📈 Statistiques
                 </a>
