@@ -168,11 +168,11 @@ $categories = [
                         if ($cat['section'] !== $lastSection):
                             $lastSection = $cat['section'];
                     ?>
-                        <tr class="yams-section-header">
-                            <td colspan="<?= 1 + count($players) ?>"><strong><?= $cat['section'] === 'upper' ? '🔢 Partie haute' : '🎯 Combinaisons' ?></strong></td>
+                        <tr class="yams-section-header yams-section-toggle" data-section-toggle="<?= $cat['section'] ?>" role="button" aria-expanded="true">
+                            <td colspan="<?= 1 + count($players) ?>"><strong><span class="yams-chevron">▼</span> <?= $cat['section'] === 'upper' ? '🔢 Partie haute' : '🎯 Combinaisons' ?></strong></td>
                         </tr>
                     <?php endif; ?>
-                    <tr data-category="<?= $key ?>">
+                    <tr data-category="<?= $key ?>" data-section="<?= $cat['section'] ?>">
                         <td><?= $cat['label'] ?></td>
                         <?php foreach ($players as $p):
                             $pk = 'player' . $p['player_number'];
@@ -384,6 +384,55 @@ $categories = [
                 btnRoll.disabled = (gameStatus !== 'in_progress' || currentTurn !== currentUserId || (currentState.rolls_left ?? 0) <= 0);
             }
         }
+
+        // Auto-expand de la section contenant des scores disponibles (mobile)
+        autoExpandAvailableSection();
+    }
+
+    // --- Sections repliables ---
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+
+    function toggleSection(section, forceExpand) {
+        const toggle = document.querySelector(`tr[data-section-toggle="${section}"]`);
+        if (!toggle) return;
+        const rows = document.querySelectorAll(`tr[data-section="${section}"]`);
+        const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+        const shouldCollapse = forceExpand !== undefined ? !forceExpand : isExpanded;
+
+        rows.forEach(row => row.classList.toggle('yams-row-hidden', shouldCollapse));
+        toggle.setAttribute('aria-expanded', shouldCollapse ? 'false' : 'true');
+    }
+
+    function autoExpandAvailableSection() {
+        if (!isMobile) return;
+        const hasAvailableInSection = (section) => {
+            return document.querySelectorAll(`tr[data-section="${section}"] .yams-score--available`).length > 0;
+        };
+        // On expand la section qui a des scores disponibles,
+        // on replie l'autre seulement si celle-ci en a
+        const upperHas = hasAvailableInSection('upper');
+        const lowerHas = hasAvailableInSection('lower');
+        if (upperHas && !lowerHas) {
+            toggleSection('upper', true);
+            toggleSection('lower', false);
+        } else if (lowerHas && !upperHas) {
+            toggleSection('lower', true);
+            toggleSection('upper', false);
+        }
+    }
+
+    // Bind des clics sur les en-têtes de section
+    document.querySelectorAll('.yams-section-toggle').forEach(header => {
+        header.addEventListener('click', function() {
+            const section = this.dataset.sectionToggle;
+            toggleSection(section);
+        });
+    });
+
+    // Sur mobile, replier les deux sections par défaut
+    if (isMobile) {
+        toggleSection('upper', false);
+        toggleSection('lower', false);
     }
 
     function syncDevSelects() {
@@ -565,6 +614,36 @@ $categories = [
                 btnDevSet.disabled = false;
             });
         }
+    }
+})();
+</script>
+<?php endif; ?>
+
+<!-- Toggle repliable pour tous les états (spectateur, terminé, en pause) -->
+<?php if (!($session['status'] === 'in_progress' && $isPlayer)): ?>
+<script>
+(function() {
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+
+    function toggleSection(section, forceExpand) {
+        const toggle = document.querySelector('tr[data-section-toggle="' + section + '"]');
+        if (!toggle) return;
+        const rows = document.querySelectorAll('tr[data-section="' + section + '"]');
+        const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+        const shouldCollapse = forceExpand !== undefined ? !forceExpand : isExpanded;
+        rows.forEach(function(row) { row.classList.toggle('yams-row-hidden', shouldCollapse); });
+        toggle.setAttribute('aria-expanded', shouldCollapse ? 'false' : 'true');
+    }
+
+    document.querySelectorAll('.yams-section-toggle').forEach(function(header) {
+        header.addEventListener('click', function() {
+            toggleSection(this.dataset.sectionToggle);
+        });
+    });
+
+    if (isMobile) {
+        toggleSection('upper', false);
+        toggleSection('lower', false);
     }
 })();
 </script>

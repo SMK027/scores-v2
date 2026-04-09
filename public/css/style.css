@@ -1714,6 +1714,25 @@ select.form-control {
     padding: .4rem .75rem !important;
 }
 
+.yams-section-toggle {
+    cursor: pointer;
+    user-select: none;
+}
+.yams-section-toggle:hover td {
+    background: var(--bg-hover-alt, #f3f4f6);
+}
+.yams-chevron {
+    display: inline-block;
+    transition: transform .2s ease;
+    font-size: .75em;
+}
+.yams-section-toggle[aria-expanded="false"] .yams-chevron {
+    transform: rotate(-90deg);
+}
+tr.yams-row-hidden {
+    display: none;
+}
+
 .yams-score--available {
     cursor: pointer;
     color: var(--primary, #6366f1);
@@ -1739,5 +1758,17 @@ select.form-control {
         width: 48px;
         height: 48px;
         font-size: 1.6rem;
+    }
+}
+
+@media (max-width: 768px) {
+    #yams-scoresheet td,
+    #yams-scoresheet th {
+        padding: .3rem .5rem !important;
+        font-size: .85em;
+    }
+    .yams-section-header td {
+        padding: .35rem .5rem !important;
+        font-size: .8em;
     }
 }
