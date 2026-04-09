@@ -289,12 +289,14 @@ $categories = [
             }
         }
 
-        // Sync dev panel selects
-        if (devMode) {
-            document.querySelectorAll('.dev-die-select').forEach((sel, i) => {
-                sel.value = currentState.current_dice[i];
-            });
-        }
+        // Sync dev panel selects only on explicit sync call
+    }
+
+    function syncDevSelects() {
+        if (!devMode) return;
+        document.querySelectorAll('.dev-die-select').forEach((sel, i) => {
+            sel.value = currentState.current_dice[i];
+        });
     }
 
     function escapeHtml(str) {
@@ -338,6 +340,7 @@ $categories = [
                 currentState = data.game_state;
                 currentTurn = data.current_turn;
                 gameStatus = data.status;
+                syncDevSelects();
                 updateUI();
             } catch(e) {
                 btnRoll.disabled = false;
@@ -424,6 +427,7 @@ $categories = [
 
     // Init
     updateUI();
+    syncDevSelects();
 
     // Dev mode: bouton "Appliquer" pour forcer les valeurs des dés
     if (devMode) {
