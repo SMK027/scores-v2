@@ -52,7 +52,9 @@ class SpaceTest extends TestCase
         $this->assertArrayHasKey('invites', $keys);
         $this->assertArrayHasKey('competitions', $keys);
         $this->assertArrayHasKey('game_types', $keys);
-        $this->assertCount(5, $keys);
+        $this->assertArrayHasKey('imports', $keys);
+        $this->assertArrayHasKey('contact', $keys);
+        $this->assertCount(7, $keys);
     }
 
     // ─── getRestrictions ─────────────────────────────────────

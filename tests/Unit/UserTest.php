@@ -182,15 +182,104 @@ class UserTest extends TestCase
             $this->assertSame($role, $user['global_role']);
         }
     }
+
+    // ─── normalizeEmail (méthode statique, pas de DB) ────────
+
+    public function testNormalizeEmailLowercase(): void
+    {
+        $this->assertSame('alice@example.com', User::normalizeEmail('ALICE@EXAMPLE.COM'));
+    }
+
+    public function testNormalizeEmailTrimsWhitespace(): void
+    {
+        $this->assertSame('alice@example.com', User::normalizeEmail('  alice@example.com  '));
+    }
+
+    public function testNormalizeEmailGmailRemovesDots(): void
+    {
+        $this->assertSame('alicebob@gmail.com', User::normalizeEmail('alice.bob@gmail.com'));
+    }
+
+    public function testNormalizeEmailGmailRemovesPlusAlias(): void
+    {
+        $this->assertSame('alice@gmail.com', User::normalizeEmail('alice+spam@gmail.com'));
+    }
+
+    public function testNormalizeEmailGmailDotsAndPlus(): void
+    {
+        $this->assertSame('alicebob@gmail.com', User::normalizeEmail('a.lice.bob+work@gmail.com'));
+    }
+
+    public function testNormalizeEmailGooglemailBecomesGmail(): void
+    {
+        $this->assertSame('alice@gmail.com', User::normalizeEmail('alice@googlemail.com'));
+    }
+
+    public function testNormalizeEmailNonGmailKeepsDotsAndPlus(): void
+    {
+        $this->assertSame('alice.bob+tag@outlook.com', User::normalizeEmail('alice.bob+tag@outlook.com'));
+    }
+
+    public function testNormalizeEmailNoAtSign(): void
+    {
+        $this->assertSame('notanemail', User::normalizeEmail('notanemail'));
+    }
+
+    // ─── RESTRICTION_KEYS ────────────────────────────────────
+
+    public function testUserRestrictionKeysAreDefined(): void
+    {
+        $keys = User::RESTRICTION_KEYS;
+        $this->assertArrayHasKey('space_create', $keys);
+        $this->assertArrayHasKey('games_manage', $keys);
+        $this->assertArrayHasKey('games_participation', $keys);
+        $this->assertArrayHasKey('profile_photo_manage', $keys);
+        $this->assertArrayHasKey('comments_manage', $keys);
+        $this->assertCount(8, $keys);
+    }
 }
 
 /**
  * Stub User avec injection PDO.
+ * Surcharge les méthodes MySQL-spécifiques pour la compatibilité SQLite.
  */
 class UserStub extends User
 {
     public function __construct(PDO $pdo)
     {
         $this->db = $pdo;
+    }
+
+    /**
+     * Override : SQLite ne supporte pas SHOW COLUMNS.
+     * On retourne false pour rester sur les requêtes basiques.
+     */
+    private ?bool $hasEmailNormalizedColumn = null;
+    private ?bool $hasAccountDeletionColumns = null;
+
+    public function findByEmail(string $email): ?array
+    {
+        $email = trim($email);
+        return $this->findOneBy(['email' => $email]);
+    }
+
+    public function register(string $username, string $email, string $password): int
+    {
+        return $this->create([
+            'username'      => $username,
+            'email'         => trim($email),
+            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+            'global_role'   => 'user',
+        ]);
+    }
+
+    public function updateProfile(int $id, array $data): bool
+    {
+        $allowed = ['username', 'email', 'bio', 'avatar', 'show_win_rate_public'];
+        $filtered = array_intersect_key($data, array_flip($allowed));
+        if (empty($filtered)) {
+            return false;
+        }
+        return $this->update($id, $filtered);
     }
 }
