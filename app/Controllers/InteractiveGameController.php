@@ -784,6 +784,9 @@ class InteractiveGameController extends Controller
 
             $this->sessionModel->updateState((int) $session['id'], $state, null);
             $this->sessionModel->endSession((int) $session['id'], $winnerId);
+
+            // Enregistrer dans le leaderboard (scores humains uniquement)
+            $this->recordResult($session, 'yams', $winnerId, $finalScores);
         } else {
             $currentIndex = null;
             foreach ($players as $i => $p) {
@@ -823,17 +826,27 @@ class InteractiveGameController extends Controller
     {
         $players = $session['players'];
 
-        // Ne pas enregistrer les parties avec des bots
-        foreach ($players as $p) {
-            if (!empty($p['is_bot'])) {
+        // Morpion (win_loss) : exige 2 joueurs humains
+        if ($gameKey === 'morpion') {
+            if (count($players) < 2) {
                 return;
+            }
+            foreach ($players as $p) {
+                if (!empty($p['is_bot'])) {
+                    return;
+                }
             }
         }
 
-        // Ne pas enregistrer les parties solo
-        if (count($players) < 2) {
+        // YAMS (highest_score) : ne garder que les joueurs humains
+        $humanPlayers = array_values(array_filter($players, fn($p) => empty($p['is_bot'])));
+        if (empty($humanPlayers)) {
             return;
         }
+
+        // Pour le morpion, utiliser tous les joueurs (déjà vérifié humains)
+        // Pour le YAMS, n'enregistrer que les humains
+        $recordedPlayers = ($gameKey === 'morpion') ? $players : $humanPlayers;
 
         $spaceId = (int) $session['space_id'];
 
@@ -846,7 +859,7 @@ class InteractiveGameController extends Controller
 
         // S'assurer que chaque joueur a une entrée dans la table `players` de l'espace
         $playerIds = [];
-        foreach ($players as $p) {
+        foreach ($recordedPlayers as $p) {
             $existingPlayer = $this->playerModel->findByUserInSpace($spaceId, (int) $p['user_id']);
             if ($existingPlayer) {
                 $playerIds[(int) $p['user_id']] = (int) $existingPlayer['id'];
@@ -871,11 +884,15 @@ class InteractiveGameController extends Controller
             'created_by'   => (int) $session['created_by'],
         ]);
 
+        // Déterminer le gagnant parmi les joueurs enregistrés
+        $hasBot = count($recordedPlayers) < count($players);
+        $recordedWinnerId = $hasBot ? null : $winnerId;
+
         // Ajouter les joueurs à la partie
-        foreach ($players as $p) {
+        foreach ($recordedPlayers as $p) {
             $uid = (int) $p['user_id'];
             $pid = $playerIds[$uid];
-            $isWinner = ($winnerId !== null && $uid === $winnerId) ? 1 : 0;
+            $isWinner = ($recordedWinnerId !== null && $uid === $recordedWinnerId) ? 1 : 0;
 
             if ($gameKey === 'morpion') {
                 $score = $isWinner ? 1 : 0;
@@ -903,12 +920,12 @@ class InteractiveGameController extends Controller
 
         // Enregistrer les scores dans round_scores
         $scores = [];
-        foreach ($players as $p) {
+        foreach ($recordedPlayers as $p) {
             $uid = (int) $p['user_id'];
             $pid = $playerIds[$uid];
 
             if ($gameKey === 'morpion') {
-                $scores[$pid] = ($winnerId !== null && $uid === $winnerId) ? 1 : 0;
+                $scores[$pid] = ($recordedWinnerId !== null && $uid === $recordedWinnerId) ? 1 : 0;
             } else {
                 $pk = 'player' . $p['player_number'];
                 $scores[$pid] = $finalScores[$pk] ?? 0;
