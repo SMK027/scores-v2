@@ -2,6 +2,20 @@
     <h1>🕹️ Jeux en ligne</h1>
 </div>
 
+<?php
+// Vérifier si le joueur a une partie active
+$hasActive = false;
+foreach ($sessions as $s) {
+    if (in_array($s['status'], ['waiting', 'in_progress', 'paused'])) {
+        $playerIds = $s['player_user_ids'] ? array_map('intval', explode(',', $s['player_user_ids'])) : [];
+        if (in_array($currentUserId, $playerIds, true)) {
+            $hasActive = true;
+            break;
+        }
+    }
+}
+?>
+
 <!-- Catalogue des jeux -->
 <div class="card-grid" style="margin-bottom:2rem;">
     <?php foreach ($games as $key => $game): ?>
@@ -11,6 +25,9 @@
             <h3 style="margin:0 0 .5rem;"><?= e($game['name']) ?></h3>
             <p class="text-muted text-small"><?= e($game['description']) ?></p>
             <p class="text-small text-muted"><?= $game['min_players'] ?>–<?= $game['max_players'] ?> joueurs</p>
+            <?php if ($hasActive): ?>
+                <p class="text-small text-danger" style="margin-top:.75rem;">Vous avez déjà une partie en cours.</p>
+            <?php else: ?>
             <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/play/create" style="margin-top:.75rem;">
                 <?= csrf_field() ?>
                 <input type="hidden" name="game_key" value="<?= $key ?>">
@@ -35,6 +52,7 @@
                 <input type="hidden" name="vs_bot" value="1">
                 <button type="submit" class="btn btn-outline btn-sm">🤖 vs Robot</button>
             </form>
+            <?php endif; ?>
         </div>
     </div>
     <?php endforeach; ?>
@@ -47,7 +65,7 @@
     </div>
     <div class="card-body">
         <?php
-        $activeSessions = array_filter($sessions, fn($s) => in_array($s['status'], ['waiting', 'in_progress']));
+        $activeSessions = array_filter($sessions, fn($s) => in_array($s['status'], ['waiting', 'in_progress', 'paused']));
         ?>
         <?php if (empty($activeSessions)): ?>
             <p class="text-muted">Aucune partie active pour le moment. Créez-en une !</p>
@@ -67,6 +85,7 @@
                         <?php foreach ($activeSessions as $s):
                             $playerIds = $s['player_user_ids'] ? array_map('intval', explode(',', $s['player_user_ids'])) : [];
                             $isInGame = in_array($currentUserId, $playerIds, true);
+                            $isCreator = ((int)$s['created_by'] === $currentUserId);
                         ?>
                         <tr>
                             <td>
@@ -80,24 +99,38 @@
                             <td>
                                 <?php if ($s['status'] === 'waiting'): ?>
                                     <span class="badge badge-warning">En attente</span>
+                                <?php elseif ($s['status'] === 'paused'): ?>
+                                    <span class="badge badge-secondary">⏸ En pause</span>
                                 <?php else: ?>
                                     <span class="badge badge-success">En cours</span>
                                 <?php endif; ?>
                             </td>
                             <td><?= date('d/m/Y H:i', strtotime($s['created_at'])) ?></td>
                             <td>
-                                <?php if ($s['status'] === 'waiting' && !$isInGame): ?>
+                                <?php if ($s['status'] === 'waiting' && !$isInGame && !$hasActive): ?>
                                     <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/play/<?= $s['id'] ?>/join" style="display:inline;">
                                         <?= csrf_field() ?>
                                         <button type="submit" class="btn btn-success btn-sm">Rejoindre</button>
                                     </form>
-                                <?php else: ?>
+                                <?php elseif ($isInGame): ?>
                                     <a href="/spaces/<?= $currentSpace['id'] ?>/play/<?= $s['id'] ?>" class="btn btn-outline btn-sm">Voir</a>
                                 <?php endif; ?>
-                                <?php if ((int)$s['created_by'] === $currentUserId && $s['status'] === 'waiting'): ?>
+                                <?php if ($isCreator && $s['status'] === 'in_progress'): ?>
+                                    <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/play/<?= $s['id'] ?>/pause" style="display:inline;">
+                                        <?= csrf_field() ?>
+                                        <button type="submit" class="btn btn-outline btn-sm" data-confirm="Mettre en pause ?">⏸ Pause</button>
+                                    </form>
+                                <?php endif; ?>
+                                <?php if ($isCreator && $s['status'] === 'paused'): ?>
+                                    <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/play/<?= $s['id'] ?>/resume" style="display:inline;">
+                                        <?= csrf_field() ?>
+                                        <button type="submit" class="btn btn-success btn-sm">▶ Reprendre</button>
+                                    </form>
+                                <?php endif; ?>
+                                <?php if ($isCreator && in_array($s['status'], ['waiting', 'in_progress', 'paused'])): ?>
                                     <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/play/<?= $s['id'] ?>/cancel" style="display:inline;">
                                         <?= csrf_field() ?>
-                                        <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Annuler cette partie ?">Annuler</button>
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Supprimer cette partie ?">🗑️ Supprimer</button>
                                     </form>
                                 <?php endif; ?>
                             </td>

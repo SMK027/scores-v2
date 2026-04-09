@@ -245,7 +245,7 @@ class InteractiveGameSession extends Model
              LEFT JOIN users u ON u.id = igp.user_id
              WHERE {$where}
              GROUP BY s.id
-             ORDER BY FIELD(s.status, 'waiting', 'in_progress', 'completed', 'cancelled'),
+             ORDER BY FIELD(s.status, 'waiting', 'in_progress', 'paused', 'completed', 'cancelled'),
                       s.updated_at DESC
              LIMIT 50",
             $params
@@ -295,7 +295,54 @@ class InteractiveGameSession extends Model
         $stmt = $this->query(
             "UPDATE {$this->table}
              SET status = 'cancelled', ended_at = NOW(), updated_at = NOW()
-             WHERE id = :id AND created_by = :uid AND status IN ('waiting', 'in_progress')",
+             WHERE id = :id AND created_by = :uid AND status IN ('waiting', 'in_progress', 'paused')",
+            ['id' => $id, 'uid' => $userId]
+        );
+        return $stmt->rowCount() > 0;
+    }
+
+    /**
+     * Vérifie si un utilisateur a déjà une session non terminée dans un espace.
+     */
+    public function hasActiveSession(int $spaceId, int $userId): ?array
+    {
+        $stmt = $this->query(
+            "SELECT s.id, s.game_key, s.status
+             FROM {$this->table} s
+             INNER JOIN interactive_game_players igp ON igp.session_id = s.id
+             WHERE s.space_id = :space_id
+               AND igp.user_id = :user_id
+               AND s.status IN ('waiting', 'in_progress', 'paused')
+             LIMIT 1",
+            ['space_id' => $spaceId, 'user_id' => $userId]
+        );
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    /**
+     * Met en pause une session (par le créateur).
+     */
+    public function pauseSession(int $id, int $userId): bool
+    {
+        $stmt = $this->query(
+            "UPDATE {$this->table}
+             SET status = 'paused', updated_at = NOW()
+             WHERE id = :id AND created_by = :uid AND status = 'in_progress'",
+            ['id' => $id, 'uid' => $userId]
+        );
+        return $stmt->rowCount() > 0;
+    }
+
+    /**
+     * Reprend une session en pause (par le créateur).
+     */
+    public function resumeSession(int $id, int $userId): bool
+    {
+        $stmt = $this->query(
+            "UPDATE {$this->table}
+             SET status = 'in_progress', updated_at = NOW()
+             WHERE id = :id AND created_by = :uid AND status = 'paused'",
             ['id' => $id, 'uid' => $userId]
         );
         return $stmt->rowCount() > 0;

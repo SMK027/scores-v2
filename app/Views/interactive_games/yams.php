@@ -46,10 +46,22 @@ $categories = [
     </div>
     <div class="d-flex gap-1">
         <a href="/spaces/<?= $currentSpace['id'] ?>/play" class="btn btn-outline btn-sm">← Retour au lobby</a>
-        <?php if ((int)$session['created_by'] === $currentUserId && $session['status'] === 'waiting'): ?>
+        <?php if ((int)$session['created_by'] === $currentUserId && $session['status'] === 'in_progress'): ?>
+            <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/play/<?= $session['id'] ?>/pause" style="display:inline;">
+                <?= csrf_field() ?>
+                <button type="submit" class="btn btn-outline btn-sm" data-confirm="Mettre en pause ?">⏸ Pause</button>
+            </form>
+        <?php endif; ?>
+        <?php if ((int)$session['created_by'] === $currentUserId && $session['status'] === 'paused'): ?>
+            <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/play/<?= $session['id'] ?>/resume" style="display:inline;">
+                <?= csrf_field() ?>
+                <button type="submit" class="btn btn-success btn-sm">▶ Reprendre</button>
+            </form>
+        <?php endif; ?>
+        <?php if ((int)$session['created_by'] === $currentUserId && in_array($session['status'], ['waiting', 'in_progress', 'paused'])): ?>
             <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/play/<?= $session['id'] ?>/cancel" style="display:inline;">
                 <?= csrf_field() ?>
-                <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Annuler cette partie ?">Annuler</button>
+                <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Supprimer cette partie ?">🗑️ Supprimer</button>
             </form>
         <?php endif; ?>
     </div>
@@ -60,6 +72,8 @@ $categories = [
     <div class="card-body" style="text-align:center;padding:.75rem;">
         <?php if ($session['status'] === 'waiting'): ?>
             <span class="badge badge-warning">⏳ En attente de joueurs… (<span id="player-count"><?= count($players) ?>/<?= $session['max_players'] ?></span>)</span>
+        <?php elseif ($session['status'] === 'paused'): ?>
+            <span class="badge badge-secondary" style="font-size:1.1em;">⏸ Partie en pause</span>
         <?php elseif ($session['status'] === 'completed'): ?>
             <?php if ($session['winner_id']): ?>
                 <span class="badge badge-success" style="font-size:1.1em;">🏆 <?= e($session['winner_name']) ?> a gagné !</span>
@@ -90,7 +104,7 @@ $categories = [
     </div>
 </div>
 
-<?php if ($session['status'] === 'in_progress' || $session['status'] === 'completed'): ?>
+<?php if (in_array($session['status'], ['in_progress', 'paused', 'completed'])): ?>
 
 <!-- Dés -->
 <div id="dice-area" style="display:flex;justify-content:center;gap:.75rem;margin:1.5rem 0;flex-wrap:wrap;align-items:center;">

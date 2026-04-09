@@ -319,6 +319,8 @@ $router->post('/spaces/{id}/play/create', InteractiveGameController::class, 'cre
 $router->post('/spaces/{id}/play/{sid}/join', InteractiveGameController::class, 'join');
 $router->get('/spaces/{id}/play/{sid}', InteractiveGameController::class, 'show');
 $router->post('/spaces/{id}/play/{sid}/cancel', InteractiveGameController::class, 'cancel');
+$router->post('/spaces/{id}/play/{sid}/pause', InteractiveGameController::class, 'pause');
+$router->post('/spaces/{id}/play/{sid}/resume', InteractiveGameController::class, 'resume');
 $router->get('/spaces/{id}/play/{sid}/state', InteractiveGameController::class, 'state');
 $router->post('/spaces/{id}/play/{sid}/play', InteractiveGameController::class, 'play');
 

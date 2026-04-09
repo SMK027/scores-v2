@@ -103,6 +103,15 @@ class InteractiveGameController extends Controller
         $ctx = $this->checkAccess($id);
         $this->validateCSRF();
 
+        // Vérifier si le joueur a déjà une partie active
+        $active = $this->sessionModel->hasActiveSession((int) $id, $this->getCurrentUserId());
+        if ($active) {
+            $gameName = InteractiveGameSession::GAMES[$active['game_key']]['name'] ?? $active['game_key'];
+            $this->setFlash('warning', "Vous avez déjà une partie de {$gameName} en cours. Terminez-la ou annulez-la avant d'en créer une nouvelle.");
+            $this->redirect("/spaces/{$id}/play/{$active['id']}");
+            return;
+        }
+
         $gameKey = trim($_POST['game_key'] ?? '');
         if (!isset(InteractiveGameSession::GAMES[$gameKey])) {
             $this->setFlash('danger', 'Jeu inconnu.');
@@ -133,6 +142,15 @@ class InteractiveGameController extends Controller
     {
         $ctx = $this->checkAccess($id);
         $this->validateCSRF();
+
+        // Vérifier si le joueur a déjà une partie active
+        $active = $this->sessionModel->hasActiveSession((int) $id, $this->getCurrentUserId());
+        if ($active && (int) $active['id'] !== (int) $sid) {
+            $gameName = InteractiveGameSession::GAMES[$active['game_key']]['name'] ?? $active['game_key'];
+            $this->setFlash('warning', "Vous avez déjà une partie de {$gameName} en cours. Terminez-la ou annulez-la avant d'en rejoindre une autre.");
+            $this->redirect("/spaces/{$id}/play");
+            return;
+        }
 
         $session = $this->sessionModel->findWithPlayers((int) $sid);
         if (!$session || (int) $session['space_id'] !== (int) $id) {
@@ -183,7 +201,7 @@ class InteractiveGameController extends Controller
     }
 
     /**
-     * Annuler une session.
+     * Annuler / supprimer une session.
      */
     public function cancel(string $id, string $sid): void
     {
@@ -193,6 +211,40 @@ class InteractiveGameController extends Controller
         $this->sessionModel->cancelSession((int) $sid, $this->getCurrentUserId());
         $this->setFlash('info', 'Partie annulée.');
         $this->redirect("/spaces/{$id}/play");
+    }
+
+    /**
+     * Mettre en pause une session.
+     */
+    public function pause(string $id, string $sid): void
+    {
+        $this->checkAccess($id);
+        $this->validateCSRF();
+
+        $ok = $this->sessionModel->pauseSession((int) $sid, $this->getCurrentUserId());
+        if ($ok) {
+            $this->setFlash('info', 'Partie mise en pause.');
+        } else {
+            $this->setFlash('danger', 'Impossible de mettre cette partie en pause.');
+        }
+        $this->redirect("/spaces/{$id}/play/{$sid}");
+    }
+
+    /**
+     * Reprendre une session en pause.
+     */
+    public function resume(string $id, string $sid): void
+    {
+        $this->checkAccess($id);
+        $this->validateCSRF();
+
+        $ok = $this->sessionModel->resumeSession((int) $sid, $this->getCurrentUserId());
+        if ($ok) {
+            $this->setFlash('info', 'Partie reprise !');
+        } else {
+            $this->setFlash('danger', 'Impossible de reprendre cette partie.');
+        }
+        $this->redirect("/spaces/{$id}/play/{$sid}");
     }
 
     // ─── ENDPOINTS AJAX ────────────────────────────────────────────
