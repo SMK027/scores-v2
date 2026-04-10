@@ -23,8 +23,21 @@ class BotAI
     //  MORPION
     // ═══════════════════════════════════════════════════════════════
 
-    /** Limites de profondeur minimax par taille de grille. */
-    private const MINIMAX_DEPTH = [3 => 100, 4 => 8, 5 => 4];
+    /**
+     * Retourne la profondeur max de minimax selon la taille de grille et l'alignement.
+     * Quand alignCount est faible vs gridSize, le jeu se termine plus vite → on peut explorer plus.
+     */
+    private static function getMaxDepth(int $gridSize, int $alignCount): int
+    {
+        return match (true) {
+            $gridSize === 3                          => 100, // 3×3 align 3 : résolution complète
+            $gridSize === 4 && $alignCount === 3     => 6,   // 4×4 align 3 : 24 lignes
+            $gridSize === 4 && $alignCount >= 4      => 6,   // 4×4 align 4 : 10 lignes
+            $gridSize === 5 && $alignCount === 3     => 4,   // 5×5 align 3 : 48 lignes
+            $gridSize === 5 && $alignCount >= 4      => 4,   // 5×5 align 4 : 24 lignes
+            default                                  => 6,
+        };
+    }
 
     /**
      * Retourne l'index de la meilleure case à jouer.
@@ -39,9 +52,11 @@ class BotAI
     }
 
     /**
-     * Facile : coup purement aléatoire.
+     * Facile : coup aléatoire pondéré.
+     * Sur grilles > 3×3, préfère les cases proches du centre et des pièces existantes
+     * pour éviter un jeu trop absurde, tout en restant imprévisible.
      */
-    private static function morpionMoveEasy(array $board, int $gridSize): int
+    private static function morpionMoveEasy(array $board, int $gridSize, int $alignCount = 0): int
     {
         $total = $gridSize * $gridSize;
         $free = [];
@@ -50,36 +65,88 @@ class BotAI
                 $free[] = $i;
             }
         }
-        return $free[array_rand($free)];
+
+        // Sur 3×3, purement aléatoire (le jeu est simple)
+        if ($gridSize <= 3) {
+            return $free[array_rand($free)];
+        }
+
+        // Sur grilles plus grandes : pondération vers le centre et les voisins occupés
+        $center = ($gridSize - 1) / 2.0;
+        $maxDist = $center * M_SQRT2;
+        $weights = [];
+        foreach ($free as $idx) {
+            $r = intdiv($idx, $gridSize);
+            $c = $idx % $gridSize;
+            // Bonus proximité centre (1.0 au centre, ~0.3 aux coins)
+            $dist = sqrt(($r - $center) ** 2 + ($c - $center) ** 2);
+            $w = 1.0 + (1.0 - $dist / $maxDist);
+            // Bonus voisinage : chaque case adjacente occupée ajoute du poids
+            foreach ([[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]] as [$dr,$dc]) {
+                $nr = $r + $dr;
+                $nc = $c + $dc;
+                if ($nr >= 0 && $nr < $gridSize && $nc >= 0 && $nc < $gridSize) {
+                    if ($board[$nr * $gridSize + $nc] !== null) {
+                        $w += 0.5;
+                    }
+                }
+            }
+            $weights[] = $w;
+        }
+
+        // Sélection pondérée
+        $sum = array_sum($weights);
+        $rand = mt_rand() / mt_getrandmax() * $sum;
+        $cumul = 0;
+        foreach ($free as $i => $idx) {
+            $cumul += $weights[$i];
+            if ($cumul >= $rand) {
+                return $idx;
+            }
+        }
+        return $free[count($free) - 1];
     }
 
     /**
-     * Moyen : minimax mais joue un coup aléatoire ~40 % du temps.
+     * Moyen : minimax la plupart du temps, coup aléatoire occasionnel.
+     * Le pourcentage d'aléatoire varie : plus la combinaison est complexe, plus le bot
+     * peut se permettre d'être aléatoire sans que ça paraisse trop faible.
      */
     private static function morpionMoveMedium(array $board, string $botSymbol, int $gridSize, int $alignCount): int
     {
-        if (random_int(1, 100) <= 40) {
-            return self::morpionMoveEasy($board, $gridSize);
+        // Plus la grille est grande et l'alignement court, plus il faut être précis
+        // car les parties se gagnent vite avec peu d'alignement.
+        $randomPct = match (true) {
+            $gridSize === 3                          => 40, // Classique : 40 % aléatoire
+            $gridSize === 4 && $alignCount === 3     => 25, // Align 3 sur 4×4 → parties rapides, moins d'erreurs
+            $gridSize === 4 && $alignCount >= 4      => 35, // Align 4 sur 4×4 → un peu plus de marge
+            $gridSize === 5 && $alignCount === 3     => 20, // Align 3 sur 5×5 → très tactique
+            $gridSize === 5 && $alignCount >= 4      => 30, // Align 4 sur 5×5 → stratégique
+            default                                  => 35,
+        };
+
+        if (random_int(1, 100) <= $randomPct) {
+            return self::morpionMoveEasy($board, $gridSize, $alignCount);
         }
         return self::morpionMoveHard($board, $botSymbol, $gridSize, $alignCount);
     }
 
     /**
-     * Difficile : minimax avec élagage alpha-bêta.
+     * Difficile : minimax avec élagage alpha-bêta et tri des coups.
      */
     private static function morpionMoveHard(array $board, string $botSymbol, int $gridSize, int $alignCount): int
     {
         $opponent = $botSymbol === 'X' ? 'O' : 'X';
         $lines = self::generateWinLines($gridSize, $alignCount);
-        $maxDepth = self::MINIMAX_DEPTH[$gridSize] ?? 5;
+        $maxDepth = self::getMaxDepth($gridSize, $alignCount);
         $bestScore = -100000;
         $bestMove = -1;
 
-        $total = $gridSize * $gridSize;
-        for ($i = 0; $i < $total; $i++) {
-            if ($board[$i] !== null) {
-                continue;
-            }
+        // Tri des coups pour améliorer l'élagage α-β :
+        // 1) Centre, 2) Cases menaçantes, 3) Cases avec voisins
+        $candidates = self::orderMoves($board, $botSymbol, $lines, $gridSize);
+
+        foreach ($candidates as $i) {
             $board[$i] = $botSymbol;
             $score = self::minimax($board, false, $botSymbol, $opponent, $lines, $gridSize, $maxDepth - 1, -100000, 100000);
             $board[$i] = null;
@@ -90,6 +157,63 @@ class BotAI
         }
 
         return $bestMove;
+    }
+
+    /**
+     * Trie les cases libres par pertinence pour favoriser les coupures alpha-bêta.
+     * @return int[] indices triés par score décroissant
+     */
+    private static function orderMoves(array $board, string $bot, array $lines, int $gridSize): array
+    {
+        $opp = $bot === 'X' ? 'O' : 'X';
+        $total = $gridSize * $gridSize;
+        $center = ($gridSize - 1) / 2.0;
+        $maxDist = $center * M_SQRT2;
+        $scores = [];
+
+        // Pré-calculer la participation de chaque case aux lignes
+        $cellLines = array_fill(0, $total, []);
+        foreach ($lines as $li => $line) {
+            foreach ($line as $idx) {
+                $cellLines[$idx][] = $li;
+            }
+        }
+
+        for ($i = 0; $i < $total; $i++) {
+            if ($board[$i] !== null) continue;
+
+            $s = 0.0;
+            // Bonus centre
+            $r = intdiv($i, $gridSize);
+            $c = $i % $gridSize;
+            $dist = sqrt(($r - $center) ** 2 + ($c - $center) ** 2);
+            $s += 3.0 * (1.0 - $dist / $maxDist);
+
+            // Évaluer les lignes traversant cette case
+            foreach ($cellLines[$i] as $li) {
+                $line = $lines[$li];
+                $botCount = 0;
+                $oppCount = 0;
+                foreach ($line as $idx) {
+                    if ($board[$idx] === $bot) $botCount++;
+                    elseif ($board[$idx] === $opp) $oppCount++;
+                }
+                $lineLen = count($line);
+                // Coup gagnant → priorité maximale
+                if ($botCount === $lineLen - 1 && $oppCount === 0) $s += 1000;
+                // Bloquer victoire adverse → très haute priorité
+                elseif ($oppCount === $lineLen - 1 && $botCount === 0) $s += 900;
+                // Prolonger une séquence bot
+                elseif ($oppCount === 0 && $botCount > 0) $s += $botCount * 5;
+                // Couper une séquence adverse
+                elseif ($botCount === 0 && $oppCount > 0) $s += $oppCount * 4;
+            }
+
+            $scores[$i] = $s;
+        }
+
+        arsort($scores);
+        return array_keys($scores);
     }
 
     private static function minimax(array $board, bool $isMaximizing, string $bot, string $opp, array $lines, int $gridSize, int $depth, int $alpha, int $beta): int
@@ -110,41 +234,88 @@ class BotAI
             return self::evaluateBoard($board, $bot, $opp, $lines);
         }
 
+        // Tri léger : coups gagnants/bloquants d'abord, puis le reste
+        $player = $isMaximizing ? $bot : $opp;
+        $moves = self::quickOrderMoves($board, $player, $player === $bot ? $opp : $bot, $lines, $total);
+
         if ($isMaximizing) {
             $best = -100000;
-            for ($i = 0; $i < $total; $i++) {
-                if ($board[$i] === null) {
-                    $board[$i] = $bot;
-                    $score = self::minimax($board, false, $bot, $opp, $lines, $gridSize, $depth - 1, $alpha, $beta);
-                    $board[$i] = null;
-                    $best = max($best, $score);
-                    $alpha = max($alpha, $best);
-                    if ($beta <= $alpha) break;
-                }
+            foreach ($moves as $i) {
+                $board[$i] = $bot;
+                $score = self::minimax($board, false, $bot, $opp, $lines, $gridSize, $depth - 1, $alpha, $beta);
+                $board[$i] = null;
+                $best = max($best, $score);
+                $alpha = max($alpha, $best);
+                if ($beta <= $alpha) break;
             }
             return $best;
         }
 
         $best = 100000;
-        for ($i = 0; $i < $total; $i++) {
-            if ($board[$i] === null) {
-                $board[$i] = $opp;
-                $score = self::minimax($board, true, $bot, $opp, $lines, $gridSize, $depth - 1, $alpha, $beta);
-                $board[$i] = null;
-                $best = min($best, $score);
-                $beta = min($beta, $best);
-                if ($beta <= $alpha) break;
-            }
+        foreach ($moves as $i) {
+            $board[$i] = $opp;
+            $score = self::minimax($board, true, $bot, $opp, $lines, $gridSize, $depth - 1, $alpha, $beta);
+            $board[$i] = null;
+            $best = min($best, $score);
+            $beta = min($beta, $best);
+            if ($beta <= $alpha) break;
         }
         return $best;
     }
 
     /**
-     * Évaluation heuristique pour les grilles > 3×3 quand la profondeur max est atteinte.
+     * Tri rapide des coups : gagnants → bloquants → reste.
+     * Beaucoup plus léger que orderMoves(), O(L) au lieu de O(N*L).
+     * @return int[]
+     */
+    private static function quickOrderMoves(array $board, string $me, string $them, array $lines, int $total): array
+    {
+        $winMoves = [];
+        $blockMoves = [];
+
+        foreach ($lines as $line) {
+            $myCount = 0;
+            $theirCount = 0;
+            $emptyIdx = -1;
+            $empties = 0;
+            foreach ($line as $idx) {
+                if ($board[$idx] === $me) $myCount++;
+                elseif ($board[$idx] === $them) $theirCount++;
+                else { $emptyIdx = $idx; $empties++; }
+            }
+            // Coup gagnant : il ne reste qu'une case vide et le reste est à moi
+            if ($empties === 1 && $myCount === count($line) - 1 && $theirCount === 0) {
+                $winMoves[$emptyIdx] = true;
+            }
+            // Coup bloquant : l'adversaire est à un coup de gagner
+            if ($empties === 1 && $theirCount === count($line) - 1 && $myCount === 0) {
+                $blockMoves[$emptyIdx] = true;
+            }
+        }
+
+        $result = array_keys($winMoves);
+        foreach (array_keys($blockMoves) as $idx) {
+            if (!isset($winMoves[$idx])) $result[] = $idx;
+        }
+        $seen = $winMoves + $blockMoves;
+        for ($i = 0; $i < $total; $i++) {
+            if ($board[$i] === null && !isset($seen[$i])) {
+                $result[] = $i;
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * Évaluation heuristique quand la profondeur max est atteinte.
+     * Pondère exponentiellement les lignes proches de la victoire
+     * et ajoute un bonus/malus fort pour les menaces imminentes.
      */
     private static function evaluateBoard(array $board, string $bot, string $opp, array $lines): int
     {
         $score = 0;
+        $lineLen = count($lines[0] ?? []);
+
         foreach ($lines as $line) {
             $botCount = 0;
             $oppCount = 0;
@@ -152,11 +323,27 @@ class BotAI
                 if ($board[$idx] === $bot) $botCount++;
                 elseif ($board[$idx] === $opp) $oppCount++;
             }
-            // Seules les lignes non bloquées comptent
-            if ($oppCount === 0 && $botCount > 0) {
-                $score += $botCount * $botCount;
-            } elseif ($botCount === 0 && $oppCount > 0) {
-                $score -= $oppCount * $oppCount;
+
+            // Ligne bloquée (les deux joueurs y sont) → sans intérêt
+            if ($botCount > 0 && $oppCount > 0) {
+                continue;
+            }
+
+            if ($botCount > 0) {
+                // Victoire imminente : alignCount - 1 symboles → très forte valeur
+                if ($botCount === $lineLen - 1) {
+                    $score += 500;
+                } else {
+                    // Progression exponentielle : 1→1, 2→4, 3→27...
+                    $score += (int) ($botCount ** 3);
+                }
+            } elseif ($oppCount > 0) {
+                // Menace adverse imminente → forte pénalité (bloquer !)
+                if ($oppCount === $lineLen - 1) {
+                    $score -= 400;
+                } else {
+                    $score -= (int) ($oppCount ** 3);
+                }
             }
         }
         return $score;
