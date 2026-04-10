@@ -980,8 +980,8 @@ class InteractiveGameController extends Controller
             }
         }
 
-        // Si aucun joueur n'est enregistré dans l'espace, ne rien faire
-        if (empty($playerIds)) {
+        // Il faut au moins 2 joueurs raccordés à l'espace pour enregistrer
+        if (count($playerIds) < 2) {
             return;
         }
 
