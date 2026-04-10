@@ -459,7 +459,7 @@ $categories = [
     dice.forEach(die => {
         die.addEventListener('click', function() {
             if (gameStatus !== 'in_progress' || currentTurn !== currentUserId) return;
-            if (currentState.rolls_left >= 3) return;
+            if (!devMode && currentState.rolls_left >= 3) return;
             const idx = parseInt(this.dataset.index);
             kept[idx] = !kept[idx];
             this.classList.toggle('yams-die--kept', kept[idx]);
