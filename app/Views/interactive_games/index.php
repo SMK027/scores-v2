@@ -65,18 +65,8 @@ foreach ($sessions as $s) {
                 <input type="hidden" name="max_players" value="2">
                 <input type="hidden" name="vs_bot" value="1">
                 <?php if ($key === 'morpion'): ?>
-                <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.5rem;">
-                    <label class="text-small">Grille :</label>
-                    <select name="grid_size" class="morpion-grid-select" style="padding:.25rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);font-size:.85rem;">
-                        <?php foreach (\App\Models\InteractiveGameSession::MORPION_GRIDS as $sz => $info): ?>
-                            <option value="<?= $sz ?>" data-aligns="<?= e(json_encode($info['aligns'])) ?>"<?= $sz === 3 ? ' selected' : '' ?>><?= e($info['label']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="morpion-align-row" style="display:none;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.5rem;">
-                    <label class="text-small">Alignement :</label>
-                    <select name="align_count" class="morpion-align-select" style="padding:.25rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);font-size:.85rem;"></select>
-                </div>
+                <input type="hidden" name="grid_size" class="bot-grid-size" value="3">
+                <input type="hidden" name="align_count" class="bot-align-count" value="3">
                 <?php endif; ?>
                 <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.5rem;">
                     <label class="text-small">Difficulté :</label>
@@ -254,9 +244,19 @@ document.querySelectorAll('.morpion-grid-select').forEach(function(gridSelect) {
         } else {
             alignRow.style.display = 'none';
         }
+        syncBotHiddenInputs();
     }
 
     gridSelect.addEventListener('change', updateAlignOptions);
+    alignSelect.addEventListener('change', syncBotHiddenInputs);
     updateAlignOptions();
 });
+
+function syncBotHiddenInputs() {
+    var gridSelect = document.querySelector('.morpion-grid-select');
+    var alignSelect = document.querySelector('.morpion-align-select');
+    if (!gridSelect || !alignSelect) return;
+    document.querySelectorAll('.bot-grid-size').forEach(function(el) { el.value = gridSelect.value; });
+    document.querySelectorAll('.bot-align-count').forEach(function(el) { el.value = alignSelect.value; });
+}
 </script>
