@@ -126,12 +126,15 @@ $categories = [
 <div style="text-align:center;margin-bottom:1.5rem;">
     <button id="btn-roll" class="btn btn-primary">🎲 Lancer les dés</button>
     <p class="text-small text-muted" style="margin-top:.25rem;">Cliquez sur un dé pour le garder/relâcher</p>
+    <?php if ($isGlobalStaff): ?>
+    <button id="btn-toggle-dev" class="btn btn-outline btn-sm" style="margin-top:.5rem;font-size:.75rem;opacity:.6;">🛠️ Mode dev</button>
+    <?php endif; ?>
 </div>
 <?php endif; ?>
 
 <?php if ($isGlobalStaff && $session['status'] === 'in_progress'): ?>
-<!-- Panneau mode développeur (admin global uniquement) -->
-<div id="dev-panel" class="card mb-3" style="border:2px dashed var(--warning,#f59e0b);">
+<!-- Panneau mode développeur (admin global uniquement, masqué par défaut) -->
+<div id="dev-panel" class="card mb-3" style="border:2px dashed var(--warning,#f59e0b);display:none;">
     <div class="card-header" style="background:rgba(245,158,11,.1);">
         <h3 style="margin:0;font-size:.9em;">🛠️ Mode développeur</h3>
     </div>
@@ -246,7 +249,8 @@ $categories = [
     const playerKey = 'player' + <?= $myPlayer ? (int)$myPlayer['player_number'] : 0 ?>;
     const stateUrl = `/spaces/${spaceId}/play/${sessionId}/state`;
     const playUrl = `/spaces/${spaceId}/play/${sessionId}/play`;
-    const devMode = <?= $isGlobalStaff ? 'true' : 'false' ?>;
+    const canDevMode = <?= $isGlobalStaff ? 'true' : 'false' ?>;
+    let devMode = false;
     const isSolo = <?= $isSolo ? 'true' : 'false' ?>;
 
     let currentState = <?= json_encode($state) ?>;
@@ -592,8 +596,23 @@ $categories = [
     updateUI();
     syncDevSelects();
 
+    // Toggle mode dev
+    if (canDevMode) {
+        const btnToggleDev = document.getElementById('btn-toggle-dev');
+        const devPanel = document.getElementById('dev-panel');
+        if (btnToggleDev) {
+            btnToggleDev.addEventListener('click', function() {
+                devMode = !devMode;
+                if (devPanel) devPanel.style.display = devMode ? '' : 'none';
+                btnToggleDev.textContent = devMode ? '🛠️ Mode dev ✅' : '🛠️ Mode dev';
+                btnToggleDev.style.opacity = devMode ? '1' : '.6';
+                updateUI();
+            });
+        }
+    }
+
     // Dev mode: bouton "Appliquer" pour forcer les valeurs des dés
-    if (devMode) {
+    if (canDevMode) {
         const btnDevSet = document.getElementById('btn-dev-set');
         if (btnDevSet) {
             btnDevSet.addEventListener('click', async function() {
