@@ -261,6 +261,7 @@ $categories = [
     const currentUserId = <?= $currentUserId ?>;
     const players = <?= json_encode(array_values($players)) ?>;
     const playerKey = 'player' + <?= $myPlayer ? (int)$myPlayer['player_number'] : 0 ?>;
+    const csrfToken = '<?= csrf_token() ?>';
     const stateUrl = `/spaces/${spaceId}/play/${sessionId}/state`;
     const playUrl = `/spaces/${spaceId}/play/${sessionId}/play`;
     const canDevMode = <?= $isGlobalStaff ? 'true' : 'false' ?>;
@@ -584,6 +585,9 @@ $categories = [
             });
             html += '</div>';
         }
+        html += `<form method="POST" action="/spaces/${spaceId}/play/${sessionId}/replay" style="margin-top:.5rem;display:inline-block;">`
+             + `<input type="hidden" name="csrf_token" value="${csrfToken}">`
+             + `<button type="submit" class="btn btn-primary btn-sm">🔄 Rejouer</button></form>`;
         body.innerHTML = html;
         if (btnRoll) btnRoll.style.display = 'none';
     }

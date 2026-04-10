@@ -103,6 +103,7 @@ $gridLabel = \App\Models\InteractiveGameSession::MORPION_GRIDS[$gridSize]['label
     const spaceId = <?= (int)$currentSpace['id'] ?>;
     const sessionId = <?= (int)$session['id'] ?>;
     const currentUserId = <?= $currentUserId ?>;
+    const csrfToken = '<?= csrf_token() ?>';
     const mySymbol = '<?= $mySymbol ?>';
     const players = <?= json_encode(array_values($players)) ?>;
     const stateUrl = `/spaces/${spaceId}/play/${sessionId}/state`;
@@ -149,11 +150,16 @@ $gridLabel = \App\Models\InteractiveGameSession::MORPION_GRIDS[$gridSize]['label
         const statusDiv = document.getElementById('morpion-status');
         if (!statusDiv) return;
         const body = statusDiv.querySelector('.card-body');
+        let html = '';
         if (data.winner_id) {
-            body.innerHTML = `<span class="badge badge-success" style="font-size:1.1em;">🏆 ${escapeHtml(data.winner_name || 'Gagnant')} a gagné !</span>`;
+            html += `<span class="badge badge-success" style="font-size:1.1em;">🏆 ${escapeHtml(data.winner_name || 'Gagnant')} a gagné !</span>`;
         } else {
-            body.innerHTML = '<span class="badge badge-secondary" style="font-size:1.1em;">🤝 Match nul !</span>';
+            html += '<span class="badge badge-secondary" style="font-size:1.1em;">🤝 Match nul !</span>';
         }
+        html += `<form method="POST" action="/spaces/${spaceId}/play/${sessionId}/replay" style="margin-top:.5rem;display:inline-block;">`
+             + `<input type="hidden" name="csrf_token" value="${csrfToken}">`
+             + `<button type="submit" class="btn btn-primary btn-sm">🔄 Rejouer</button></form>`;
+        body.innerHTML = html;
     }
 
     function escapeHtml(str) {
