@@ -328,7 +328,8 @@ class InteractiveGameController extends Controller
             return;
         }
 
-        if ((int) $session['current_turn'] !== $userId) {
+        $isDevAction = in_array($input['action'] ?? '', ['set_dice', 'dev_set_rolls']);
+        if ((int) $session['current_turn'] !== $userId && !($isDevAction && Middleware::isGlobalStaff())) {
             $this->json(['error' => 'Ce n\'est pas votre tour.'], 403);
             return;
         }
@@ -483,7 +484,29 @@ class InteractiveGameController extends Controller
             }
 
             $state['current_dice'] = $newDice;
-            $this->sessionModel->updateState((int) $session['id'], $state, $userId);
+            $this->sessionModel->updateState((int) $session['id'], $state, (int) $session['current_turn']);
+
+            $updated = $this->sessionModel->findWithPlayers((int) $session['id']);
+            return [
+                'status'       => $updated['status'],
+                'game_state'   => $updated['game_state'],
+                'current_turn' => $updated['current_turn'] ? (int) $updated['current_turn'] : null,
+                'winner_id'    => null,
+            ];
+        }
+
+        if ($action === 'dev_set_rolls') {
+            if (!Middleware::isGlobalStaff()) {
+                return ['error' => 'Accès réservé aux administrateurs.'];
+            }
+
+            $rolls = $input['rolls_left'] ?? null;
+            if (!is_int($rolls) || $rolls < 0 || $rolls > 3) {
+                return ['error' => 'Nombre de lancers invalide (0-3).'];
+            }
+
+            $state['rolls_left'] = $rolls;
+            $this->sessionModel->updateState((int) $session['id'], $state, (int) $session['current_turn']);
 
             $updated = $this->sessionModel->findWithPlayers((int) $session['id']);
             return [

@@ -136,7 +136,7 @@ $categories = [
 <!-- Panneau mode développeur (admin global uniquement, masqué par défaut) -->
 <div id="dev-panel" class="card mb-3" style="border:2px dashed var(--warning,#f59e0b);display:none;">
     <div class="card-header" style="background:rgba(245,158,11,.1);">
-        <h3 style="margin:0;font-size:.9em;">🛠️ Mode développeur</h3>
+        <h3 style="margin:0;font-size:.9em;">🛠️ Mode développeur — <span id="dev-target-player">…</span></h3>
     </div>
     <div class="card-body">
         <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;justify-content:center;">
@@ -148,8 +148,13 @@ $categories = [
                     <?php endfor; ?>
                 </select>
             <?php endfor; ?>
-            <button id="btn-dev-set" class="btn btn-warning btn-sm">Appliquer</button>
-            <span class="text-small text-muted" style="margin-left:.5rem;">|  Lancers illimités activés</span>
+            <button id="btn-dev-set" class="btn btn-warning btn-sm">Appliquer dés</button>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;justify-content:center;margin-top:.5rem;">
+            <label class="text-small">Lancers restants :</label>
+            <input id="dev-rolls-input" type="number" min="0" max="3" value="<?= $state['rolls_left'] ?? 3 ?>" style="width:55px;padding:.25rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);text-align:center;">
+            <button id="btn-dev-set-rolls" class="btn btn-warning btn-sm">Appliquer lancers</button>
+            <span class="text-small text-muted" style="margin-left:.5rem;">|  Lancers illimités pour vous</span>
         </div>
     </div>
 </div>
@@ -451,6 +456,13 @@ $categories = [
         document.querySelectorAll('.dev-die-select').forEach((sel, i) => {
             sel.value = currentState.current_dice[i];
         });
+        const rollsInput = document.getElementById('dev-rolls-input');
+        if (rollsInput) rollsInput.value = currentState.rolls_left ?? 0;
+        const targetEl = document.getElementById('dev-target-player');
+        if (targetEl) {
+            const cp = players.find(p => p.user_id === currentTurn);
+            targetEl.textContent = cp ? cp.username : '…';
+        }
     }
 
     function escapeHtml(str) {
@@ -611,12 +623,12 @@ $categories = [
         }
     }
 
-    // Dev mode: bouton "Appliquer" pour forcer les valeurs des dés
+    // Dev mode: bouton "Appliquer dés" pour forcer les valeurs des dés
     if (canDevMode) {
         const btnDevSet = document.getElementById('btn-dev-set');
         if (btnDevSet) {
             btnDevSet.addEventListener('click', async function() {
-                if (gameStatus !== 'in_progress' || currentTurn !== currentUserId) return;
+                if (gameStatus !== 'in_progress') return;
                 const newDice = [];
                 document.querySelectorAll('.dev-die-select').forEach(sel => {
                     newDice.push(parseInt(sel.value));
@@ -635,9 +647,38 @@ $categories = [
                         currentTurn = data.current_turn;
                         gameStatus = data.status;
                         updateUI();
+                        syncDevSelects();
                     }
                 } catch(e) {}
                 btnDevSet.disabled = false;
+            });
+        }
+
+        const btnDevSetRolls = document.getElementById('btn-dev-set-rolls');
+        if (btnDevSetRolls) {
+            btnDevSetRolls.addEventListener('click', async function() {
+                if (gameStatus !== 'in_progress') return;
+                const rollsInput = document.getElementById('dev-rolls-input');
+                const rolls = parseInt(rollsInput.value);
+                if (isNaN(rolls) || rolls < 0 || rolls > 3) return;
+
+                btnDevSetRolls.disabled = true;
+                try {
+                    const resp = await fetch(playUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: JSON.stringify({ action: 'dev_set_rolls', rolls_left: rolls }),
+                    });
+                    const data = await resp.json();
+                    if (!data.error) {
+                        currentState = data.game_state;
+                        currentTurn = data.current_turn;
+                        gameStatus = data.status;
+                        updateUI();
+                        syncDevSelects();
+                    }
+                } catch(e) {}
+                btnDevSetRolls.disabled = false;
             });
         }
     }
