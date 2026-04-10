@@ -1,14 +1,18 @@
 <?php
 $players = $session['players'];
 $myPlayer = null;
+$hasBot = false;
 foreach ($players as $p) {
-    if ((int)$p['user_id'] === $currentUserId) { $myPlayer = $p; break; }
+    if ((int)$p['user_id'] === $currentUserId) { $myPlayer = $p; }
+    if (!empty($p['is_bot'])) { $hasBot = true; }
 }
 $isPlayer = ($myPlayer !== null);
 $mySymbol = ($myPlayer && (int)$myPlayer['player_number'] === 1) ? 'X' : 'O';
 $state = $session['game_state'];
 $player1 = $players[0] ?? null;
 $player2 = $players[1] ?? null;
+$botDifficulty = $state['bot_difficulty'] ?? null;
+$difficultyLabels = ['easy' => '🟢 Facile', 'medium' => '🟡 Moyen', 'hard' => '🔴 Difficile'];
 ?>
 
 <div class="page-header">
@@ -18,6 +22,9 @@ $player2 = $players[1] ?? null;
             <?= $player1 ? e($player1['username']) . ' (X)' : '?' ?>
             vs
             <?= $player2 ? e($player2['username']) . ' (O)' : '<em>En attente d\'un adversaire…</em>' ?>
+            <?php if ($hasBot && $botDifficulty): ?>
+                <span class="badge badge-secondary" style="margin-left:.5rem;"><?= $difficultyLabels[$botDifficulty] ?? $botDifficulty ?></span>
+            <?php endif; ?>
         </p>
     </div>
     <div class="d-flex gap-1">

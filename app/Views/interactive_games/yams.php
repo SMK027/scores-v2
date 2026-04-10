@@ -1,14 +1,18 @@
 <?php
 $players = $session['players'];
 $myPlayer = null;
+$hasBot = false;
 foreach ($players as $p) {
-    if ((int)$p['user_id'] === $currentUserId) { $myPlayer = $p; break; }
+    if ((int)$p['user_id'] === $currentUserId) { $myPlayer = $p; }
+    if (!empty($p['is_bot'])) { $hasBot = true; }
 }
 $isPlayer = ($myPlayer !== null);
 $playerKey = $myPlayer ? 'player' . $myPlayer['player_number'] : null;
 $state = $session['game_state'];
 $isGlobalStaff = $isGlobalStaff ?? false;
 $isSolo = (count($players) === 1 && (int)$session['max_players'] === 1);
+$botDifficulty = $state['bot_difficulty'] ?? null;
+$difficultyLabels = ['easy' => '🟢 Facile', 'medium' => '🟡 Moyen', 'hard' => '🔴 Difficile'];
 
 $categories = [
     'ones'            => ['label' => 'As (1)',          'section' => 'upper'],
@@ -39,6 +43,9 @@ $categories = [
                 echo implode(' vs ', $names);
                 if (count($players) < (int)$session['max_players'] && $session['status'] === 'waiting') {
                     echo ' — <em>En attente de joueurs…</em>';
+                }
+                if ($hasBot && $botDifficulty) {
+                    echo ' <span class="badge badge-secondary" style="margin-left:.5rem;">' . ($difficultyLabels[$botDifficulty] ?? $botDifficulty) . '</span>';
                 }
                 ?>
             <?php endif; ?>

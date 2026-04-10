@@ -78,12 +78,17 @@ class InteractiveGameSession extends Model
     /**
      * Crée une nouvelle session.
      */
-    public function createSession(int $spaceId, string $gameKey, int $userId, int $maxPlayers = 2, bool $vsBot = false): int
+    public function createSession(int $spaceId, string $gameKey, int $userId, int $maxPlayers = 2, bool $vsBot = false, ?string $botDifficulty = null): int
     {
         if ($vsBot) {
             $maxPlayers = 2;
         }
         $state = self::initialState($gameKey, $maxPlayers);
+
+        if ($vsBot && $botDifficulty !== null) {
+            $state['bot_difficulty'] = $botDifficulty;
+        }
+
         $isSolo = (!$vsBot && $maxPlayers <= 1);
         $status = ($isSolo || $vsBot) ? 'in_progress' : 'waiting';
 

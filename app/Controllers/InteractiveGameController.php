@@ -124,12 +124,21 @@ class InteractiveGameController extends Controller
         $maxPlayers = max($game['min_players'], min($game['max_players'], $maxPlayers));
         $vsBot = !empty($_POST['vs_bot']);
 
+        $botDifficulty = null;
+        if ($vsBot) {
+            $botDifficulty = $_POST['bot_difficulty'] ?? BotAI::DIFFICULTY_MEDIUM;
+            if (!isset(BotAI::DIFFICULTIES[$botDifficulty])) {
+                $botDifficulty = BotAI::DIFFICULTY_MEDIUM;
+            }
+        }
+
         $sessionId = $this->sessionModel->createSession(
             (int) $id,
             $gameKey,
             $this->getCurrentUserId(),
             $maxPlayers,
-            $vsBot
+            $vsBot,
+            $botDifficulty
         );
 
         $this->redirect("/spaces/{$id}/play/{$sessionId}");
@@ -283,6 +292,7 @@ class InteractiveGameController extends Controller
             'winner_id'     => $session['winner_id'] ? (int) $session['winner_id'] : null,
             'winner_name'   => $session['winner_name'] ?? null,
             'dev_mode'      => Middleware::isGlobalStaff(),
+            'bot_difficulty' => $session['game_state']['bot_difficulty'] ?? null,
         ]);
     }
 
@@ -685,8 +695,9 @@ class InteractiveGameController extends Controller
     {
         $state = $session['game_state'];
         $botSymbol = (int) $botPlayer['player_number'] === 1 ? 'X' : 'O';
+        $difficulty = $state['bot_difficulty'] ?? BotAI::DIFFICULTY_HARD;
 
-        $cell = BotAI::morpionMove($state['board'], $botSymbol);
+        $cell = BotAI::morpionMove($state['board'], $botSymbol, $difficulty);
         if ($cell < 0) {
             return;
         }
@@ -730,8 +741,9 @@ class InteractiveGameController extends Controller
         $state = $session['game_state'];
         $playerKey = 'player' . $botPlayer['player_number'];
         $players = $session['players'];
+        $difficulty = $state['bot_difficulty'] ?? BotAI::DIFFICULTY_HARD;
 
-        $result = BotAI::yamsTurn($state, $playerKey);
+        $result = BotAI::yamsTurn($state, $playerKey, $difficulty);
         $state['current_dice'] = $result['dice'];
         $state['rolls_left'] = 0;
 

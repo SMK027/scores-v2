@@ -50,6 +50,14 @@ foreach ($sessions as $s) {
                 <input type="hidden" name="game_key" value="<?= $key ?>">
                 <input type="hidden" name="max_players" value="2">
                 <input type="hidden" name="vs_bot" value="1">
+                <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.5rem;">
+                    <label class="text-small">Difficulté :</label>
+                    <select name="bot_difficulty" style="padding:.25rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);font-size:.85rem;">
+                        <option value="easy">🟢 Facile</option>
+                        <option value="medium" selected>🟡 Moyen</option>
+                        <option value="hard">🔴 Difficile</option>
+                    </select>
+                </div>
                 <button type="submit" class="btn btn-outline btn-sm">🤖 vs Robot</button>
             </form>
             <?php endif; ?>

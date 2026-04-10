@@ -9,14 +9,61 @@ namespace App\Core;
  */
 class BotAI
 {
+    public const DIFFICULTY_EASY   = 'easy';
+    public const DIFFICULTY_MEDIUM = 'medium';
+    public const DIFFICULTY_HARD   = 'hard';
+
+    public const DIFFICULTIES = [
+        self::DIFFICULTY_EASY   => '🟢 Facile',
+        self::DIFFICULTY_MEDIUM => '🟡 Moyen',
+        self::DIFFICULTY_HARD   => '🔴 Difficile',
+    ];
+
     // ═══════════════════════════════════════════════════════════════
-    //  MORPION — Algorithme Minimax (imbattable)
+    //  MORPION
     // ═══════════════════════════════════════════════════════════════
 
     /**
      * Retourne l'index de la meilleure case à jouer (0–8).
      */
-    public static function morpionMove(array $board, string $botSymbol): int
+    public static function morpionMove(array $board, string $botSymbol, string $difficulty = self::DIFFICULTY_HARD): int
+    {
+        return match ($difficulty) {
+            self::DIFFICULTY_EASY   => self::morpionMoveEasy($board),
+            self::DIFFICULTY_MEDIUM => self::morpionMoveMedium($board, $botSymbol),
+            default                => self::morpionMoveHard($board, $botSymbol),
+        };
+    }
+
+    /**
+     * Facile : coup purement aléatoire.
+     */
+    private static function morpionMoveEasy(array $board): int
+    {
+        $free = [];
+        for ($i = 0; $i < 9; $i++) {
+            if ($board[$i] === null) {
+                $free[] = $i;
+            }
+        }
+        return $free[array_rand($free)];
+    }
+
+    /**
+     * Moyen : minimax mais joue un coup aléatoire ~40 % du temps.
+     */
+    private static function morpionMoveMedium(array $board, string $botSymbol): int
+    {
+        if (random_int(1, 100) <= 40) {
+            return self::morpionMoveEasy($board);
+        }
+        return self::morpionMoveHard($board, $botSymbol);
+    }
+
+    /**
+     * Difficile : minimax pur (imbattable).
+     */
+    private static function morpionMoveHard(array $board, string $botSymbol): int
     {
         $opponent = $botSymbol === 'X' ? 'O' : 'X';
         $bestScore = -100;
@@ -97,7 +144,58 @@ class BotAI
      * Joue un tour complet de YAMS (3 lancers + choix de catégorie).
      * @return array{dice: int[], category: string}
      */
-    public static function yamsTurn(array $state, string $playerKey): array
+    public static function yamsTurn(array $state, string $playerKey, string $difficulty = self::DIFFICULTY_HARD): array
+    {
+        return match ($difficulty) {
+            self::DIFFICULTY_EASY   => self::yamsTurnEasy($state, $playerKey),
+            self::DIFFICULTY_MEDIUM => self::yamsTurnMedium($state, $playerKey),
+            default                => self::yamsTurnHard($state, $playerKey),
+        };
+    }
+
+    /**
+     * YAMS facile : ne garde aucun dé, choisit une catégorie aléatoire.
+     */
+    private static function yamsTurnEasy(array $state, string $playerKey): array
+    {
+        $scores = $state['scores'][$playerKey] ?? [];
+        $dice = self::rollAll();
+        $dice = self::rollAll(); // relance tout 2 fois
+        $dice = self::rollAll(); // relance tout 3 fois
+
+        $category = self::yamsRandomCategory($scores);
+
+        return ['dice' => $dice, 'category' => $category];
+    }
+
+    /**
+     * YAMS moyen : stratégie correcte pour les dés, mais choix de catégorie parfois sous-optimal.
+     */
+    private static function yamsTurnMedium(array $state, string $playerKey): array
+    {
+        $scores = $state['scores'][$playerKey] ?? [];
+        $dice = self::rollAll();
+
+        $kept = self::yamsKeepStrategy($dice, $scores);
+        $dice = self::reroll($dice, $kept);
+
+        $kept = self::yamsKeepStrategy($dice, $scores);
+        $dice = self::reroll($dice, $kept);
+
+        // 35 % de chance de choisir une catégorie aléatoire au lieu de la meilleure
+        if (random_int(1, 100) <= 35) {
+            $category = self::yamsRandomCategory($scores);
+        } else {
+            $category = self::yamsBestCategory($dice, $scores);
+        }
+
+        return ['dice' => $dice, 'category' => $category];
+    }
+
+    /**
+     * YAMS difficile : stratégie optimale (original).
+     */
+    private static function yamsTurnHard(array $state, string $playerKey): array
     {
         $scores = $state['scores'][$playerKey] ?? [];
 
@@ -119,6 +217,31 @@ class BotAI
     }
 
     // ── Helpers Dés ────────────────────────────────────────────
+
+    /**
+     * Choisit une catégorie aléatoire parmi celles encore disponibles.
+     */
+    private static function yamsRandomCategory(array $playerScores): string
+    {
+        $allCats = [
+            'ones', 'twos', 'threes', 'fours', 'fives', 'sixes',
+            'three_of_kind', 'four_of_kind', 'full_house',
+            'small_straight', 'large_straight', 'yams', 'chance',
+        ];
+
+        $available = [];
+        foreach ($allCats as $cat) {
+            if (!isset($playerScores[$cat])) {
+                $available[] = $cat;
+            }
+        }
+
+        if (empty($available)) {
+            return 'chance';
+        }
+
+        return $available[array_rand($available)];
+    }
 
     private static function rollAll(): array
     {
