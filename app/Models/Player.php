@@ -153,7 +153,7 @@ class Player extends Model
     {
         $stmt = $this->query(
             "UPDATE {$this->table}
-             SET deleted_at = NOW()
+             SET deleted_at = NOW(), user_id = NULL
              WHERE id = :id
                AND deleted_at IS NULL",
             ['id' => $id]
