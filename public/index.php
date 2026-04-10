@@ -323,6 +323,7 @@ $router->post('/spaces/{id}/play/{sid}/pause', InteractiveGameController::class,
 $router->post('/spaces/{id}/play/{sid}/resume', InteractiveGameController::class, 'resume');
 $router->get('/spaces/{id}/play/{sid}/state', InteractiveGameController::class, 'state');
 $router->post('/spaces/{id}/play/{sid}/play', InteractiveGameController::class, 'play');
+$router->post('/spaces/{id}/play/{sid}/replay', InteractiveGameController::class, 'replay');
 
 // ============================================================
 // Statistiques

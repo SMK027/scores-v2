@@ -102,6 +102,12 @@ $categories = [
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
+            <?php if ($isPlayer): ?>
+                <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/play/<?= $session['id'] ?>/replay" style="margin-top:.5rem;display:inline-block;">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-primary btn-sm">🔄 Rejouer</button>
+                </form>
+            <?php endif; ?>
         <?php elseif ($session['status'] === 'cancelled'): ?>
             <span class="badge badge-secondary">Partie annulée</span>
         <?php else: ?>

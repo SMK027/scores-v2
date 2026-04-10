@@ -226,6 +226,66 @@ class InteractiveGameController extends Controller
     }
 
     /**
+     * Rejouer avec les mêmes réglages.
+     */
+    public function replay(string $id, string $sid): void
+    {
+        $ctx = $this->checkAccess($id);
+        $this->validateCSRF();
+
+        $session = $this->sessionModel->findWithPlayers((int) $sid);
+        if (!$session || (int) $session['space_id'] !== (int) $id || $session['status'] !== 'completed') {
+            $this->setFlash('danger', 'Impossible de rejouer cette partie.');
+            $this->redirect("/spaces/{$id}/play");
+            return;
+        }
+
+        // Vérifier qu'on était dans la partie
+        $wasPlayer = false;
+        foreach ($session['players'] as $p) {
+            if ((int) $p['user_id'] === $this->getCurrentUserId()) {
+                $wasPlayer = true;
+                break;
+            }
+        }
+        if (!$wasPlayer) {
+            $this->setFlash('danger', 'Vous n\'étiez pas dans cette partie.');
+            $this->redirect("/spaces/{$id}/play");
+            return;
+        }
+
+        // Vérifier pas de partie active
+        $active = $this->sessionModel->hasActiveSession((int) $id, $this->getCurrentUserId());
+        if ($active) {
+            $this->setFlash('warning', 'Vous avez déjà une partie en cours.');
+            $this->redirect("/spaces/{$id}/play/{$active['id']}");
+            return;
+        }
+
+        // Récupérer les réglages de la partie précédente
+        $state = $session['game_state'];
+        $gameKey = $session['game_key'];
+        $maxPlayers = (int) $session['max_players'];
+        $vsBot = !empty($state['vs_bot']);
+        $botDifficulty = $state['bot_difficulty'] ?? null;
+        $gridSize = $state['grid_size'] ?? 3;
+        $alignCount = $state['align_count'] ?? $gridSize;
+
+        $sessionId = $this->sessionModel->createSession(
+            (int) $id,
+            $gameKey,
+            $this->getCurrentUserId(),
+            $maxPlayers,
+            $vsBot,
+            $botDifficulty,
+            $gridSize,
+            $alignCount
+        );
+
+        $this->redirect("/spaces/{$id}/play/{$sessionId}");
+    }
+
+    /**
      * Annuler / supprimer une session.
      */
     public function cancel(string $id, string $sid): void
