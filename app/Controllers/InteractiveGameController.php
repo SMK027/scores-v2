@@ -971,21 +971,22 @@ class InteractiveGameController extends Controller
             return;
         }
 
-        // S'assurer que chaque joueur a une entrée dans la table `players` de l'espace
+        // Ne garder que les joueurs déjà enregistrés dans l'espace
         $playerIds = [];
         foreach ($recordedPlayers as $p) {
             $existingPlayer = $this->playerModel->findByUserInSpace($spaceId, (int) $p['user_id']);
             if ($existingPlayer) {
                 $playerIds[(int) $p['user_id']] = (int) $existingPlayer['id'];
-            } else {
-                $newId = $this->playerModel->create([
-                    'space_id' => $spaceId,
-                    'name'     => $p['username'],
-                    'user_id'  => (int) $p['user_id'],
-                ]);
-                $playerIds[(int) $p['user_id']] = $newId;
             }
         }
+
+        // Si aucun joueur n'est enregistré dans l'espace, ne rien faire
+        if (empty($playerIds)) {
+            return;
+        }
+
+        // Filtrer les joueurs enregistrés
+        $recordedPlayers = array_values(array_filter($recordedPlayers, fn($p) => isset($playerIds[(int) $p['user_id']])));
 
         // Créer la partie classique
         $gameId = $this->gameModel->create([
