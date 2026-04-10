@@ -15,19 +15,19 @@ $botDifficulty = $state['bot_difficulty'] ?? null;
 $difficultyLabels = ['easy' => '🟢 Facile', 'medium' => '🟡 Moyen', 'hard' => '🔴 Difficile'];
 
 $categories = [
-    'ones'            => ['label' => 'As (1)',          'section' => 'upper'],
-    'twos'            => ['label' => 'Deux (2)',        'section' => 'upper'],
-    'threes'          => ['label' => 'Trois (3)',       'section' => 'upper'],
-    'fours'           => ['label' => 'Quatre (4)',      'section' => 'upper'],
-    'fives'           => ['label' => 'Cinq (5)',        'section' => 'upper'],
-    'sixes'           => ['label' => 'Six (6)',         'section' => 'upper'],
-    'three_of_kind'   => ['label' => 'Brelan',         'section' => 'lower'],
-    'four_of_kind'    => ['label' => 'Carré',          'section' => 'lower'],
-    'full_house'      => ['label' => 'Full',           'section' => 'lower'],
-    'small_straight'  => ['label' => 'Petite suite',   'section' => 'lower'],
-    'large_straight'  => ['label' => 'Grande suite',   'section' => 'lower'],
-    'yams'            => ['label' => 'YAMS',           'section' => 'lower'],
-    'chance'          => ['label' => 'Chance',         'section' => 'lower'],
+    'ones'            => ['label' => 'As (1)',          'section' => 'upper', 'help' => 'Additionner tous les dés affichant 1. Ex : trois 1 → 3 pts.'],
+    'twos'            => ['label' => 'Deux (2)',        'section' => 'upper', 'help' => 'Additionner tous les dés affichant 2. Ex : deux 2 → 4 pts.'],
+    'threes'          => ['label' => 'Trois (3)',       'section' => 'upper', 'help' => 'Additionner tous les dés affichant 3. Ex : quatre 3 → 12 pts.'],
+    'fours'           => ['label' => 'Quatre (4)',      'section' => 'upper', 'help' => 'Additionner tous les dés affichant 4. Ex : trois 4 → 12 pts.'],
+    'fives'           => ['label' => 'Cinq (5)',        'section' => 'upper', 'help' => 'Additionner tous les dés affichant 5. Ex : deux 5 → 10 pts.'],
+    'sixes'           => ['label' => 'Six (6)',         'section' => 'upper', 'help' => 'Additionner tous les dés affichant 6. Ex : quatre 6 → 24 pts.'],
+    'three_of_kind'   => ['label' => 'Brelan',         'section' => 'lower', 'help' => 'Au moins 3 dés identiques. Score = somme de tous les dés.'],
+    'four_of_kind'    => ['label' => 'Carré',          'section' => 'lower', 'help' => 'Au moins 4 dés identiques. Score = somme de tous les dés.'],
+    'full_house'      => ['label' => 'Full',           'section' => 'lower', 'help' => 'Un brelan + une paire (ex : 3-3-3-5-5). Vaut 25 pts.'],
+    'small_straight'  => ['label' => 'Petite suite',   'section' => 'lower', 'help' => '4 dés consécutifs (ex : 1-2-3-4 ou 2-3-4-5). Vaut 30 pts.'],
+    'large_straight'  => ['label' => 'Grande suite',   'section' => 'lower', 'help' => '5 dés consécutifs (1-2-3-4-5 ou 2-3-4-5-6). Vaut 40 pts.'],
+    'yams'            => ['label' => 'YAMS',           'section' => 'lower', 'help' => '5 dés identiques. Vaut 50 pts. Combinaison suprême !'],
+    'chance'          => ['label' => 'Chance',         'section' => 'lower', 'help' => 'N\'importe quelle combinaison. Score = somme des 5 dés.'],
 ];
 ?>
 
@@ -188,7 +188,10 @@ $categories = [
                         </tr>
                     <?php endif; ?>
                     <tr data-category="<?= $key ?>" data-section="<?= $cat['section'] ?>">
-                        <td><?= $cat['label'] ?></td>
+                        <td>
+                            <?= $cat['label'] ?>
+                            <button type="button" class="yams-help-btn" data-help="<?= e($cat['help']) ?>" title="Aide" aria-label="Aide pour <?= e($cat['label']) ?>">?</button>
+                        </td>
                         <?php foreach ($players as $p):
                             $pk = 'player' . $p['player_number'];
                         ?>
@@ -737,3 +740,85 @@ $categories = [
 })();
 </script>
 <?php endif; ?>
+
+<style>
+.yams-help-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.1rem;
+    height: 1.1rem;
+    font-size: .65rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--primary, #4f46e5);
+    background: transparent;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    cursor: pointer;
+    margin-left: .35rem;
+    vertical-align: middle;
+    padding: 0;
+    opacity: .7;
+    transition: opacity .15s;
+}
+.yams-help-btn:hover { opacity: 1; }
+
+.yams-help-popover {
+    position: absolute;
+    z-index: 100;
+    background: #fff;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.12);
+    padding: .55rem .75rem;
+    max-width: 240px;
+    font-size: .82rem;
+    color: var(--text, #1f2937);
+    line-height: 1.4;
+    pointer-events: none;
+}
+</style>
+<script>
+(function() {
+    const popover = document.createElement('div');
+    popover.className = 'yams-help-popover';
+    popover.style.display = 'none';
+    document.body.appendChild(popover);
+
+    function showPopover(btn) {
+        popover.textContent = btn.dataset.help;
+        popover.style.display = 'block';
+        const rect = btn.getBoundingClientRect();
+        const pop = popover.getBoundingClientRect();
+        let top = rect.bottom + window.scrollY + 6;
+        let left = rect.left + window.scrollX - pop.width / 2 + rect.width / 2;
+        // Éviter débordement à droite
+        if (left + pop.width > window.innerWidth - 8) left = window.innerWidth - pop.width - 8;
+        if (left < 8) left = 8;
+        popover.style.top = top + 'px';
+        popover.style.left = left + 'px';
+    }
+
+    function hidePopover() {
+        popover.style.display = 'none';
+    }
+
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.yams-help-btn');
+        if (btn) {
+            e.stopPropagation();
+            if (popover.style.display !== 'none' && popover._src === btn) {
+                hidePopover();
+                popover._src = null;
+            } else {
+                popover._src = btn;
+                showPopover(btn);
+            }
+        } else {
+            hidePopover();
+            popover._src = null;
+        }
+    });
+})();
+</script>
