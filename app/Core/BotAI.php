@@ -23,25 +23,29 @@ class BotAI
     //  MORPION
     // ═══════════════════════════════════════════════════════════════
 
+    /** Limites de profondeur minimax par taille de grille. */
+    private const MINIMAX_DEPTH = [3 => 100, 4 => 8, 5 => 4];
+
     /**
-     * Retourne l'index de la meilleure case à jouer (0–8).
+     * Retourne l'index de la meilleure case à jouer.
      */
-    public static function morpionMove(array $board, string $botSymbol, string $difficulty = self::DIFFICULTY_HARD): int
+    public static function morpionMove(array $board, string $botSymbol, string $difficulty = self::DIFFICULTY_HARD, int $gridSize = 3, int $alignCount = 3): int
     {
         return match ($difficulty) {
-            self::DIFFICULTY_EASY   => self::morpionMoveEasy($board),
-            self::DIFFICULTY_MEDIUM => self::morpionMoveMedium($board, $botSymbol),
-            default                => self::morpionMoveHard($board, $botSymbol),
+            self::DIFFICULTY_EASY   => self::morpionMoveEasy($board, $gridSize),
+            self::DIFFICULTY_MEDIUM => self::morpionMoveMedium($board, $botSymbol, $gridSize, $alignCount),
+            default                => self::morpionMoveHard($board, $botSymbol, $gridSize, $alignCount),
         };
     }
 
     /**
      * Facile : coup purement aléatoire.
      */
-    private static function morpionMoveEasy(array $board): int
+    private static function morpionMoveEasy(array $board, int $gridSize): int
     {
+        $total = $gridSize * $gridSize;
         $free = [];
-        for ($i = 0; $i < 9; $i++) {
+        for ($i = 0; $i < $total; $i++) {
             if ($board[$i] === null) {
                 $free[] = $i;
             }
@@ -52,29 +56,32 @@ class BotAI
     /**
      * Moyen : minimax mais joue un coup aléatoire ~40 % du temps.
      */
-    private static function morpionMoveMedium(array $board, string $botSymbol): int
+    private static function morpionMoveMedium(array $board, string $botSymbol, int $gridSize, int $alignCount): int
     {
         if (random_int(1, 100) <= 40) {
-            return self::morpionMoveEasy($board);
+            return self::morpionMoveEasy($board, $gridSize);
         }
-        return self::morpionMoveHard($board, $botSymbol);
+        return self::morpionMoveHard($board, $botSymbol, $gridSize, $alignCount);
     }
 
     /**
-     * Difficile : minimax pur (imbattable).
+     * Difficile : minimax avec élagage alpha-bêta.
      */
-    private static function morpionMoveHard(array $board, string $botSymbol): int
+    private static function morpionMoveHard(array $board, string $botSymbol, int $gridSize, int $alignCount): int
     {
         $opponent = $botSymbol === 'X' ? 'O' : 'X';
-        $bestScore = -100;
+        $lines = self::generateWinLines($gridSize, $alignCount);
+        $maxDepth = self::MINIMAX_DEPTH[$gridSize] ?? 5;
+        $bestScore = -100000;
         $bestMove = -1;
 
-        for ($i = 0; $i < 9; $i++) {
+        $total = $gridSize * $gridSize;
+        for ($i = 0; $i < $total; $i++) {
             if ($board[$i] !== null) {
                 continue;
             }
             $board[$i] = $botSymbol;
-            $score = self::minimax($board, false, $botSymbol, $opponent);
+            $score = self::minimax($board, false, $botSymbol, $opponent, $lines, $gridSize, $maxDepth - 1, -100000, 100000);
             $board[$i] = null;
             if ($score > $bestScore) {
                 $bestScore = $score;
@@ -85,53 +92,130 @@ class BotAI
         return $bestMove;
     }
 
-    private static function minimax(array $board, bool $isMaximizing, string $bot, string $opp): int
+    private static function minimax(array $board, bool $isMaximizing, string $bot, string $opp, array $lines, int $gridSize, int $depth, int $alpha, int $beta): int
     {
-        $winner = self::checkWinner($board);
+        $winner = self::checkWinner($board, $lines);
         if ($winner === $bot) {
-            return 10;
+            return 1000 + $depth;
         }
         if ($winner === $opp) {
-            return -10;
+            return -1000 - $depth;
         }
+
+        $total = $gridSize * $gridSize;
         if (!in_array(null, $board, true)) {
             return 0;
         }
+        if ($depth <= 0) {
+            return self::evaluateBoard($board, $bot, $opp, $lines);
+        }
 
         if ($isMaximizing) {
-            $best = -100;
-            for ($i = 0; $i < 9; $i++) {
+            $best = -100000;
+            for ($i = 0; $i < $total; $i++) {
                 if ($board[$i] === null) {
                     $board[$i] = $bot;
-                    $best = max($best, self::minimax($board, false, $bot, $opp));
+                    $score = self::minimax($board, false, $bot, $opp, $lines, $gridSize, $depth - 1, $alpha, $beta);
                     $board[$i] = null;
+                    $best = max($best, $score);
+                    $alpha = max($alpha, $best);
+                    if ($beta <= $alpha) break;
                 }
             }
             return $best;
         }
 
-        $best = 100;
-        for ($i = 0; $i < 9; $i++) {
+        $best = 100000;
+        for ($i = 0; $i < $total; $i++) {
             if ($board[$i] === null) {
                 $board[$i] = $opp;
-                $best = min($best, self::minimax($board, true, $bot, $opp));
+                $score = self::minimax($board, true, $bot, $opp, $lines, $gridSize, $depth - 1, $alpha, $beta);
                 $board[$i] = null;
+                $best = min($best, $score);
+                $beta = min($beta, $best);
+                if ($beta <= $alpha) break;
             }
         }
         return $best;
     }
 
-    private static function checkWinner(array $board): ?string
+    /**
+     * Évaluation heuristique pour les grilles > 3×3 quand la profondeur max est atteinte.
+     */
+    private static function evaluateBoard(array $board, string $bot, string $opp, array $lines): int
     {
-        $lines = [
-            [0, 1, 2], [3, 4, 5], [6, 7, 8],
-            [0, 3, 6], [1, 4, 7], [2, 5, 8],
-            [0, 4, 8], [2, 4, 6],
-        ];
-        foreach ($lines as [$a, $b, $c]) {
-            if ($board[$a] !== null && $board[$a] === $board[$b] && $board[$b] === $board[$c]) {
-                return $board[$a];
+        $score = 0;
+        foreach ($lines as $line) {
+            $botCount = 0;
+            $oppCount = 0;
+            foreach ($line as $idx) {
+                if ($board[$idx] === $bot) $botCount++;
+                elseif ($board[$idx] === $opp) $oppCount++;
             }
+            // Seules les lignes non bloquées comptent
+            if ($oppCount === 0 && $botCount > 0) {
+                $score += $botCount * $botCount;
+            } elseif ($botCount === 0 && $oppCount > 0) {
+                $score -= $oppCount * $oppCount;
+            }
+        }
+        return $score;
+    }
+
+    /**
+     * Génère les lignes gagnantes pour grille NxN avec alignement K.
+     */
+    private static function generateWinLines(int $gridSize, int $alignCount): array
+    {
+        $lines = [];
+        $n = $gridSize;
+        $k = $alignCount;
+
+        for ($r = 0; $r < $n; $r++) {
+            for ($c = 0; $c <= $n - $k; $c++) {
+                $line = [];
+                for ($i = 0; $i < $k; $i++) $line[] = $r * $n + ($c + $i);
+                $lines[] = $line;
+            }
+        }
+        for ($c = 0; $c < $n; $c++) {
+            for ($r = 0; $r <= $n - $k; $r++) {
+                $line = [];
+                for ($i = 0; $i < $k; $i++) $line[] = ($r + $i) * $n + $c;
+                $lines[] = $line;
+            }
+        }
+        for ($r = 0; $r <= $n - $k; $r++) {
+            for ($c = 0; $c <= $n - $k; $c++) {
+                $line = [];
+                for ($i = 0; $i < $k; $i++) $line[] = ($r + $i) * $n + ($c + $i);
+                $lines[] = $line;
+            }
+        }
+        for ($r = 0; $r <= $n - $k; $r++) {
+            for ($c = $k - 1; $c < $n; $c++) {
+                $line = [];
+                for ($i = 0; $i < $k; $i++) $line[] = ($r + $i) * $n + ($c - $i);
+                $lines[] = $line;
+            }
+        }
+
+        return $lines;
+    }
+
+    private static function checkWinner(array $board, array $lines): ?string
+    {
+        foreach ($lines as $line) {
+            $first = $board[$line[0]];
+            if ($first === null) continue;
+            $win = true;
+            for ($i = 1, $len = count($line); $i < $len; $i++) {
+                if ($board[$line[$i]] !== $first) {
+                    $win = false;
+                    break;
+                }
+            }
+            if ($win) return $first;
         }
         return null;
     }

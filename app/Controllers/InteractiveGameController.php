@@ -132,13 +132,22 @@ class InteractiveGameController extends Controller
             }
         }
 
+        $gridSize = 3;
+        if ($gameKey === 'morpion') {
+            $gridSize = (int) ($_POST['grid_size'] ?? 3);
+            if (!isset(InteractiveGameSession::MORPION_GRIDS[$gridSize])) {
+                $gridSize = 3;
+            }
+        }
+
         $sessionId = $this->sessionModel->createSession(
             (int) $id,
             $gameKey,
             $this->getCurrentUserId(),
             $maxPlayers,
             $vsBot,
-            $botDifficulty
+            $botDifficulty,
+            $gridSize
         );
 
         $this->redirect("/spaces/{$id}/play/{$sessionId}");
@@ -354,8 +363,12 @@ class InteractiveGameController extends Controller
 
     private function playMorpion(array $session, array $state, array $input, int $userId, array $myPlayer): array
     {
+        $gridSize = $state['grid_size'] ?? 3;
+        $alignCount = $state['align_count'] ?? $gridSize;
+        $totalCells = $gridSize * $gridSize;
+
         $cell = $input['cell'] ?? null;
-        if ($cell === null || $cell < 0 || $cell > 8) {
+        if ($cell === null || $cell < 0 || $cell >= $totalCells) {
             return ['error' => 'Case invalide.'];
         }
 
@@ -367,8 +380,8 @@ class InteractiveGameController extends Controller
         $state['board'][$cell] = $symbol;
         $state['moves']++;
 
-        $winner = $this->checkMorpionWinner($state['board']);
-        $isDraw = !$winner && $state['moves'] >= 9;
+        $winner = $this->checkMorpionWinner($state['board'], $gridSize, $alignCount);
+        $isDraw = !$winner && $state['moves'] >= $totalCells;
 
         if ($winner || $isDraw) {
             $winnerId = null;
@@ -410,20 +423,76 @@ class InteractiveGameController extends Controller
         ];
     }
 
-    private function checkMorpionWinner(array $board): ?string
+    /**
+     * Génère les lignes gagnantes pour une grille NxN avec un alignement K.
+     */
+    private function generateWinLines(int $gridSize, int $alignCount): array
     {
-        $lines = [
-            [0, 1, 2], [3, 4, 5], [6, 7, 8], // lignes
-            [0, 3, 6], [1, 4, 7], [2, 5, 8], // colonnes
-            [0, 4, 8], [2, 4, 6],             // diagonales
-        ];
-        foreach ($lines as $line) {
-            $a = $board[$line[0]];
-            $b = $board[$line[1]];
-            $c = $board[$line[2]];
-            if ($a !== null && $a === $b && $b === $c) {
-                return $a;
+        $lines = [];
+        $n = $gridSize;
+        $k = $alignCount;
+
+        // Lignes horizontales
+        for ($r = 0; $r < $n; $r++) {
+            for ($c = 0; $c <= $n - $k; $c++) {
+                $line = [];
+                for ($i = 0; $i < $k; $i++) {
+                    $line[] = $r * $n + ($c + $i);
+                }
+                $lines[] = $line;
             }
+        }
+
+        // Colonnes verticales
+        for ($c = 0; $c < $n; $c++) {
+            for ($r = 0; $r <= $n - $k; $r++) {
+                $line = [];
+                for ($i = 0; $i < $k; $i++) {
+                    $line[] = ($r + $i) * $n + $c;
+                }
+                $lines[] = $line;
+            }
+        }
+
+        // Diagonales ↘
+        for ($r = 0; $r <= $n - $k; $r++) {
+            for ($c = 0; $c <= $n - $k; $c++) {
+                $line = [];
+                for ($i = 0; $i < $k; $i++) {
+                    $line[] = ($r + $i) * $n + ($c + $i);
+                }
+                $lines[] = $line;
+            }
+        }
+
+        // Diagonales ↙
+        for ($r = 0; $r <= $n - $k; $r++) {
+            for ($c = $k - 1; $c < $n; $c++) {
+                $line = [];
+                for ($i = 0; $i < $k; $i++) {
+                    $line[] = ($r + $i) * $n + ($c - $i);
+                }
+                $lines[] = $line;
+            }
+        }
+
+        return $lines;
+    }
+
+    private function checkMorpionWinner(array $board, int $gridSize = 3, int $alignCount = 3): ?string
+    {
+        $lines = $this->generateWinLines($gridSize, $alignCount);
+        foreach ($lines as $line) {
+            $first = $board[$line[0]];
+            if ($first === null) continue;
+            $win = true;
+            for ($i = 1; $i < count($line); $i++) {
+                if ($board[$line[$i]] !== $first) {
+                    $win = false;
+                    break;
+                }
+            }
+            if ($win) return $first;
         }
         return null;
     }
@@ -719,8 +788,11 @@ class InteractiveGameController extends Controller
         $state = $session['game_state'];
         $botSymbol = (int) $botPlayer['player_number'] === 1 ? 'X' : 'O';
         $difficulty = $state['bot_difficulty'] ?? BotAI::DIFFICULTY_HARD;
+        $gridSize = $state['grid_size'] ?? 3;
+        $alignCount = $state['align_count'] ?? $gridSize;
+        $totalCells = $gridSize * $gridSize;
 
-        $cell = BotAI::morpionMove($state['board'], $botSymbol, $difficulty);
+        $cell = BotAI::morpionMove($state['board'], $botSymbol, $difficulty, $gridSize, $alignCount);
         if ($cell < 0) {
             return;
         }
@@ -728,8 +800,8 @@ class InteractiveGameController extends Controller
         $state['board'][$cell] = $botSymbol;
         $state['moves']++;
 
-        $winner = $this->checkMorpionWinner($state['board']);
-        $isDraw = !$winner && $state['moves'] >= 9;
+        $winner = $this->checkMorpionWinner($state['board'], $gridSize, $alignCount);
+        $isDraw = !$winner && $state['moves'] >= $totalCells;
 
         if ($winner || $isDraw) {
             $winnerId = null;

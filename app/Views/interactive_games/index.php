@@ -43,6 +43,16 @@ foreach ($sessions as $s) {
                 <?php else: ?>
                     <input type="hidden" name="max_players" value="<?= $game['max_players'] ?>">
                 <?php endif; ?>
+                <?php if ($key === 'morpion'): ?>
+                    <div style="margin-bottom:.5rem;">
+                        <label class="text-small">Taille de grille :</label>
+                        <select name="grid_size" style="padding:.25rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);">
+                            <?php foreach (\App\Models\InteractiveGameSession::MORPION_GRIDS as $sz => $info): ?>
+                                <option value="<?= $sz ?>"<?= $sz === 3 ? ' selected' : '' ?>><?= e($info['label']) ?> — alignez <?= $info['align'] ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
                 <button type="submit" class="btn btn-primary btn-sm">Créer une partie</button>
             </form>
             <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/play/create" style="margin-top:.5rem;">
@@ -50,6 +60,16 @@ foreach ($sessions as $s) {
                 <input type="hidden" name="game_key" value="<?= $key ?>">
                 <input type="hidden" name="max_players" value="2">
                 <input type="hidden" name="vs_bot" value="1">
+                <?php if ($key === 'morpion'): ?>
+                <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.5rem;">
+                    <label class="text-small">Grille :</label>
+                    <select name="grid_size" style="padding:.25rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);font-size:.85rem;">
+                        <?php foreach (\App\Models\InteractiveGameSession::MORPION_GRIDS as $sz => $info): ?>
+                            <option value="<?= $sz ?>"<?= $sz === 3 ? ' selected' : '' ?>><?= e($info['label']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
                 <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.5rem;">
                     <label class="text-small">Difficulté :</label>
                     <select name="bot_difficulty" style="padding:.25rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);font-size:.85rem;">

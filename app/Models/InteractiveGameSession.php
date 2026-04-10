@@ -13,12 +13,19 @@ class InteractiveGameSession extends Model
 {
     protected string $table = 'interactive_game_sessions';
 
+    /** Tailles de grille disponibles pour le morpion. */
+    public const MORPION_GRIDS = [
+        3 => ['label' => '3×3 Classique', 'align' => 3],
+        4 => ['label' => '4×4', 'align' => 4],
+        5 => ['label' => '5×5', 'align' => 4],
+    ];
+
     /** Jeux disponibles avec leurs métadonnées. */
     public const GAMES = [
         'morpion' => [
             'name'        => 'Morpion',
             'icon'        => '❌⭕',
-            'description' => 'Le classique Tic-Tac-Toe ! Alignez 3 symboles pour gagner.',
+            'description' => 'Alignez vos symboles pour gagner ! Plusieurs tailles de grille disponibles.',
             'min_players' => 2,
             'max_players' => 2,
         ],
@@ -34,16 +41,24 @@ class InteractiveGameSession extends Model
     /**
      * Retourne l'état initial du jeu selon la clé.
      */
-    public static function initialState(string $gameKey, int $maxPlayers = 2): array
+    public static function initialState(string $gameKey, int $maxPlayers = 2, int $gridSize = 3): array
     {
         return match ($gameKey) {
-            'morpion' => [
-                'board'  => array_fill(0, 9, null),
-                'moves'  => 0,
-            ],
+            'morpion' => self::initialMorpionState($gridSize),
             'yams' => self::initialYamsState($maxPlayers),
             default => [],
         };
+    }
+
+    private static function initialMorpionState(int $gridSize): array
+    {
+        $grid = self::MORPION_GRIDS[$gridSize] ?? self::MORPION_GRIDS[3];
+        return [
+            'board'       => array_fill(0, $gridSize * $gridSize, null),
+            'moves'       => 0,
+            'grid_size'   => $gridSize,
+            'align_count' => $grid['align'],
+        ];
     }
 
     private static function initialYamsState(int $maxPlayers): array
@@ -78,12 +93,12 @@ class InteractiveGameSession extends Model
     /**
      * Crée une nouvelle session.
      */
-    public function createSession(int $spaceId, string $gameKey, int $userId, int $maxPlayers = 2, bool $vsBot = false, ?string $botDifficulty = null): int
+    public function createSession(int $spaceId, string $gameKey, int $userId, int $maxPlayers = 2, bool $vsBot = false, ?string $botDifficulty = null, int $gridSize = 3): int
     {
         if ($vsBot) {
             $maxPlayers = 2;
         }
-        $state = self::initialState($gameKey, $maxPlayers);
+        $state = self::initialState($gameKey, $maxPlayers, $gridSize);
 
         if ($vsBot && $botDifficulty !== null) {
             $state['bot_difficulty'] = $botDifficulty;

@@ -13,15 +13,20 @@ $player1 = $players[0] ?? null;
 $player2 = $players[1] ?? null;
 $botDifficulty = $state['bot_difficulty'] ?? null;
 $difficultyLabels = ['easy' => '🟢 Facile', 'medium' => '🟡 Moyen', 'hard' => '🔴 Difficile'];
+$gridSize = $state['grid_size'] ?? 3;
+$alignCount = $state['align_count'] ?? $gridSize;
+$totalCells = $gridSize * $gridSize;
+$gridLabel = \App\Models\InteractiveGameSession::MORPION_GRIDS[$gridSize]['label'] ?? "{$gridSize}×{$gridSize}";
 ?>
 
 <div class="page-header">
     <div>
-        <h1>❌⭕ Morpion</h1>
+        <h1>❌⭕ Morpion <span class="badge badge-secondary" style="font-size:.5em;vertical-align:middle;"><?= e($gridLabel) ?></span></h1>
         <p class="text-muted text-small">
             <?= $player1 ? e($player1['username']) . ' (X)' : '?' ?>
             vs
             <?= $player2 ? e($player2['username']) . ' (O)' : '<em>En attente d\'un adversaire…</em>' ?>
+            — Alignez <?= $alignCount ?> symboles
             <?php if ($hasBot && $botDifficulty): ?>
                 <span class="badge badge-secondary" style="margin-left:.5rem;"><?= $difficultyLabels[$botDifficulty] ?? $botDifficulty ?></span>
             <?php endif; ?>
@@ -73,8 +78,8 @@ $difficultyLabels = ['easy' => '🟢 Facile', 'medium' => '🟡 Moyen', 'hard' =
 
 <!-- Plateau de jeu -->
 <div style="display:flex;justify-content:center;margin:1.5rem 0;">
-    <div id="morpion-board" class="morpion-board">
-        <?php for ($i = 0; $i < 9; $i++): ?>
+    <div id="morpion-board" class="morpion-board morpion-board--<?= $gridSize ?>">
+        <?php for ($i = 0; $i < $totalCells; $i++): ?>
             <div class="morpion-cell" data-index="<?= $i ?>">
                 <?php if (($state['board'][$i] ?? null) === 'X'): ?>
                     <span class="morpion-x">✕</span>
@@ -96,6 +101,8 @@ $difficultyLabels = ['easy' => '🟢 Facile', 'medium' => '🟡 Moyen', 'hard' =
     const players = <?= json_encode(array_values($players)) ?>;
     const stateUrl = `/spaces/${spaceId}/play/${sessionId}/state`;
     const playUrl = `/spaces/${spaceId}/play/${sessionId}/play`;
+    const gridSize = <?= $gridSize ?>;
+    const totalCells = gridSize * gridSize;
 
     let currentState = <?= json_encode($state) ?>;
     let currentTurn = <?= $session['current_turn'] ? (int)$session['current_turn'] : 'null' ?>;

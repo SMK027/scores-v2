@@ -1639,14 +1639,25 @@ select.form-control {
 /* --- Morpion --- */
 .morpion-board {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
     gap: 4px;
-    width: 300px;
     max-width: 90vw;
     aspect-ratio: 1;
     background: var(--border, #e5e7eb);
     border-radius: 8px;
     overflow: hidden;
+}
+
+.morpion-board--3 {
+    grid-template-columns: repeat(3, 1fr);
+    width: 300px;
+}
+.morpion-board--4 {
+    grid-template-columns: repeat(4, 1fr);
+    width: 360px;
+}
+.morpion-board--5 {
+    grid-template-columns: repeat(5, 1fr);
+    width: 400px;
 }
 
 .morpion-cell {
@@ -1659,6 +1670,12 @@ select.form-control {
     transition: background .15s;
     aspect-ratio: 1;
     user-select: none;
+}
+.morpion-board--4 .morpion-cell {
+    font-size: 2rem;
+}
+.morpion-board--5 .morpion-cell {
+    font-size: 1.6rem;
 }
 
 .morpion-cell--clickable {
@@ -1748,11 +1765,21 @@ tr.yams-row-hidden {
 }
 
 @media (max-width: 480px) {
-    .morpion-board {
+    .morpion-board--3 {
         width: 240px;
+    }
+    .morpion-board--4 {
+        width: 280px;
+    }
+    .morpion-board--5 {
+        width: 320px;
     }
     .morpion-cell {
         font-size: 2rem;
+    }
+    .morpion-board--4 .morpion-cell,
+    .morpion-board--5 .morpion-cell {
+        font-size: 1.5rem;
     }
     .yams-die {
         width: 48px;
