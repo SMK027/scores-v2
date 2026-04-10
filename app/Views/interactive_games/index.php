@@ -46,11 +46,15 @@ foreach ($sessions as $s) {
                 <?php if ($key === 'morpion'): ?>
                     <div style="margin-bottom:.5rem;">
                         <label class="text-small">Taille de grille :</label>
-                        <select name="grid_size" style="padding:.25rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);">
+                        <select name="grid_size" class="morpion-grid-select" style="padding:.25rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);">
                             <?php foreach (\App\Models\InteractiveGameSession::MORPION_GRIDS as $sz => $info): ?>
-                                <option value="<?= $sz ?>"<?= $sz === 3 ? ' selected' : '' ?>><?= e($info['label']) ?> — alignez <?= $info['align'] ?></option>
+                                <option value="<?= $sz ?>" data-aligns="<?= e(json_encode($info['aligns'])) ?>"<?= $sz === 3 ? ' selected' : '' ?>><?= e($info['label']) ?></option>
                             <?php endforeach; ?>
                         </select>
+                    </div>
+                    <div class="morpion-align-row" style="margin-bottom:.5rem;display:none;">
+                        <label class="text-small">Alignement pour gagner :</label>
+                        <select name="align_count" class="morpion-align-select" style="padding:.25rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);"></select>
                     </div>
                 <?php endif; ?>
                 <button type="submit" class="btn btn-primary btn-sm">Créer une partie</button>
@@ -63,11 +67,15 @@ foreach ($sessions as $s) {
                 <?php if ($key === 'morpion'): ?>
                 <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.5rem;">
                     <label class="text-small">Grille :</label>
-                    <select name="grid_size" style="padding:.25rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);font-size:.85rem;">
+                    <select name="grid_size" class="morpion-grid-select" style="padding:.25rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);font-size:.85rem;">
                         <?php foreach (\App\Models\InteractiveGameSession::MORPION_GRIDS as $sz => $info): ?>
-                            <option value="<?= $sz ?>"<?= $sz === 3 ? ' selected' : '' ?>><?= e($info['label']) ?></option>
+                            <option value="<?= $sz ?>" data-aligns="<?= e(json_encode($info['aligns'])) ?>"<?= $sz === 3 ? ' selected' : '' ?>><?= e($info['label']) ?></option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+                <div class="morpion-align-row" style="display:none;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.5rem;">
+                    <label class="text-small">Alignement :</label>
+                    <select name="align_count" class="morpion-align-select" style="padding:.25rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);font-size:.85rem;"></select>
                 </div>
                 <?php endif; ?>
                 <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.5rem;">
@@ -223,3 +231,32 @@ $completedSessions = array_filter($sessions, fn($s) => in_array($s['status'], ['
     </div>
 </div>
 <?php endif; ?>
+
+<script>
+document.querySelectorAll('.morpion-grid-select').forEach(function(gridSelect) {
+    const form = gridSelect.closest('form');
+    const alignRow = form.querySelector('.morpion-align-row');
+    const alignSelect = form.querySelector('.morpion-align-select');
+    if (!alignRow || !alignSelect) return;
+
+    function updateAlignOptions() {
+        const selected = gridSelect.options[gridSelect.selectedIndex];
+        const aligns = JSON.parse(selected.dataset.aligns || '[]');
+        alignSelect.innerHTML = '';
+        aligns.forEach(function(a) {
+            const opt = document.createElement('option');
+            opt.value = a;
+            opt.textContent = a + ' symboles';
+            alignSelect.appendChild(opt);
+        });
+        if (aligns.length > 1) {
+            alignRow.style.display = '';
+        } else {
+            alignRow.style.display = 'none';
+        }
+    }
+
+    gridSelect.addEventListener('change', updateAlignOptions);
+    updateAlignOptions();
+});
+</script>

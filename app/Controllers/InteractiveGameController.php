@@ -133,10 +133,16 @@ class InteractiveGameController extends Controller
         }
 
         $gridSize = 3;
+        $alignCount = 3;
         if ($gameKey === 'morpion') {
             $gridSize = (int) ($_POST['grid_size'] ?? 3);
             if (!isset(InteractiveGameSession::MORPION_GRIDS[$gridSize])) {
                 $gridSize = 3;
+            }
+            $grid = InteractiveGameSession::MORPION_GRIDS[$gridSize];
+            $alignCount = (int) ($_POST['align_count'] ?? $grid['aligns'][0]);
+            if (!in_array($alignCount, $grid['aligns'], true)) {
+                $alignCount = $grid['aligns'][0];
             }
         }
 
@@ -147,7 +153,8 @@ class InteractiveGameController extends Controller
             $maxPlayers,
             $vsBot,
             $botDifficulty,
-            $gridSize
+            $gridSize,
+            $alignCount
         );
 
         $this->redirect("/spaces/{$id}/play/{$sessionId}");
