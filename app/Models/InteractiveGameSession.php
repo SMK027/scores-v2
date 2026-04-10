@@ -104,8 +104,11 @@ class InteractiveGameSession extends Model
         }
         $state = self::initialState($gameKey, $maxPlayers, $gridSize, $alignCount);
 
-        if ($vsBot && $botDifficulty !== null) {
-            $state['bot_difficulty'] = $botDifficulty;
+        if ($vsBot) {
+            $state['vs_bot'] = true;
+            if ($botDifficulty !== null) {
+                $state['bot_difficulty'] = $botDifficulty;
+            }
         }
 
         $isSolo = (!$vsBot && $maxPlayers <= 1);
