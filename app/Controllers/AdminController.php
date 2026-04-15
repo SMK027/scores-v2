@@ -1630,6 +1630,41 @@ HTML;
     // =========================================================
 
     /**
+     * Bypass la vérification email pour un compte (admin/superadmin).
+     */
+    public function bypassEmailVerification(string $uid): void
+    {
+        $this->checkAdminOrSuperAdmin();
+        $this->validateCSRF();
+
+        $user = $this->userModel->find((int) $uid);
+        if (!$user) {
+            $this->setFlash('danger', 'Utilisateur introuvable.');
+            $this->redirect('/admin/users');
+            return;
+        }
+
+        if (!$user['email_verification_required'] || $user['email_verified_at']) {
+            $this->setFlash('info', 'L\'email de ce compte est déjà vérifié.');
+            $this->redirect('/admin/users');
+            return;
+        }
+
+        $this->userModel->update((int) $uid, [
+            'email_verification_required' => 0,
+            'email_verified_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        ActivityLog::logAdmin('user.bypass_email_verification', $this->getCurrentUserId(), 'user', (int) $uid, [
+            'username' => $user['username'],
+            'email'    => $user['email'],
+        ]);
+
+        $this->setFlash('success', 'Vérification email bypassée pour ' . $user['username'] . '. L\'utilisateur peut maintenant se connecter.');
+        $this->redirect('/admin/users');
+    }
+
+    /**
      * Formulaire de création de compte (admin/superadmin).
      */
     public function createUserForm(): void

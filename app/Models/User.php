@@ -428,7 +428,8 @@ class User extends Model
         $params['limit'] = $perPage;
         $params['offset'] = $offset;
         $stmt = $this->query(
-            "SELECT id, username, email, avatar, global_role, restrictions, restricted_at, created_at
+            "SELECT id, username, email, avatar, global_role, restrictions, restricted_at,
+                    email_verification_required, email_verified_at, is_anonymized, created_at
              FROM {$this->table} {$where}
              ORDER BY created_at DESC
              LIMIT :limit OFFSET :offset",

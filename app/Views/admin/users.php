@@ -82,6 +82,13 @@
                                             <a href="/admin/users/<?= $user['id'] ?>/reset-password" class="btn btn-sm btn-outline-warning">🔑 Reset MDP</a>
                                         <?php endif; ?>
 
+                                        <?php if (!empty($user['email_verification_required']) && empty($user['email_verified_at'])): ?>
+                                            <form method="POST" action="/admin/users/<?= $user['id'] ?>/bypass-email" style="display:inline;">
+                                                <?= csrf_field() ?>
+                                                <button type="submit" class="btn btn-sm btn-outline" onclick="return confirm('Bypass la vérification email pour <?= e($user['username']) ?> ?')">📧 Bypass email</button>
+                                            </form>
+                                        <?php endif; ?>
+
                                         <?php if (current_global_role() === 'superadmin' && $user['id'] != current_user_id()): ?>
                                             <button type="button" class="btn btn-sm btn-outline" onclick="openRoleModal(<?= $user['id'] ?>, '<?= e($user['username']) ?>', '<?= $user['global_role'] ?>')">👑 Rôle</button>
                                             <?php if ($user['global_role'] !== 'superadmin'): ?>

@@ -393,6 +393,7 @@ $router->get('/admin/users', AdminController::class, 'users');
 $router->get('/admin/users/create', AdminController::class, 'createUserForm');
 $router->post('/admin/users/create', AdminController::class, 'createUser');
 $router->post('/admin/users/{uid}/role', AdminController::class, 'updateUserRole');
+$router->post('/admin/users/{uid}/bypass-email', AdminController::class, 'bypassEmailVerification');
 $router->post('/admin/users/{uid}/impersonate', AdminController::class, 'impersonate');
 $router->post('/admin/stop-impersonate', AdminController::class, 'stopImpersonate');
 $router->post('/admin/users/{uid}/delete', AdminController::class, 'deleteUser');
