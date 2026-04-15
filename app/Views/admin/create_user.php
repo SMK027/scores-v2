@@ -52,11 +52,13 @@
                     <label for="password" class="form-label">Mot de passe</label>
                     <input type="password" id="password" name="password" class="form-control"
                            autocomplete="new-password" placeholder="Mot de passe">
+                    <div id="passwordChecklist" style="font-size:0.85rem;margin-top:0.25rem;"></div>
                 </div>
                 <div class="form-group">
                     <label for="password_confirm" class="form-label">Confirmer le mot de passe</label>
                     <input type="password" id="password_confirm" name="password_confirm" class="form-control"
                            autocomplete="new-password" placeholder="Confirmer">
+                    <div id="passwordMatchHint" style="font-size:0.85rem;margin-top:0.25rem;"></div>
                 </div>
             </div>
 
@@ -83,6 +85,8 @@
 </div>
 
 <script>
+var __policy = <?= $policyJson ?? '{}' ?>;
+
 function togglePasswordMode() {
     const mode = document.querySelector('input[name="password_mode"]:checked').value;
     const manualFields = document.getElementById('manual-password-fields');
@@ -103,4 +107,51 @@ function togglePasswordMode() {
     }
 }
 togglePasswordMode();
+
+(function() {
+    var policy = __policy;
+    var pwField = document.getElementById('password');
+    var confirmField = document.getElementById('password_confirm');
+    var checklist = document.getElementById('passwordChecklist');
+    var matchHint = document.getElementById('passwordMatchHint');
+
+    function checkPolicy() {
+        if (!pwField || !checklist) return;
+        var pw = pwField.value;
+        var items = [];
+
+        items.push({ok: pw.length >= (policy.min_length || 8), text: (policy.min_length || 8) + ' caractères minimum'});
+        if (policy.require_lowercase) items.push({ok: /[a-z]/.test(pw), text: '1 minuscule'});
+        if (policy.require_uppercase) items.push({ok: /[A-Z]/.test(pw), text: '1 majuscule'});
+        if (policy.require_digit)     items.push({ok: /[0-9]/.test(pw), text: '1 chiffre'});
+        if (policy.require_special)   items.push({ok: /[^a-zA-Z0-9]/.test(pw), text: '1 caractère spécial'});
+
+        checklist.innerHTML = items.map(function(i) {
+            var color = pw.length === 0 ? '#888' : (i.ok ? '#16a34a' : '#dc2626');
+            var icon = pw.length === 0 ? '○' : (i.ok ? '✓' : '✗');
+            return '<div style="color:' + color + '">' + icon + ' ' + i.text + '</div>';
+        }).join('');
+    }
+
+    function checkMatch() {
+        if (!confirmField || !matchHint) return;
+        var pw = pwField.value;
+        var confirm = confirmField.value;
+        if (confirm.length === 0) {
+            matchHint.innerHTML = '';
+        } else if (pw === confirm) {
+            matchHint.innerHTML = '<span style="color:#16a34a">✓ Les mots de passe correspondent</span>';
+        } else {
+            matchHint.innerHTML = '<span style="color:#dc2626">✗ Les mots de passe ne correspondent pas</span>';
+        }
+    }
+
+    if (pwField) {
+        pwField.addEventListener('input', function() { checkPolicy(); checkMatch(); });
+        checkPolicy();
+    }
+    if (confirmField) {
+        confirmField.addEventListener('input', checkMatch);
+    }
+})();
 </script>

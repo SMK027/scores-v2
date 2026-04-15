@@ -1636,9 +1636,12 @@ HTML;
     {
         $this->checkAdminOrSuperAdmin();
 
+        $policyModel = new \App\Models\PasswordPolicy();
+
         $this->render('admin/create_user', [
-            'title'     => 'Créer un compte',
+            'title'      => 'Créer un compte',
             'activeMenu' => 'admin',
+            'policyJson' => $policyModel->toJson(),
         ]);
     }
 
