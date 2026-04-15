@@ -122,7 +122,8 @@ abstract class Controller
 
         $status = (string) ($user['account_status'] ?? \App\Models\User::ACCOUNT_STATUS_ACTIVE);
         $isAnonymized = !empty($user['is_anonymized']);
-        if ($status !== \App\Models\User::ACCOUNT_STATUS_ACTIVE || $isAnonymized) {
+        $isImpersonating = Session::get('impersonator_id') !== null;
+        if (($status !== \App\Models\User::ACCOUNT_STATUS_ACTIVE || $isAnonymized) && !$isImpersonating) {
             Session::destroy();
             Session::start();
             Session::set('flash', [

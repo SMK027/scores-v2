@@ -79,6 +79,12 @@
 
                                         <?php if (current_global_role() === 'superadmin' && $user['id'] != current_user_id()): ?>
                                             <button type="button" class="btn btn-sm btn-outline" onclick="openRoleModal(<?= $user['id'] ?>, '<?= e($user['username']) ?>', '<?= $user['global_role'] ?>')">👑 Rôle</button>
+                                            <?php if ($user['global_role'] !== 'superadmin'): ?>
+                                            <form method="POST" action="/admin/users/<?= $user['id'] ?>/impersonate" style="display:inline;">
+                                                <?= csrf_field() ?>
+                                                <button type="submit" class="btn btn-sm btn-outline-warning" onclick="return confirm('Prendre le contrôle du compte de <?= e($user['username']) ?> ?')">🎭 Contrôler</button>
+                                            </form>
+                                            <?php endif; ?>
                                         <?php elseif ($user['id'] == current_user_id()): ?>
                                             <span class="text-muted text-small">Vous</span>
                                         <?php endif; ?>

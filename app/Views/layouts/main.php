@@ -63,6 +63,16 @@
         </div>
     </nav>
 
+    <?php if (\App\Core\Session::get('impersonator_id')): ?>
+    <div style="background:var(--warning,#f59e0b);color:#000;text-align:center;padding:.5rem 1rem;font-weight:600;font-size:.95em;position:sticky;top:0;z-index:1100;">
+        🎭 Vous contrôlez le compte de <strong><?= e(\App\Core\Session::get('username') ?? '') ?></strong>
+        <form method="POST" action="/admin/stop-impersonate" style="display:inline;margin-left:.75rem;">
+            <?= csrf_field() ?>
+            <button type="submit" class="btn btn-sm" style="background:#000;color:#fff;padding:.2rem .75rem;font-size:.85em;">✕ Reprendre mon compte</button>
+        </form>
+    </div>
+    <?php endif; ?>
+
     <?php if (isset($currentSpace)): ?>
     <!-- Layout avec sidebar pour les espaces -->
     <div class="layout-with-sidebar">

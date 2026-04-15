@@ -1624,4 +1624,91 @@ HTML;
         $this->setFlash('success', 'Statut mis à jour.');
         $this->redirect('/admin/contact/' . $ticketId);
     }
+
+    /**
+     * Prendre le contrôle d'un compte utilisateur (superadmin uniquement).
+     */
+    public function impersonate(string $uid): void
+    {
+        $this->requireGlobalRole(['superadmin']);
+        $this->validateCSRF();
+
+        $realAdminId = $this->getCurrentUserId();
+        $targetUser = $this->userModel->find((int) $uid);
+
+        if (!$targetUser) {
+            $this->setFlash('danger', 'Utilisateur introuvable.');
+            $this->redirect('/admin/users');
+            return;
+        }
+
+        if ($targetUser['global_role'] === 'superadmin') {
+            $this->setFlash('danger', 'Impossible de prendre le contrôle d\'un autre super-administrateur.');
+            $this->redirect('/admin/users');
+            return;
+        }
+
+        // Sauvegarder l'identité réelle du super-admin
+        \App\Core\Session::set('impersonator_id', $realAdminId);
+        \App\Core\Session::set('impersonator_username', \App\Core\Session::get('username'));
+        \App\Core\Session::set('impersonator_role', 'superadmin');
+
+        // Basculer sur le compte cible
+        \App\Core\Session::set('user_id', $targetUser['id']);
+        \App\Core\Session::set('username', $targetUser['username']);
+        \App\Core\Session::set('global_role', $targetUser['global_role']);
+        \App\Core\Session::set('avatar', $targetUser['avatar'] ?? '');
+
+        ActivityLog::logAdmin('user.impersonate_start', $realAdminId, 'user', (int) $targetUser['id'], [
+            'admin_username' => \App\Core\Session::get('impersonator_username'),
+            'target_username' => $targetUser['username'],
+        ]);
+
+        $this->setFlash('info', 'Vous contrôlez maintenant le compte de ' . $targetUser['username'] . '.');
+        $this->redirect('/');
+    }
+
+    /**
+     * Arrêter la prise de contrôle et revenir au compte super-admin.
+     */
+    public function stopImpersonate(): void
+    {
+        $this->requireAuth();
+
+        $impersonatorId = \App\Core\Session::get('impersonator_id');
+        if (!$impersonatorId) {
+            $this->redirect('/');
+            return;
+        }
+
+        $targetUserId = $this->getCurrentUserId();
+        $targetUsername = \App\Core\Session::get('username');
+
+        // Restaurer le compte super-admin
+        $admin = $this->userModel->find((int) $impersonatorId);
+        if (!$admin) {
+            \App\Core\Session::destroy();
+            \App\Core\Session::start();
+            $this->redirect('/login');
+            return;
+        }
+
+        \App\Core\Session::set('user_id', $admin['id']);
+        \App\Core\Session::set('username', $admin['username']);
+        \App\Core\Session::set('global_role', $admin['global_role']);
+        \App\Core\Session::set('avatar', $admin['avatar'] ?? '');
+
+        // Nettoyer les flags d'impersonation
+        \App\Core\Session::set('impersonator_id', null);
+        \App\Core\Session::set('impersonator_username', null);
+        \App\Core\Session::set('impersonator_role', null);
+
+        ActivityLog::logAdmin('user.impersonate_stop', (int) $admin['id'], 'user', (int) $targetUserId, [
+            'admin_username' => $admin['username'],
+            'target_username' => $targetUsername,
+        ]);
+
+        $this->setFlash('info', 'Vous êtes revenu à votre compte.');
+        $this->redirect('/admin/users');
+    }
 }
