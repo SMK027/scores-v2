@@ -1,6 +1,11 @@
 <div class="page-header">
     <h1>👥 Gestion des utilisateurs</h1>
-    <a href="/admin" class="btn btn-outline">← Retour</a>
+    <div class="d-flex gap-1">
+        <?php if (in_array(current_global_role(), ['admin', 'superadmin'], true)): ?>
+            <a href="/admin/users/create" class="btn btn-primary">+ Créer un compte</a>
+        <?php endif; ?>
+        <a href="/admin" class="btn btn-outline">← Retour</a>
+    </div>
 </div>
 
 <div class="card mb-3">

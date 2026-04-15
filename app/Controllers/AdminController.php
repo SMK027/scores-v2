@@ -1625,6 +1625,186 @@ HTML;
         $this->redirect('/admin/contact/' . $ticketId);
     }
 
+    // =========================================================
+    // Création de compte par un administrateur
+    // =========================================================
+
+    /**
+     * Formulaire de création de compte (admin/superadmin).
+     */
+    public function createUserForm(): void
+    {
+        $this->checkAdminOrSuperAdmin();
+
+        $this->render('admin/create_user', [
+            'title'     => 'Créer un compte',
+            'activeMenu' => 'admin',
+        ]);
+    }
+
+    /**
+     * Traite la création de compte (admin/superadmin).
+     */
+    public function createUser(): void
+    {
+        $this->checkAdminOrSuperAdmin();
+        $this->validateCSRF();
+
+        $data = $this->getPostData(['username', 'email', 'password_mode', 'password', 'password_confirm', 'global_role', 'reset_duration']);
+
+        $errors = [];
+
+        // Validation username
+        if (empty($data['username'])) {
+            $errors[] = 'Le nom d\'utilisateur est requis.';
+        } elseif (strlen($data['username']) < 3 || strlen($data['username']) > 50) {
+            $errors[] = 'Le nom d\'utilisateur doit contenir entre 3 et 50 caractères.';
+        } elseif (!preg_match('/^[a-zA-Z0-9_-]+$/', $data['username'])) {
+            $errors[] = 'Le nom d\'utilisateur ne peut contenir que des lettres, chiffres, tirets et underscores.';
+        }
+
+        // Validation email
+        if (empty($data['email'])) {
+            $errors[] = 'L\'email est requis.';
+        } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors[] = 'L\'adresse email n\'est pas valide.';
+        }
+
+        // Validation rôle
+        $allowedRoles = ['user', 'moderator'];
+        $currentRole = \App\Core\Session::get('global_role');
+        if ($currentRole === 'superadmin') {
+            $allowedRoles[] = 'admin';
+        }
+        $role = $data['global_role'] ?: 'user';
+        if (!in_array($role, $allowedRoles, true)) {
+            $errors[] = 'Rôle non autorisé.';
+            $role = 'user';
+        }
+
+        // Validation mot de passe selon le mode
+        $passwordMode = $data['password_mode'] ?? 'manual';
+        if ($passwordMode === 'manual') {
+            if (empty($data['password'])) {
+                $errors[] = 'Le mot de passe est requis.';
+            } else {
+                $policyModel = new \App\Models\PasswordPolicy();
+                $policyErrors = $policyModel->validate($data['password']);
+                $errors = array_merge($errors, $policyErrors);
+            }
+            if ($data['password'] !== $data['password_confirm']) {
+                $errors[] = 'Les mots de passe ne correspondent pas.';
+            }
+        } elseif ($passwordMode === 'email') {
+            $resetDuration = (int) ($data['reset_duration'] ?? 1440);
+            if ($resetDuration < 5 || $resetDuration > 4320) {
+                $errors[] = 'La durée du lien doit être comprise entre 5 minutes et 3 jours.';
+            }
+        } else {
+            $errors[] = 'Mode de mot de passe invalide.';
+        }
+
+        // Unicité
+        if (empty($errors)) {
+            if ($this->userModel->findByUsername($data['username'])) {
+                $errors[] = 'Ce nom d\'utilisateur est déjà pris.';
+            }
+            if ($this->userModel->findByEmail($data['email'])) {
+                $errors[] = 'Cette adresse email est déjà utilisée.';
+            }
+        }
+
+        if (!empty($errors)) {
+            $this->setFlash('danger', implode('<br>', $errors));
+            $this->redirect('/admin/users/create');
+            return;
+        }
+
+        // Créer le compte
+        $tempPassword = $passwordMode === 'manual' ? $data['password'] : bin2hex(random_bytes(32));
+        $userId = $this->userModel->register($data['username'], $data['email'], $tempPassword);
+
+        // Marquer l'email comme vérifié (pas de vérification nécessaire pour un compte créé par un admin)
+        $this->userModel->update($userId, [
+            'email_verification_required' => 0,
+            'email_verified_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        // Appliquer le rôle si différent de 'user'
+        if ($role !== 'user') {
+            $this->userModel->updateGlobalRole($userId, $role);
+        }
+
+        // Mode email : envoyer le lien de réinitialisation
+        if ($passwordMode === 'email') {
+            $resetDuration = (int) ($data['reset_duration'] ?? 1440);
+            $resetModel = new \App\Models\PasswordReset();
+            $token = $resetModel->createToken($userId, $resetDuration);
+
+            $appUrl = rtrim(getenv('APP_URL') ?: 'http://localhost:8080', '/');
+            $resetLink = $appUrl . '/reset-password/' . $token;
+            $durationLabel = $this->formatDurationLabel($resetDuration);
+
+            try {
+                $mailer = new Mailer();
+                $subject = 'Votre compte Scores a été créé';
+                $body = $this->buildAccountCreatedEmail($data['username'], $data['email'], $resetLink, $durationLabel);
+                $mailer->send($data['email'], $subject, $body);
+            } catch (\RuntimeException $e) {
+                $this->setFlash('warning', "Compte créé mais l'email n'a pas pu être envoyé.");
+                $this->redirect('/admin/users');
+                return;
+            }
+        }
+
+        ActivityLog::logAdmin('user.create', $this->getCurrentUserId(), 'user', $userId, [
+            'username'      => $data['username'],
+            'email'         => $data['email'],
+            'role'          => $role,
+            'password_mode' => $passwordMode,
+        ]);
+
+        $msg = $passwordMode === 'email'
+            ? "Compte de {$data['username']} créé. Un email avec le lien de définition du mot de passe a été envoyé."
+            : "Compte de {$data['username']} créé avec le mot de passe défini.";
+        $this->setFlash('success', $msg);
+        $this->redirect('/admin/users');
+    }
+
+    /**
+     * Construit l'email HTML de création de compte.
+     */
+    private function buildAccountCreatedEmail(string $username, string $email, string $resetLink, string $durationLabel): string
+    {
+        $escapedUsername = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
+        $escapedEmail = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+    <div style="background: linear-gradient(135deg, #4361ee, #3a0ca3); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px;">🎲 Scores</h1>
+        <p style="margin: 8px 0 0; opacity: 0.9;">Bienvenue !</p>
+    </div>
+    <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 12px 12px;">
+        <p>Bonjour <strong>{$escapedUsername}</strong>,</p>
+        <p>Un compte a été créé pour vous sur <strong>Scores</strong> avec l'adresse <strong>{$escapedEmail}</strong>.</p>
+        <p>Cliquez sur le bouton ci-dessous pour définir votre mot de passe et accéder à votre compte :</p>
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{$resetLink}" style="display: inline-block; background: #4361ee; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                Définir mon mot de passe
+            </a>
+        </div>
+        <p style="color: #666; font-size: 14px;">Ce lien est valable <strong>{$durationLabel}</strong> et ne peut être utilisé qu'une seule fois.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="color: #999; font-size: 12px;">Si le bouton ne fonctionne pas, copiez-collez ce lien :<br><a href="{$resetLink}" style="color: #4361ee; word-break: break-all;">{$resetLink}</a></p>
+    </div>
+</body>
+</html>
+HTML;
+    }
+
     /**
      * Prendre le contrôle d'un compte utilisateur (superadmin uniquement).
      */
