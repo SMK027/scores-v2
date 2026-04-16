@@ -1,5 +1,6 @@
 <div class="page-header">
     <h1>🕹️ Jeux en ligne</h1>
+    <a href="/spaces/<?= $currentSpace['id'] ?>/lobbies" class="btn btn-outline btn-sm">🏠 Salons de jeu</a>
 </div>
 
 <?php

@@ -37,6 +37,7 @@ use App\Controllers\LeaderboardController;
 use App\Controllers\MemberCardController;
 use App\Controllers\ContactController;
 use App\Controllers\InteractiveGameController;
+use App\Controllers\LobbyController;
 use App\Controllers\Api\AuthApiController;
 use App\Controllers\Api\SpaceApiController;
 use App\Controllers\Api\GameApiController;
@@ -324,6 +325,23 @@ $router->post('/spaces/{id}/play/{sid}/resume', InteractiveGameController::class
 $router->get('/spaces/{id}/play/{sid}/state', InteractiveGameController::class, 'state');
 $router->post('/spaces/{id}/play/{sid}/play', InteractiveGameController::class, 'play');
 $router->post('/spaces/{id}/play/{sid}/replay', InteractiveGameController::class, 'replay');
+
+// ============================================================
+// Lobbies (salons de jeu)
+// ============================================================
+$router->get('/spaces/{id}/lobbies', LobbyController::class, 'index');
+$router->post('/spaces/{id}/lobbies/create', LobbyController::class, 'create');
+$router->get('/spaces/{id}/lobbies/{lid}', LobbyController::class, 'show');
+$router->post('/spaces/{id}/lobbies/{lid}/join', LobbyController::class, 'join');
+$router->post('/spaces/{id}/lobbies/{lid}/leave', LobbyController::class, 'leave');
+$router->post('/spaces/{id}/lobbies/{lid}/close', LobbyController::class, 'close');
+$router->post('/spaces/{id}/lobbies/{lid}/invite', LobbyController::class, 'invite');
+$router->post('/spaces/{id}/lobbies/{lid}/launch', LobbyController::class, 'launch');
+$router->get('/spaces/{id}/lobbies/{lid}/state', LobbyController::class, 'state');
+$router->get('/spaces/{id}/lobbies/{lid}/search-members', LobbyController::class, 'searchMembers');
+$router->post('/spaces/{id}/lobbies/invitations/{invId}/accept', LobbyController::class, 'acceptInvite');
+$router->post('/spaces/{id}/lobbies/invitations/{invId}/decline', LobbyController::class, 'declineInvite');
+$router->get('/spaces/{id}/play/{sid}/lobby', LobbyController::class, 'returnToLobby');
 
 // ============================================================
 // Statistiques

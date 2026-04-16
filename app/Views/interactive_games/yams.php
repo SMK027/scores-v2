@@ -107,6 +107,9 @@ $categories = [
                     <?= csrf_field() ?>
                     <button type="submit" class="btn btn-primary btn-sm">🔄 Rejouer</button>
                 </form>
+                <?php if (!empty($lobbyId)): ?>
+                    <a href="/spaces/<?= $currentSpace['id'] ?>/play/<?= $session['id'] ?>/lobby" class="btn btn-outline btn-sm" style="margin-top:.5rem;">🏠 Retour au salon</a>
+                <?php endif; ?>
             <?php endif; ?>
         <?php elseif ($session['status'] === 'cancelled'): ?>
             <span class="badge badge-secondary">Partie annulée</span>
@@ -267,6 +270,7 @@ $categories = [
     const canDevMode = <?= $isGlobalStaff ? 'true' : 'false' ?>;
     let devMode = false;
     const isSolo = <?= $isSolo ? 'true' : 'false' ?>;
+    const lobbyId = <?= !empty($lobbyId) ? (int)$lobbyId : 'null' ?>;
 
     let currentState = <?= json_encode($state) ?>;
     let currentTurn = <?= $session['current_turn'] ? (int)$session['current_turn'] : 'null' ?>;
@@ -588,6 +592,9 @@ $categories = [
         html += `<form method="POST" action="/spaces/${spaceId}/play/${sessionId}/replay" style="margin-top:.5rem;display:inline-block;">`
              + `<input type="hidden" name="csrf_token" value="${csrfToken}">`
              + `<button type="submit" class="btn btn-primary btn-sm">🔄 Rejouer</button></form>`;
+        if (lobbyId) {
+            html += ` <a href="/spaces/${spaceId}/play/${sessionId}/lobby" class="btn btn-outline btn-sm" style="margin-top:.5rem;">🏠 Retour au salon</a>`;
+        }
         body.innerHTML = html;
         if (btnRoll) btnRoll.style.display = 'none';
     }

@@ -97,7 +97,7 @@ class InteractiveGameSession extends Model
     /**
      * Crée une nouvelle session.
      */
-    public function createSession(int $spaceId, string $gameKey, int $userId, int $maxPlayers = 2, bool $vsBot = false, ?string $botDifficulty = null, int $gridSize = 3, int $alignCount = 3): int
+    public function createSession(int $spaceId, string $gameKey, int $userId, int $maxPlayers = 2, bool $vsBot = false, ?string $botDifficulty = null, int $gridSize = 3, int $alignCount = 3, ?int $lobbyId = null): int
     {
         if ($vsBot) {
             $maxPlayers = 2;
@@ -115,10 +115,11 @@ class InteractiveGameSession extends Model
         $status = ($isSolo || $vsBot) ? 'in_progress' : 'waiting';
 
         $this->query(
-            "INSERT INTO {$this->table} (space_id, game_key, max_players, status, created_by, player1_id, current_turn, game_state)
-             VALUES (:space_id, :game_key, :max_players, :status, :created_by, :player1_id, :current_turn, :game_state)",
+            "INSERT INTO {$this->table} (space_id, lobby_id, game_key, max_players, status, created_by, player1_id, current_turn, game_state)
+             VALUES (:space_id, :lobby_id, :game_key, :max_players, :status, :created_by, :player1_id, :current_turn, :game_state)",
             [
                 'space_id'     => $spaceId,
+                'lobby_id'     => $lobbyId,
                 'game_key'     => $gameKey,
                 'max_players'  => $maxPlayers,
                 'status'       => $status,

@@ -73,6 +73,9 @@ $gridLabel = \App\Models\InteractiveGameSession::MORPION_GRIDS[$gridSize]['label
                     <?= csrf_field() ?>
                     <button type="submit" class="btn btn-primary btn-sm">🔄 Rejouer</button>
                 </form>
+                <?php if (!empty($lobbyId)): ?>
+                    <a href="/spaces/<?= $currentSpace['id'] ?>/play/<?= $session['id'] ?>/lobby" class="btn btn-outline btn-sm" style="margin-top:.5rem;">🏠 Retour au salon</a>
+                <?php endif; ?>
             <?php endif; ?>
         <?php elseif ($session['status'] === 'cancelled'): ?>
             <span class="badge badge-secondary">Partie annulée</span>
@@ -110,6 +113,8 @@ $gridLabel = \App\Models\InteractiveGameSession::MORPION_GRIDS[$gridSize]['label
     const playUrl = `/spaces/${spaceId}/play/${sessionId}/play`;
     const gridSize = <?= $gridSize ?>;
     const totalCells = gridSize * gridSize;
+
+    const lobbyId = <?= !empty($lobbyId) ? (int)$lobbyId : 'null' ?>;
 
     let currentState = <?= json_encode($state) ?>;
     let currentTurn = <?= $session['current_turn'] ? (int)$session['current_turn'] : 'null' ?>;
@@ -159,6 +164,9 @@ $gridLabel = \App\Models\InteractiveGameSession::MORPION_GRIDS[$gridSize]['label
         html += `<form method="POST" action="/spaces/${spaceId}/play/${sessionId}/replay" style="margin-top:.5rem;display:inline-block;">`
              + `<input type="hidden" name="csrf_token" value="${csrfToken}">`
              + `<button type="submit" class="btn btn-primary btn-sm">🔄 Rejouer</button></form>`;
+        if (lobbyId) {
+            html += ` <a href="/spaces/${spaceId}/play/${sessionId}/lobby" class="btn btn-outline btn-sm" style="margin-top:.5rem;">🏠 Retour au salon</a>`;
+        }
         body.innerHTML = html;
     }
 

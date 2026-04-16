@@ -222,6 +222,7 @@ class InteractiveGameController extends Controller
             'session'       => $session,
             'currentUserId' => $this->getCurrentUserId(),
             'isGlobalStaff' => Middleware::isGlobalStaff(),
+            'lobbyId'       => $session['lobby_id'] ? (int) $session['lobby_id'] : null,
         ]);
     }
 
