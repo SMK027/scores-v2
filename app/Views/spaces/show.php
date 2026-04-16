@@ -28,7 +28,7 @@
         <h3>Actions rapides</h3>
     </div>
     <div class="card-body">
-        <div class="btn-group">
+        <div class="btn-group space-quick-actions">
             <a href="/spaces/<?= $currentSpace['id'] ?>/games/create" class="btn btn-primary">🎮 Nouvelle partie</a>
             <a href="/spaces/<?= $currentSpace['id'] ?>/players/create" class="btn btn-outline">👤 Ajouter un joueur</a>
             <a href="/spaces/<?= $currentSpace['id'] ?>/game-types/create" class="btn btn-outline">🃏 Nouveau type de jeu</a>
@@ -129,7 +129,7 @@
 <?php endif; ?>
 <?php if ($currentSpace['created_by'] != current_user_id()): ?>
 <div class="card mt-2" style="border-color:var(--warning,#f0ad4e);">
-    <div class="card-body d-flex justify-between align-center">
+    <div class="card-body d-flex justify-between align-center space-leave-card">
         <div>
             <strong>Quitter cet espace</strong>
             <p class="text-muted text-small" style="margin:0.25rem 0 0;">Vous ne pourrez plus accéder à cet espace ni à ses données.</p>

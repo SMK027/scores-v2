@@ -1545,6 +1545,26 @@ select.form-control {
 }
 
 /* -----------------------------------------------------------
+   Espaces & Lobbies - Layout de base
+   ----------------------------------------------------------- */
+.lobby-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.lobby-create-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.spaces-search-input {
+    max-width: 320px;
+}
+
+/* -----------------------------------------------------------
    Responsive - Mobile
    ----------------------------------------------------------- */
 @media (max-width: 768px) {
@@ -1749,6 +1769,90 @@ select.form-control {
 
     .stat-card .stat-value {
         font-size: 1.5rem;
+    }
+
+    /* --- Espaces & Lobbies mobile --- */
+    .lobby-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .lobby-create-fields {
+        flex-direction: column;
+    }
+
+    .lobby-create-fields > div,
+    .lobby-create-fields > button {
+        width: 100%;
+    }
+
+    .lobby-create-fields select,
+    .lobby-create-fields input {
+        width: 100%;
+    }
+
+    .spaces-search-input {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .space-invite-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .space-invite-form .form-group {
+        min-width: 0 !important;
+        width: 100% !important;
+        flex: none !important;
+    }
+
+    .space-invite-form .btn {
+        width: 100%;
+    }
+
+    .space-leave-card {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.75rem;
+    }
+
+    .space-leave-card form {
+        width: 100%;
+    }
+
+    .space-leave-card .btn {
+        width: 100%;
+    }
+
+    .space-quick-actions {
+        flex-direction: column;
+    }
+
+    .space-quick-actions .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .member-actions-cell {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .member-actions-cell form {
+        width: 100%;
+    }
+
+    .member-actions-cell .d-flex {
+        flex-wrap: wrap;
+    }
+
+    .member-actions-cell select {
+        width: 100% !important;
+        font-size: 0.85rem !important;
+    }
+
+    .member-actions-cell .btn {
+        width: 100%;
     }
 }
 

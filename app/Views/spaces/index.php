@@ -12,7 +12,7 @@
     </div>
     <div class="mt-1">
         <input type="search" id="spaces-search" placeholder="Rechercher un espace…"
-               class="form-control" style="max-width:320px;"
+               class="form-control spaces-search-input"
                aria-label="Rechercher un espace">
     </div>
 </div>

@@ -43,14 +43,14 @@
     <div class="card-body">
         <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/lobbies/create" class="lobby-create-form">
             <?= csrf_field() ?>
-            <div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-end;">
+            <div class="lobby-create-fields">
                 <div>
                     <label class="text-small">Nom du salon</label>
-                    <input type="text" name="name" required maxlength="100" placeholder="Mon salon" style="padding:.35rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);width:200px;">
+                    <input type="text" name="name" required maxlength="100" placeholder="Mon salon" class="form-control" style="padding:.35rem .5rem;">
                 </div>
                 <div>
                     <label class="text-small">Jeu</label>
-                    <select name="game_key" id="lobby-game-select" style="padding:.35rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);">
+                    <select name="game_key" id="lobby-game-select" class="form-control" style="padding:.35rem .5rem;">
                         <?php foreach ($games as $key => $g): ?>
                         <option value="<?= $key ?>" data-min="<?= $g['min_players'] ?>" data-max="<?= $g['max_players'] ?>"><?= e($g['icon'] . ' ' . $g['name']) ?></option>
                         <?php endforeach; ?>
@@ -58,19 +58,19 @@
                 </div>
                 <div>
                     <label class="text-small">Visibilité</label>
-                    <select name="visibility" style="padding:.35rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);">
+                    <select name="visibility" class="form-control" style="padding:.35rem .5rem;">
                         <option value="public">🌐 Public</option>
                         <option value="private">🔒 Privé</option>
                     </select>
                 </div>
                 <div id="lobby-max-players-wrap">
                     <label class="text-small">Joueurs max</label>
-                    <select name="max_players" id="lobby-max-players" style="padding:.35rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);">
+                    <select name="max_players" id="lobby-max-players" class="form-control" style="padding:.35rem .5rem;">
                     </select>
                 </div>
                 <div id="lobby-grid-wrap" style="display:none;">
                     <label class="text-small">Grille</label>
-                    <select name="grid_size" id="lobby-grid-size" style="padding:.35rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);">
+                    <select name="grid_size" id="lobby-grid-size" class="form-control" style="padding:.35rem .5rem;">
                         <?php foreach ($grids as $sz => $info): ?>
                         <option value="<?= $sz ?>" data-aligns="<?= e(json_encode($info['aligns'])) ?>"><?= e($info['label']) ?></option>
                         <?php endforeach; ?>
@@ -78,7 +78,7 @@
                 </div>
                 <div id="lobby-align-wrap" style="display:none;">
                     <label class="text-small">Alignement</label>
-                    <select name="align_count" id="lobby-align-count" style="padding:.35rem .5rem;border-radius:4px;border:1px solid var(--border,#e5e7eb);"></select>
+                    <select name="align_count" id="lobby-align-count" class="form-control" style="padding:.35rem .5rem;"></select>
                 </div>
                 <button type="submit" class="btn btn-primary btn-sm">Créer</button>
             </div>

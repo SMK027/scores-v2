@@ -9,7 +9,7 @@
     </div>
     <div class="card-body">
         <p class="text-muted text-small mb-2">L'utilisateur recevra une invitation qu'il pourra accepter ou refuser.</p>
-        <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/members/add" class="d-flex gap-1 flex-wrap align-center">
+        <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/members/add" class="d-flex gap-1 flex-wrap align-center space-invite-form">
             <?= csrf_field() ?>
             <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0;">
                 <input type="text" name="username" class="form-control" placeholder="Nom d'utilisateur" required>
@@ -86,7 +86,7 @@
 <!-- Quitter l'espace -->
 <?php if ($currentSpace['created_by'] != current_user_id()): ?>
 <div class="card mb-3" style="border-color:var(--warning,#f0ad4e);">
-    <div class="card-body d-flex justify-between align-center">
+    <div class="card-body d-flex justify-between align-center space-leave-card">
         <div>
             <strong>Quitter cet espace</strong>
             <p class="text-muted text-small" style="margin:0.25rem 0 0;">Vous ne pourrez plus accéder à cet espace ni à ses données.</p>
@@ -174,7 +174,7 @@
                             <td class="text-muted text-small"><?= format_date($m['created_at'], 'd/m/Y') ?></td>
                             <td class="text-right">
                                 <?php if ($m['user_id'] != current_user_id() && $m['user_id'] != $currentSpace['created_by'] && $spaceRole === 'admin'): ?>
-                                    <div class="d-flex gap-1 justify-between">
+                                    <div class="d-flex gap-1 justify-between member-actions-cell">
                                         <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/members/<?= $m['id'] ?>/role"
                                               class="d-flex gap-1 align-center">
                                             <?= csrf_field() ?>
