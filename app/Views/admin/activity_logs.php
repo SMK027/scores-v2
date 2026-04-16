@@ -214,7 +214,7 @@ $detailKeyLabels = [
 <!-- Filtres -->
 <form method="GET" action="/admin/logs" class="card mb-3">
     <div class="card-body">
-        <div class="d-flex gap-1 flex-wrap align-items-end">
+        <div class="d-flex gap-1 flex-wrap align-items-end admin-filters">
             <div>
                 <label class="form-label">Portée</label>
                 <select name="scope" class="form-control" style="min-width:140px;">
@@ -250,7 +250,7 @@ $detailKeyLabels = [
             </div>
         <?php else: ?>
             <div class="table-responsive">
-                <table class="table">
+                <table class="table table-mobile-cards">
                     <thead>
                         <tr>
                             <th>Date</th>
@@ -265,8 +265,8 @@ $detailKeyLabels = [
                     <tbody>
                         <?php foreach ($logs as $log): ?>
                             <tr>
-                                <td class="text-muted text-small" style="white-space:nowrap;"><?= date('d/m/Y H:i:s', strtotime($log['created_at'])) ?></td>
-                                <td>
+                                <td data-label="Date" class="text-muted text-small" style="white-space:nowrap;"><?= date('d/m/Y H:i:s', strtotime($log['created_at'])) ?></td>
+                                <td data-label="Portée">
                                     <?php $badgeClass = $scopeBadges[$log['scope']] ?? 'badge-secondary'; ?>
                                     <span class="badge <?= $badgeClass ?>" style="font-size:0.7em;">
                                         <?= $scopeLabels[$log['scope']] ?? e($log['scope']) ?>
@@ -275,7 +275,7 @@ $detailKeyLabels = [
                                         <?php endif; ?>
                                     </span>
                                 </td>
-                                <td>
+                                <td data-label="Action">
                                     <?php $label = $actionLabels[$log['action']] ?? null; ?>
                                     <?php if ($label): ?>
                                         <span title="<?= e($log['action']) ?>"><?= $label ?></span>
@@ -283,7 +283,7 @@ $detailKeyLabels = [
                                         <code style="font-size:0.85em;"><?= e($log['action']) ?></code>
                                     <?php endif; ?>
                                 </td>
-                                <td>
+                                <td data-label="Utilisateur">
                                     <?php if ($log['username']): ?>
                                         <strong><?= e($log['username']) ?></strong>
                                     <?php elseif ($log['session_id']): ?>
@@ -292,7 +292,7 @@ $detailKeyLabels = [
                                         <span class="text-muted">—</span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="text-small">
+                                <td data-label="Entité" class="text-small">
                                     <?php if ($log['entity_type']): ?>
                                         <?= $entityLabels[$log['entity_type']] ?? e($log['entity_type']) ?>
                                         <?php if ($log['entity_id']): ?>
@@ -302,8 +302,8 @@ $detailKeyLabels = [
                                         <span class="text-muted">—</span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="text-muted text-small"><?= e($log['ip_address'] ?? '—') ?></td>
-                                <td class="text-small" style="max-width:300px;">
+                                <td data-label="IP" class="text-muted text-small"><?= e($log['ip_address'] ?? '—') ?></td>
+                                <td data-label="Détails" class="text-small" style="max-width:300px;">
                                     <?php if ($log['details']): ?>
                                         <?php
                                             $details = json_decode($log['details'], true);

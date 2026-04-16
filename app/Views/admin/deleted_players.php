@@ -5,7 +5,7 @@
 
 <div class="card mb-3">
     <div class="card-body">
-        <form method="GET" action="/admin/players/deleted" class="d-flex gap-1 flex-wrap align-center">
+        <form method="GET" action="/admin/players/deleted" class="d-flex gap-1 flex-wrap align-center admin-filters">
             <input type="text"
                    name="q"
                    class="form-control"
@@ -29,7 +29,7 @@
         </p>
 
         <div class="table-responsive">
-            <table class="table">
+            <table class="table table-mobile-cards">
                 <thead>
                     <tr>
                         <th>Joueur</th>
@@ -47,21 +47,21 @@
                     <?php else: ?>
                         <?php foreach ($players as $player): ?>
                             <tr>
-                                <td>
+                                <td data-label="Joueur">
                                     <strong><?= e($player['name']) ?></strong>
                                     <div class="text-muted text-small">ID #<?= (int) $player['id'] ?></div>
                                 </td>
-                                <td>
+                                <td data-label="Espace">
                                     <a href="/spaces/<?= (int) $player['space_id'] ?>">
                                         <?= e($player['space_name']) ?>
                                     </a>
                                 </td>
-                                <td>
+                                <td data-label="Compte lié">
                                     <?= !empty($player['linked_username']) ? e($player['linked_username']) : '<span class="text-muted">Aucun</span>' ?>
                                 </td>
-                                <td class="text-muted text-small"><?= format_date($player['deleted_at']) ?></td>
-                                <td class="text-right">
-                                    <form method="POST" action="/admin/players/<?= (int) $player['id'] ?>/restore" class="d-flex gap-1 justify-end" style="display:inline-flex;flex-wrap:wrap;">
+                                <td data-label="Supprimé le" class="text-muted text-small"><?= format_date($player['deleted_at']) ?></td>
+                                <td class="text-right td-actions">
+                                    <form method="POST" action="/admin/players/<?= (int) $player['id'] ?>/restore" class="d-flex gap-1 justify-end admin-actions" style="display:inline-flex;flex-wrap:wrap;">
                                         <?= csrf_field() ?>
                                         <input type="text"
                                                name="requested_by"

@@ -10,7 +10,7 @@
 
 <div class="card mb-3">
     <div class="card-body">
-        <form method="GET" action="/admin/users" class="d-flex gap-1 flex-wrap align-center">
+        <form method="GET" action="/admin/users" class="d-flex gap-1 flex-wrap align-center admin-filters">
             <input type="text" name="username" class="form-control" placeholder="Filtrer par pseudo"
                    value="<?= e($filters['username'] ?? '') ?>" style="max-width:220px;">
 
@@ -40,7 +40,7 @@
 <div class="card">
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table">
+            <table class="table table-mobile-cards">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -56,20 +56,20 @@
                 <tbody>
                     <?php foreach ($users as $user): ?>
                         <tr>
-                            <td class="text-muted"><?= $user['id'] ?></td>
-                            <td>
+                            <td data-label="ID" class="text-muted"><?= $user['id'] ?></td>
+                            <td data-label="Utilisateur">
                                 <strong><?= e($user['username']) ?></strong>
                             </td>
-                            <td class="text-muted"><?= e($user['email']) ?></td>
-                            <td>
+                            <td data-label="Email" class="text-muted"><?= e($user['email']) ?></td>
+                            <td data-label="Rôle">
                                 <span class="badge <?= $user['global_role'] === 'superadmin' ? 'badge-danger' : ($user['global_role'] === 'admin' ? 'badge-warning' : ($user['global_role'] === 'moderator' ? 'badge-info' : '')) ?>">
                                     <?= global_role_label($user['global_role']) ?>
                                 </span>
                             </td>
-                            <td class="text-muted text-small"><?= format_date($user['created_at']) ?></td>
+                            <td data-label="Inscrit le" class="text-muted text-small"><?= format_date($user['created_at']) ?></td>
                             <?php if (in_array(current_global_role(), ['admin', 'superadmin'], true)): ?>
-                                <td class="text-right">
-                                    <div class="d-flex gap-1 justify-end" style="display:inline-flex;flex-wrap:wrap;">
+                                <td class="text-right td-actions">
+                                    <div class="d-flex gap-1 justify-end admin-actions" style="display:inline-flex;flex-wrap:wrap;">
                                         <?php if (in_array($user['global_role'], ['admin', 'superadmin'], true)): ?>
                                             <span class="text-muted text-small">Compte protégé</span>
                                         <?php else: ?>

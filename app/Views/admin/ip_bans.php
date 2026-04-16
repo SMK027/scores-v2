@@ -14,7 +14,7 @@
     <div class="alert alert-info">Aucun bannissement IP trouvé.</div>
 <?php else: ?>
     <div class="table-responsive">
-        <table class="table">
+        <table class="table table-mobile-cards">
             <thead>
                 <tr>
                     <th>Adresse IP</th>
@@ -34,18 +34,18 @@
                         $isActive  = $ban['is_active'] && !$isExpired;
                     ?>
                     <tr style="<?= ($isRevoked || $isExpired) ? 'opacity:0.6;' : '' ?>">
-                        <td><strong><?= e($ban['ip_address']) ?></strong></td>
-                        <td><?= e(mb_strimwidth($ban['reason'], 0, 60, '…')) ?></td>
-                        <td><?= $ban['banned_by_username'] ? e($ban['banned_by_username']) : '<em>Automatique</em>' ?></td>
-                        <td><?= date('d/m/Y H:i', strtotime($ban['created_at'])) ?></td>
-                        <td>
+                        <td data-label="IP"><strong><?= e($ban['ip_address']) ?></strong></td>
+                        <td data-label="Raison"><?= e(mb_strimwidth($ban['reason'], 0, 60, '…')) ?></td>
+                        <td data-label="Banni par"><?= $ban['banned_by_username'] ? e($ban['banned_by_username']) : '<em>Automatique</em>' ?></td>
+                        <td data-label="Date"><?= date('d/m/Y H:i', strtotime($ban['created_at'])) ?></td>
+                        <td data-label="Expiration">
                             <?php if ($ban['expires_at'] === null): ?>
                                 <span class="badge badge-danger">Permanent</span>
                             <?php else: ?>
                                 <?= date('d/m/Y H:i', strtotime($ban['expires_at'])) ?>
                             <?php endif; ?>
                         </td>
-                        <td>
+                        <td data-label="Statut">
                             <?php if ($isRevoked): ?>
                                 <span class="badge badge-secondary">Annulé</span>
                             <?php elseif ($isExpired): ?>
@@ -54,7 +54,7 @@
                                 <span class="badge badge-danger">Actif</span>
                             <?php endif; ?>
                         </td>
-                        <td>
+                        <td class="td-actions">
                             <?php if ($isActive && in_array(current_global_role(), ['admin', 'superadmin'])): ?>
                                 <form method="POST" action="/admin/bans/ips/<?= $ban['id'] ?>/revoke" style="display:inline;">
                                     <?= csrf_field() ?>

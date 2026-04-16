@@ -23,7 +23,7 @@
             </div>
         <?php else: ?>
             <div class="table-responsive">
-                <table class="table">
+                <table class="table table-mobile-cards">
                     <thead>
                         <tr>
                             <th>Utilisateur</th>
@@ -45,25 +45,25 @@
                                 $isRevoked = !$ban['is_active'];
                             ?>
                             <tr style="<?= $isRevoked ? 'opacity:0.5;' : ($isExpired ? 'opacity:0.7;' : '') ?>">
-                                <td>
+                                <td data-label="Utilisateur">
                                     <strong><?= e($ban['user_username']) ?></strong>
                                     <div class="text-muted text-small"><?= e($ban['user_email']) ?></div>
                                 </td>
-                                <td style="max-width:250px;">
+                                <td data-label="Raison" style="max-width:250px;">
                                     <span title="<?= e($ban['reason']) ?>"><?= e(truncate($ban['reason'], 80)) ?></span>
                                 </td>
-                                <td class="text-muted">
+                                <td data-label="Banni par" class="text-muted">
                                     <?= $ban['banned_by_username'] ? e($ban['banned_by_username']) : '<em>Automatique</em>' ?>
                                 </td>
-                                <td class="text-muted text-small"><?= format_date($ban['created_at']) ?></td>
-                                <td>
+                                <td data-label="Date" class="text-muted text-small"><?= format_date($ban['created_at']) ?></td>
+                                <td data-label="Expiration">
                                     <?php if ($ban['expires_at']): ?>
                                         <span class="text-small"><?= format_date($ban['expires_at']) ?></span>
                                     <?php else: ?>
                                         <span class="badge badge-danger" style="font-size:0.7em;">Permanent</span>
                                     <?php endif; ?>
                                 </td>
-                                <td>
+                                <td data-label="Statut">
                                     <?php if ($isRevoked): ?>
                                         <span class="badge badge-secondary" style="font-size:0.7em;">Annulé</span>
                                         <?php if ($ban['revoked_by_username']): ?>
@@ -76,7 +76,7 @@
                                     <?php endif; ?>
                                 </td>
                                 <?php if (in_array(current_global_role(), ['admin', 'superadmin'])): ?>
-                                    <td class="text-right">
+                                    <td class="text-right td-actions">
                                         <?php if ($isActive): ?>
                                             <form method="POST" action="/admin/bans/users/<?= $ban['id'] ?>/revoke" style="display:inline;">
                                                 <?= csrf_field() ?>

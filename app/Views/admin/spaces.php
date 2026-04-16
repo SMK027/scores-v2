@@ -5,7 +5,7 @@
 
 <div class="card mb-3">
     <div class="card-body">
-        <form method="GET" action="/admin/spaces" class="d-flex gap-1 flex-wrap align-center">
+        <form method="GET" action="/admin/spaces" class="d-flex gap-1 flex-wrap align-center admin-filters">
             <input type="text" name="search" class="form-control" placeholder="Rechercher par nom ou créateur…"
                    value="<?= e($search ?? '') ?>" style="max-width:250px;">
             <select name="status" class="form-control" style="max-width:200px;">
@@ -34,7 +34,7 @@
 <div class="card">
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table">
+            <table class="table table-mobile-cards">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -49,19 +49,19 @@
                 <tbody>
                     <?php foreach ($spaces as $space): ?>
                         <tr>
-                            <td class="text-muted"><?= $space['id'] ?></td>
-                            <td>
+                            <td data-label="ID" class="text-muted"><?= $space['id'] ?></td>
+                            <td data-label="Espace">
                                 <a href="/spaces/<?= $space['id'] ?>"><strong><?= e($space['name']) ?></strong></a>
                                 <?php if (!empty($space['description'])): ?>
                                     <div class="text-muted text-small"><?= e(truncate($space['description'], 60)) ?></div>
                                 <?php endif; ?>
                             </td>
-                            <td class="text-muted"><?= e($space['owner_name']) ?></td>
-                            <td class="text-right"><?= $space['member_count'] ?></td>
-                            <td class="text-right"><?= $space['game_count'] ?></td>
-                            <td class="text-muted text-small"><?= format_date($space['created_at']) ?></td>
-                            <td class="text-right">
-                                <div class="d-flex gap-1 justify-end">
+                            <td data-label="Créateur" class="text-muted"><?= e($space['owner_name']) ?></td>
+                            <td data-label="Membres" class="text-right"><?= $space['member_count'] ?></td>
+                            <td data-label="Parties" class="text-right"><?= $space['game_count'] ?></td>
+                            <td data-label="Créé le" class="text-muted text-small"><?= format_date($space['created_at']) ?></td>
+                            <td class="text-right td-actions">
+                                <div class="d-flex gap-1 justify-end admin-actions">
                                     <a href="/spaces/<?= $space['id'] ?>" class="btn btn-sm btn-outline">Voir</a>
                                     <a href="/admin/spaces/<?= $space['id'] ?>/restrictions" class="btn btn-sm btn-outline<?= !empty($space['restrictions']) ? '-danger' : '' ?>">
                                         <?= !empty($space['restrictions']) ? '🔒 Restreint' : '🔒 Restrictions' ?>

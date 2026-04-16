@@ -1663,6 +1663,93 @@ select.form-control {
     .stats-evolution-chart-wrap {
         height: 260px;
     }
+
+    /* ── Admin mobile ── */
+    .admin-filters {
+        flex-direction: column;
+    }
+
+    .admin-filters .form-control,
+    .admin-filters select.form-control {
+        max-width: 100% !important;
+        min-width: 0 !important;
+        width: 100%;
+    }
+
+    .admin-filters .btn {
+        width: 100%;
+    }
+
+    .admin-two-col {
+        grid-template-columns: 1fr !important;
+    }
+
+    .admin-actions {
+        flex-direction: column;
+        gap: 0.35rem !important;
+    }
+
+    .admin-actions .btn,
+    .admin-actions form {
+        width: 100%;
+    }
+
+    .admin-actions form .btn {
+        width: 100%;
+    }
+
+    /* Table → Cards sur mobile */
+    .table-mobile-cards thead {
+        display: none;
+    }
+
+    .table-mobile-cards tbody tr {
+        display: flex;
+        flex-direction: column;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--gray-light);
+        gap: 0.25rem;
+    }
+
+    .table-mobile-cards tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    .table-mobile-cards td {
+        display: flex;
+        align-items: flex-start;
+        padding: 0.15rem 0 !important;
+        border-bottom: none !important;
+        font-size: 0.85rem;
+    }
+
+    .table-mobile-cards td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--gray);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        min-width: 90px;
+        flex-shrink: 0;
+        padding-top: 0.1rem;
+    }
+
+    .table-mobile-cards td:empty::before {
+        display: none;
+    }
+
+    .table-mobile-cards td.td-actions {
+        flex-direction: column;
+        padding-top: 0.35rem !important;
+    }
+
+    .table-mobile-cards td.td-actions::before {
+        display: none;
+    }
+
+    .stat-card .stat-value {
+        font-size: 1.5rem;
+    }
 }
 
 /* -----------------------------------------------------------
@@ -1707,6 +1794,13 @@ select.form-control {
 
     .stats-evolution-chart-wrap {
         height: 230px;
+    }
+
+    .pagination a,
+    .pagination span {
+        min-width: 32px;
+        height: 32px;
+        font-size: 0.8rem;
     }
 }
 

@@ -5,7 +5,7 @@
 
 <div class="card mb-3">
     <div class="card-body">
-        <form method="GET" action="/admin/contact" class="d-flex gap-1 flex-wrap align-center">
+        <form method="GET" action="/admin/contact" class="d-flex gap-1 flex-wrap align-center admin-filters">
             <select name="status" class="form-control" style="max-width:200px;">
                 <option value="">Tous les statuts</option>
                 <?php foreach ($statuses as $key => $label): ?>
@@ -35,7 +35,7 @@
     <div class="card">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table">
+                <table class="table table-mobile-cards">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -58,16 +58,16 @@
                             };
                         ?>
                         <tr>
-                            <td><?= $t['id'] ?></td>
-                            <td><?= e($t['space_name']) ?></td>
-                            <td><?= e($t['author_username']) ?></td>
-                            <td><?= e(\App\Models\ContactTicket::CATEGORIES[$t['category']] ?? $t['category']) ?></td>
-                            <td>
+                            <td data-label="#"><?= $t['id'] ?></td>
+                            <td data-label="Espace"><?= e($t['space_name']) ?></td>
+                            <td data-label="Auteur"><?= e($t['author_username']) ?></td>
+                            <td data-label="Catégorie"><?= e(\App\Models\ContactTicket::CATEGORIES[$t['category']] ?? $t['category']) ?></td>
+                            <td data-label="Sujet">
                                 <a href="/admin/contact/<?= $t['id'] ?>"><?= e($t['subject']) ?></a>
                             </td>
-                            <td><span class="badge <?= $statusBadge ?>"><?= e(\App\Models\ContactTicket::STATUSES[$t['status']] ?? $t['status']) ?></span></td>
-                            <td><?= (int) $t['message_count'] ?></td>
-                            <td><?= date('d/m/Y H:i', strtotime($t['updated_at'])) ?></td>
+                            <td data-label="Statut"><span class="badge <?= $statusBadge ?>"><?= e(\App\Models\ContactTicket::STATUSES[$t['status']] ?? $t['status']) ?></span></td>
+                            <td data-label="Messages"><?= (int) $t['message_count'] ?></td>
+                            <td data-label="Mis à jour"><?= date('d/m/Y H:i', strtotime($t['updated_at'])) ?></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>

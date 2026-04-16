@@ -104,7 +104,7 @@
 })();
 </script>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+<div class="admin-two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
     <!-- Derniers inscrits -->
     <div class="card">
         <div class="card-header"><h3>👥 Derniers inscrits</h3></div>
