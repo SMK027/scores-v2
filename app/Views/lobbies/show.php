@@ -78,7 +78,11 @@ $alignCount = $config['align_count'] ?? null;
             <?php else: ?>
                 <?php foreach ($lobby['members'] as $m): ?>
                 <div class="lobby-member" style="display:flex;align-items:center;gap:.75rem;padding:.5rem 0;border-bottom:1px solid var(--border,#e5e7eb);">
-                    <img src="<?= e($m['avatar'] ?? '/uploads/avatars/default.png') ?>" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
+                    <?php if (!empty($m['avatar'])): ?>
+                        <img src="<?= e($m['avatar']) ?>" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
+                    <?php else: ?>
+                        <span style="width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--primary-light);color:var(--white);font-size:0.85rem;font-weight:600;flex-shrink:0;"><?= strtoupper(substr($m['username'], 0, 1)) ?></span>
+                    <?php endif; ?>
                     <span><?= e($m['username']) ?></span>
                     <?php if ((int) $m['user_id'] === (int) $lobby['created_by']): ?>
                         <span class="badge badge-primary" style="font-size:.7em;">👑 Hôte</span>
@@ -185,7 +189,11 @@ $alignCount = $config['align_count'] ?? null;
                 let html = '';
                 data.members.forEach(function(m) {
                     html += '<div class="lobby-member" style="display:flex;align-items:center;gap:.75rem;padding:.5rem 0;border-bottom:1px solid var(--border,#e5e7eb);">';
-                    html += '<img src="' + escapeHtml(m.avatar || '/uploads/avatars/default.png') + '" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">';
+                    if (m.avatar) {
+                        html += '<img src="' + escapeHtml(m.avatar) + '" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">';
+                    } else {
+                        html += '<span style="width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--primary-light);color:var(--white);font-size:0.85rem;font-weight:600;flex-shrink:0;">' + escapeHtml(m.username.charAt(0).toUpperCase()) + '</span>';
+                    }
                     html += '<span>' + escapeHtml(m.username) + '</span>';
                     if (m.user_id === <?= (int) $lobby['created_by'] ?>) {
                         html += ' <span class="badge badge-primary" style="font-size:.7em;">👑 Hôte</span>';
@@ -225,7 +233,11 @@ $alignCount = $config['align_count'] ?? null;
                         let html = '';
                         data.results.forEach(function(u) {
                             html += '<div class="invite-result" style="padding:.5rem .75rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;border-bottom:1px solid var(--border,#e5e7eb);" data-user-id="' + u.id + '">';
-                            html += '<img src="' + escapeHtml(u.avatar || '/uploads/avatars/default.png') + '" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">';
+                            if (u.avatar) {
+                                html += '<img src="' + escapeHtml(u.avatar) + '" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">';
+                            } else {
+                                html += '<span style="width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--primary-light);color:var(--white);font-size:0.7rem;font-weight:600;flex-shrink:0;">' + escapeHtml(u.username.charAt(0).toUpperCase()) + '</span>';
+                            }
                             html += '<span>' + escapeHtml(u.username) + '</span>';
                             html += '</div>';
                         });
