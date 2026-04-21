@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($title ?? 'Accueil') ?> - Scores</title>
+    <meta name="csrf-token" content="<?= csrf_token() ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/css/style.css?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . '/css/style.css') ?>">
 </head>
@@ -44,6 +45,25 @@
                     <?php if (\App\Core\Middleware::isGlobalStaff()): ?>
                         <a href="/admin" class="navbar-link">Administration</a>
                     <?php endif; ?>
+                    <!-- Cloche de notifications -->
+                    <div class="notif-bell" id="notifBell">
+                        <button class="notif-bell-btn" id="notifBellBtn"
+                                aria-label="Notifications" aria-expanded="false"
+                                title="Notifications">
+                            <i class="bi bi-bell"></i>
+                            <span class="notif-badge" id="notifBadge" hidden>0</span>
+                        </button>
+                        <div class="notif-dropdown" id="notifDropdown" hidden>
+                            <div class="notif-dropdown-header">
+                                <strong>Notifications</strong>
+                                <button type="button" id="notifMarkAll" class="btn btn-sm btn-outline"
+                                        style="font-size:.75rem;padding:.2rem .6rem;">Tout lire</button>
+                            </div>
+                            <div class="notif-list" id="notifList">
+                                <p class="notif-empty">Chargement…</p>
+                            </div>
+                        </div>
+                    </div>
                     <div class="navbar-user">
                         <a href="/profile" class="navbar-link navbar-profile-link">
                             <?php if (current_avatar()): ?>

@@ -350,3 +350,179 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 })();
+
+// =========================================================
+// Notifications in-app — polling + dropdown
+// =========================================================
+(function () {
+    var bell = document.getElementById('notifBell');
+    if (!bell) return; // Non connecté
+
+    var bellBtn   = document.getElementById('notifBellBtn');
+    var badge     = document.getElementById('notifBadge');
+    var dropdown  = document.getElementById('notifDropdown');
+    var list      = document.getElementById('notifList');
+    var markAllBtn = document.getElementById('notifMarkAll');
+
+    var isOpen    = false;
+    var lastMaxId = 0;
+    var csrfMeta  = document.querySelector('meta[name="csrf-token"]');
+
+    function getCsrf() {
+        return csrfMeta ? csrfMeta.content : '';
+    }
+
+    // --- Ouvrir / fermer le dropdown ---
+    bellBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        isOpen = !isOpen;
+        dropdown.hidden = !isOpen;
+        bellBtn.setAttribute('aria-expanded', String(isOpen));
+        if (isOpen) {
+            loadDropdown();
+        }
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!bell.contains(e.target) && isOpen) {
+            isOpen = false;
+            dropdown.hidden = true;
+            bellBtn.setAttribute('aria-expanded', 'false');
+        }
+    });
+
+    // --- Tout marquer comme lu ---
+    markAllBtn.addEventListener('click', function () {
+        fetch('/notifications/read-all', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'csrf_token=' + encodeURIComponent(getCsrf()),
+        }).then(function () {
+            list.querySelectorAll('.notif-item.unread').forEach(function (el) {
+                el.classList.remove('unread');
+            });
+            updateBadge(0);
+        }).catch(function () {});
+    });
+
+    // --- Charger le dropdown ---
+    function loadDropdown() {
+        fetch('/notifications/poll')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                updateBadge(data.unread_count || 0);
+                renderList(data.notifications || []);
+                if (data.max_id > lastMaxId) { lastMaxId = data.max_id; }
+            })
+            .catch(function () {
+                list.innerHTML = '<p class="notif-empty">Impossible de charger les notifications.</p>';
+            });
+    }
+
+    // --- Polling en arrière-plan (badge + toasts) ---
+    function pollBackground() {
+        var url = '/notifications/poll' + (lastMaxId > 0 ? '?since=' + lastMaxId : '');
+        fetch(url)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                updateBadge(data.unread_count || 0);
+                // Toasts pour les nouvelles notifications
+                if (data.new_items && data.new_items.length > 0) {
+                    data.new_items.forEach(function (n) {
+                        showToast(n.title + ' — ' + n.message, 'info');
+                    });
+                }
+                if (data.max_id > lastMaxId) { lastMaxId = data.max_id; }
+                // Rafraîchir le dropdown s'il est ouvert
+                if (isOpen && data.new_items && data.new_items.length > 0) {
+                    loadDropdown();
+                }
+            })
+            .catch(function () {});
+    }
+
+    // --- Mise à jour du badge ---
+    function updateBadge(count) {
+        var n = parseInt(count, 10) || 0;
+        badge.textContent = n > 99 ? '99+' : String(n);
+        badge.hidden = (n === 0);
+    }
+
+    // --- Rendu de la liste ---
+    function renderList(notifications) {
+        if (!notifications || notifications.length === 0) {
+            list.innerHTML = '<p class="notif-empty">Aucune notification.</p>';
+            return;
+        }
+        var html = '';
+        notifications.forEach(function (n) {
+            var unread = parseInt(n.is_read, 10) === 0;
+            var cls    = 'notif-item' + (unread ? ' unread' : '');
+            var icon   = notifIcon(n.type);
+            var time   = timeAgo(n.created_at);
+            var tag    = n.url ? 'a' : 'div';
+            var href   = n.url ? ' href="' + escHtml(n.url) + '"' : '';
+            html += '<' + tag + ' class="' + cls + '" data-id="' + n.id + '"' + href + '>';
+            html += '<span class="notif-icon">' + icon + '</span>';
+            html += '<div class="notif-content">';
+            html += '<div class="notif-title">' + escHtml(n.title) + '</div>';
+            html += '<div class="notif-msg">' + escHtml(n.message) + '</div>';
+            html += '<div class="notif-time">' + time + '</div>';
+            html += '</div>';
+            html += '</' + tag + '>';
+        });
+        list.innerHTML = html;
+
+        // Marquer comme lu au clic
+        list.querySelectorAll('.notif-item[data-id]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                var id = this.dataset.id;
+                if (this.classList.contains('unread')) {
+                    this.classList.remove('unread');
+                    fetch('/notifications/' + id + '/read', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'csrf_token=' + encodeURIComponent(getCsrf()),
+                    }).then(function () {
+                        var unreadLeft = list.querySelectorAll('.notif-item.unread').length;
+                        updateBadge(unreadLeft);
+                    }).catch(function () {});
+                }
+            });
+        });
+    }
+
+    // --- Icône selon le type ---
+    function notifIcon(type) {
+        var icons = {
+            'lobby.join':            '🎮',
+            'lobby.invite':          '📩',
+            'lobby.invite_accepted': '✅',
+            'lobby.launch':          '🚀',
+            'space.invite':          '🏠',
+            'space.invite_accepted': '✅',
+            'space.invite_declined': '❌',
+        };
+        return icons[type] || '🔔';
+    }
+
+    // --- Utilitaires ---
+    function escHtml(str) {
+        var d = document.createElement('div');
+        d.textContent = str || '';
+        return d.innerHTML;
+    }
+
+    function timeAgo(dateStr) {
+        if (!dateStr) { return ''; }
+        var diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+        if (diff < 60)    { return "à l'instant"; }
+        if (diff < 3600)  { return 'il y a ' + Math.floor(diff / 60) + ' min'; }
+        if (diff < 86400) { return 'il y a ' + Math.floor(diff / 3600) + ' h'; }
+        return 'il y a ' + Math.floor(diff / 86400) + ' j';
+    }
+
+    // --- Démarrage ---
+    setTimeout(pollBackground, 1200);
+    setInterval(pollBackground, 15000);
+})();

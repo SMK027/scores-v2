@@ -299,4 +299,21 @@ class Lobby extends Model
         );
         return (int) $stmt->fetch()['cnt'];
     }
+
+    /**
+     * Récupère les détails d'une invitation lobby (pour notifications).
+     * Retourne : id, lobby_id, invited_user_id, invited_by, status + lobby.name, lobby.space_id, lobby.created_by
+     */
+    public function findInvitationById(int $invId): ?array
+    {
+        $stmt = $this->query(
+            "SELECT li.*, l.name AS lobby_name, l.space_id, l.created_by AS lobby_host_id
+             FROM lobby_invitations li
+             JOIN lobbies l ON l.id = li.lobby_id
+             WHERE li.id = :id",
+            ['id' => $invId]
+        );
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
 }

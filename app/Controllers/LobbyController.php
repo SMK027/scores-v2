@@ -7,8 +7,10 @@ namespace App\Controllers;
 use App\Core\BotAI;
 use App\Core\Controller;
 use App\Core\Middleware;
+use App\Core\Session;
 use App\Models\InteractiveGameSession;
 use App\Models\Lobby;
+use App\Models\Notification;
 use App\Models\Space;
 use App\Models\SpaceMember;
 
@@ -183,6 +185,19 @@ class LobbyController extends Controller
         }
 
         $this->lobbyModel->addMember((int) $lid, $this->getCurrentUserId());
+
+        // Notifier l'hôte qu'un joueur a rejoint
+        $joinerName = Session::get('username') ?? 'Un joueur';
+        if ((int) $lobby['created_by'] !== $this->getCurrentUserId()) {
+            (new Notification())->createForUser(
+                (int) $lobby['created_by'],
+                Notification::TYPE_LOBBY_JOIN,
+                '🎮 Nouveau joueur dans le salon',
+                "{$joinerName} a rejoint le salon « {$lobby['name']} ».",
+                "/spaces/{$id}/lobbies/{$lid}"
+            );
+        }
+
         $this->redirect("/spaces/{$id}/lobbies/{$lid}");
     }
 
@@ -267,6 +282,15 @@ class LobbyController extends Controller
 
         $ok = $this->lobbyModel->invite((int) $lid, $invitedUserId, $this->getCurrentUserId());
         if ($ok) {
+            // Notifier l'utilisateur invité
+            $hostName = Session::get('username') ?? 'L\'hôte';
+            (new Notification())->createForUser(
+                $invitedUserId,
+                Notification::TYPE_LOBBY_INVITE,
+                '📩 Invitation à rejoindre un salon',
+                "{$hostName} vous invite à rejoindre le salon « {$lobby['name']} ».",
+                "/spaces/{$id}/lobbies"
+            );
             $this->setFlash('success', 'Invitation envoyée !');
         } else {
             $this->setFlash('warning', 'Cet utilisateur est déjà invité ou membre.');
@@ -282,8 +306,22 @@ class LobbyController extends Controller
         $ctx = $this->checkAccess($id);
         $this->validateCSRF();
 
+        // Récupérer les détails avant d'accepter pour la notification
+        $invData = $this->lobbyModel->findInvitationById((int) $invId);
+
         $ok = $this->lobbyModel->acceptInvitation((int) $invId, $this->getCurrentUserId());
         if ($ok) {
+            // Notifier l'hôte que l'invitation a été acceptée
+            if ($invData && (int) $invData['lobby_host_id'] !== $this->getCurrentUserId()) {
+                $accepterName = Session::get('username') ?? 'Un joueur';
+                (new Notification())->createForUser(
+                    (int) $invData['lobby_host_id'],
+                    Notification::TYPE_LOBBY_INVITE_ACCEPTED,
+                    '✅ Invitation acceptée',
+                    "{$accepterName} a accepté votre invitation pour le salon « {$invData['lobby_name']} ».",
+                    "/spaces/{$id}/lobbies/" . $invData['lobby_id']
+                );
+            }
             $this->setFlash('success', 'Invitation acceptée !');
         } else {
             $this->setFlash('danger', 'Invitation introuvable ou expirée.');
@@ -385,6 +423,21 @@ class LobbyController extends Controller
 
         // Mettre le lobby en mode « en jeu »
         $this->lobbyModel->setInGame((int) $lid, $sessionId);
+
+        // Notifier tous les membres du lobby (sauf l'hôte qui a lancé)
+        $notifModel = new Notification();
+        foreach ($members as $m) {
+            if ((int) $m['user_id'] === $this->getCurrentUserId()) {
+                continue;
+            }
+            $notifModel->createForUser(
+                (int) $m['user_id'],
+                Notification::TYPE_LOBBY_LAUNCH,
+                '🚀 La partie commence !',
+                "L'hôte a lancé la partie dans le salon « {$lobby['name']} ». À toi de jouer !",
+                "/spaces/{$id}/play/{$sessionId}"
+            );
+        }
 
         $this->redirect("/spaces/{$id}/play/{$sessionId}");
     }

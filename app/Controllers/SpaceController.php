@@ -7,7 +7,9 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\ExpoPushNotifier;
 use App\Core\Middleware;
+use App\Core\Session;
 use App\Models\ActivityLog;
+use App\Models\Notification;
 use App\Models\Space;
 use App\Models\SpaceMember;
 use App\Models\SpaceInvite;
@@ -354,6 +356,16 @@ class SpaceController extends Controller
             (string) ($currentUser['username'] ?? 'Un membre')
         );
 
+        // Notification in-app
+        $inviterName = Session::get('username') ?? 'Un membre';
+        (new Notification())->createForUser(
+            (int) $user['id'],
+            Notification::TYPE_SPACE_INVITE,
+            '\ud83c\udfe0 Invitation \u00e0 un espace',
+            "{$inviterName} vous invite \u00e0 rejoindre l'espace \u00ab {$space['name']} \u00bb.",
+            '/spaces'
+        );
+
         ActivityLog::logSpace((int) $id, 'member.invite', $this->getCurrentUserId(), 'user', $user['id'], ['username' => $username, 'role' => $role]);
 
         $this->setFlash('success', 'Invitation envoyée à ' . $username . '.');
@@ -379,6 +391,17 @@ class SpaceController extends Controller
         $this->invitationModel->accept((int) $invId);
         $this->memberModel->addMember($invitation['space_id'], $this->getCurrentUserId(), $invitation['role']);
 
+        // Notifier l'expéditeur de l'invitation
+        $accepterName = Session::get('username') ?? 'Un utilisateur';
+        $spaceName    = (new Space())->find((int) $invitation['space_id'])['name'] ?? 'un espace';
+        (new Notification())->createForUser(
+            (int) $invitation['invited_by'],
+            Notification::TYPE_SPACE_INVITE_ACCEPTED,
+            '\u2705 Invitation accept\u00e9e',
+            "{$accepterName} a accept\u00e9 votre invitation pour l'espace \u00ab {$spaceName} \u00bb.",
+            '/spaces/' . $invitation['space_id']
+        );
+
         ActivityLog::logSpace($invitation['space_id'], 'member.accept_invite', $this->getCurrentUserId(), 'space_invitation', (int) $invId);
 
         $this->setFlash('success', 'Vous avez rejoint l\'espace !');
@@ -401,6 +424,17 @@ class SpaceController extends Controller
         }
 
         $this->invitationModel->decline((int) $invId);
+
+        // Notifier l'expéditeur du refus
+        $declinerName = Session::get('username') ?? 'Un utilisateur';
+        $spaceName    = (new Space())->find((int) $invitation['space_id'])['name'] ?? 'un espace';
+        (new Notification())->createForUser(
+            (int) $invitation['invited_by'],
+            Notification::TYPE_SPACE_INVITE_DECLINED,
+            '\u274c Invitation refus\u00e9e',
+            "{$declinerName} a refus\u00e9 l'invitation pour l'espace \u00ab {$spaceName} \u00bb.",
+            '/spaces/' . $invitation['space_id']
+        );
 
         ActivityLog::logSpace($invitation['space_id'], 'member.decline_invite', $this->getCurrentUserId(), 'space_invitation', (int) $invId);
 

@@ -38,6 +38,7 @@ use App\Controllers\MemberCardController;
 use App\Controllers\ContactController;
 use App\Controllers\InteractiveGameController;
 use App\Controllers\LobbyController;
+use App\Controllers\NotificationController;
 use App\Controllers\Api\AuthApiController;
 use App\Controllers\Api\SpaceApiController;
 use App\Controllers\Api\GameApiController;
@@ -342,6 +343,13 @@ $router->get('/spaces/{id}/lobbies/{lid}/search-members', LobbyController::class
 $router->post('/spaces/{id}/lobbies/invitations/{invId}/accept', LobbyController::class, 'acceptInvite');
 $router->post('/spaces/{id}/lobbies/invitations/{invId}/decline', LobbyController::class, 'declineInvite');
 $router->get('/spaces/{id}/play/{sid}/lobby', LobbyController::class, 'returnToLobby');
+
+// ============================================================
+// Notifications in-app
+// ============================================================
+$router->get('/notifications/poll', NotificationController::class, 'poll');
+$router->post('/notifications/read-all', NotificationController::class, 'markAllRead');
+$router->post('/notifications/{id}/read', NotificationController::class, 'markRead');
 
 // ============================================================
 // Statistiques
