@@ -220,7 +220,8 @@ class User extends Model
      */
     public function getGlobalStats(int $userId): array
     {
-        // Statistiques de manches
+        // Statistiques de manches — uniquement pour les espaces dont l'utilisateur est membre actuel.
+        // Cohérent avec computeGlobalWinRate() dans ProfileController.
         $stmt = $this->query(
             "SELECT
                 COUNT(*) AS total_rounds,
@@ -235,6 +236,7 @@ class User extends Model
                     ELSE 0
                 END), 0) AS rounds_won
              FROM players p
+             INNER JOIN space_members sm ON sm.space_id = p.space_id AND sm.user_id = :user_id
              INNER JOIN round_scores rs ON rs.player_id = p.id
              INNER JOIN rounds r ON r.id = rs.round_id AND r.status = 'completed'
              INNER JOIN games g ON g.id = r.game_id
@@ -247,11 +249,14 @@ class User extends Model
 
         $totalRounds = (int) ($row['total_rounds'] ?? 0);
         $roundsWon   = (int) ($row['rounds_won']   ?? 0);
-        $winRate     = $totalRounds > 0 ? round($roundsWon / $totalRounds * 100, 1) : 0.0;
+        $winRate     = $totalRounds > 0 ? round($roundsWon / $totalRounds * 100, 2) : 0.0;
 
-        // Nombre d'espaces où l'utilisateur possède un profil joueur
+        // Nombre d'espaces dont l'utilisateur est membre actuel avec un profil joueur
         $stmtSpaces = $this->query(
-            "SELECT COUNT(DISTINCT space_id) AS total_spaces FROM players WHERE user_id = :user_id",
+            "SELECT COUNT(DISTINCT p.space_id) AS total_spaces
+             FROM players p
+             INNER JOIN space_members sm ON sm.space_id = p.space_id AND sm.user_id = :user_id
+             WHERE p.user_id = :user_id",
             ['user_id' => $userId]
         );
         $totalSpaces = (int) ($stmtSpaces->fetchColumn() ?? 0);
