@@ -382,3 +382,22 @@ export type RefereeDashboardResponse = {
   game_types: RefereeGameType[];
   players: RefereePlayer[];
 };
+
+// ─── Notifications in-app ─────────────────────────────────────────────────────
+
+export type NotificationItem = {
+  id: number;
+  type: string;
+  title: string;
+  message: string;
+  url: string | null;
+  is_read: number;
+  created_at: string;
+};
+
+export type NotificationsResponse = {
+  unread_count: number;
+  notifications: NotificationItem[];
+  new_items: NotificationItem[];
+  max_id: number;
+};

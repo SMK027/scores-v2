@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AppState, StyleSheet, View, ActivityIndicator, Platform } from "react-native";
+import { AppState, Pressable, StyleSheet, Text, View, ActivityIndicator, Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { StatusBar } from "expo-status-bar";
@@ -14,6 +14,7 @@ import { CreateGameTypeScreen } from "./screens/CreateGameTypeScreen";
 import { CreateSpaceScreen } from "./screens/CreateSpaceScreen";
 import { CreatePlayerScreen } from "./screens/CreatePlayerScreen";
 import { LoginScreen } from "./screens/LoginScreen";
+import { NotificationsScreen } from "./screens/NotificationsScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { RefereeLoginScreen } from "./screens/RefereeLoginScreen";
 import { RefereeDashboardScreen } from "./screens/RefereeDashboardScreen";
@@ -22,12 +23,14 @@ import { SpaceScreen } from "./screens/SpaceScreen";
 import { SpacesScreen } from "./screens/SpacesScreen";
 import { WelcomeScreen } from "./screens/WelcomeScreen";
 import { ThemeProvider, useAppTheme } from "./context/ThemeContext";
+import { NotificationProvider, useNotifications } from "./context/NotificationContext";
 import type { RefereeSession, Space, User } from "./types/api";
 
 type Route =
   | { name: "welcome" }
   | { name: "login" }
   | { name: "spaces" }
+  | { name: "notifications" }
   | { name: "create-space" }
   | { name: "create-player"; space: Space }
   | { name: "create-game-type"; space: Space }
@@ -230,8 +233,27 @@ function MobileAppContent() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar hidden style={resolvedMode === "dark" ? "light" : "dark"} />
+    <NotificationProvider token={token}>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar hidden style={resolvedMode === "dark" ? "light" : "dark"} />
+        <NotificationBell
+          visible={
+            !!token &&
+            route.name !== "welcome" &&
+            route.name !== "login" &&
+            route.name !== "notifications" &&
+            route.name !== "referee-login" &&
+            route.name !== "referee-dashboard"
+          }
+          onPress={() => {
+            setPreviousRoute(route);
+            setRoute({ name: "notifications" });
+          }}
+        />
+      {route.name === "notifications" && token ? (
+        <NotificationsScreen onBack={() => setRoute(previousRoute)} />
+      ) : null}
+
       {route.name === "welcome" ? (
         <WelcomeScreen
           onLoginPress={() => setRoute({ name: "login" })}
@@ -370,6 +392,65 @@ function MobileAppContent() {
         />
       ) : null}
     </SafeAreaView>
+    </NotificationProvider>
+  );
+}
+
+/** Bouton cloche flottant avec badge non-lu */
+function NotificationBell({ onPress, visible }: { onPress: () => void; visible: boolean }) {
+  const { theme } = useAppTheme();
+  const { unreadCount } = useNotifications();
+
+  if (!visible) return null;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        position: "absolute",
+        top: 14,
+        right: 14,
+        zIndex: 50,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: theme.colors.card,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        alignItems: "center",
+        justifyContent: "center",
+        ...theme.shadow.card,
+      }}
+    >
+      <Text style={{ fontSize: 18 }}>🔔</Text>
+      {unreadCount > 0 ? (
+        <View
+          style={{
+            position: "absolute",
+            top: 2,
+            right: 2,
+            minWidth: 16,
+            height: 16,
+            borderRadius: 8,
+            backgroundColor: theme.colors.danger,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 3,
+          }}
+        >
+          <Text
+            style={{
+              color: "#fff",
+              fontSize: 9,
+              fontWeight: "800",
+              lineHeight: 16,
+            }}
+          >
+            {unreadCount > 99 ? "99+" : String(unreadCount)}
+          </Text>
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 

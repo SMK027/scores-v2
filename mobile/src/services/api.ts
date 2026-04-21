@@ -28,6 +28,8 @@ import type {
   RefereeGameDetail,
   RefereeRound,
   RefereeRoundScore,
+  NotificationItem,
+  NotificationsResponse,
 } from "../types/api";
 
 class ApiError extends Error {
@@ -564,6 +566,26 @@ export async function fetchCompetitionDetails(
     participants: response.participants,
     stats: response.stats,
   };
+}
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+export async function fetchNotifications(
+  token: string,
+  sinceId?: number
+): Promise<NotificationsResponse> {
+  const path = sinceId
+    ? `/api/notifications/poll?since=${sinceId}`
+    : "/api/notifications/poll";
+  return request<NotificationsResponse>(path, {}, token);
+}
+
+export async function markNotificationRead(token: string, id: number): Promise<void> {
+  await request<{ success: boolean }>(`/api/notifications/${id}/read`, { method: "POST" }, token);
+}
+
+export async function markAllNotificationsRead(token: string): Promise<void> {
+  await request<{ success: boolean }>("/api/notifications/read-all", { method: "POST" }, token);
 }
 
 export { ApiError };

@@ -52,6 +52,7 @@ use App\Controllers\Api\LeaderboardApiController;
 use App\Controllers\Api\CompetitionApiController;
 use App\Controllers\Api\TicketApiController;
 use App\Controllers\Api\RefereeApiController;
+use App\Controllers\Api\NotificationApiController;
 use App\Models\IpBan;
 use App\Models\UserBan;
 use App\Models\RememberToken;
@@ -573,6 +574,11 @@ $router->get('/api/leaderboard', LeaderboardApiController::class, 'index');
 // Competitions
 $router->get('/api/spaces/{id}/competitions', CompetitionApiController::class, 'index');
 $router->get('/api/spaces/{id}/competitions/{cid}', CompetitionApiController::class, 'show');
+
+// Notifications
+$router->get('/api/notifications/poll', NotificationApiController::class, 'poll');
+$router->post('/api/notifications/read-all', NotificationApiController::class, 'markAllRead');
+$router->post('/api/notifications/{id}/read', NotificationApiController::class, 'markRead');
 
 // Arbitrage (referee) — authentification par referee JWT
 $router->post('/api/referee/login', RefereeApiController::class, 'login');
