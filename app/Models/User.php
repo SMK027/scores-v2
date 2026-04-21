@@ -220,37 +220,6 @@ class User extends Model
      */
     public function getGlobalStats(int $userId): array
     {
-        // Statistiques de manches — uniquement pour les espaces dont l'utilisateur est membre actuel.
-        // Cohérent avec computeGlobalWinRate() dans ProfileController.
-        $stmt = $this->query(
-            "SELECT
-                COUNT(*) AS total_rounds,
-                COALESCE(SUM(CASE
-                    WHEN gt.win_condition = 'win_loss' AND rs.score = 1 THEN 1
-                    WHEN gt.win_condition = 'highest_score' AND rs.score = (
-                        SELECT MAX(rs2.score) FROM round_scores rs2 WHERE rs2.round_id = rs.round_id
-                    ) THEN 1
-                    WHEN gt.win_condition IN ('lowest_score', 'ranking') AND rs.score = (
-                        SELECT MIN(rs2.score) FROM round_scores rs2 WHERE rs2.round_id = rs.round_id
-                    ) THEN 1
-                    ELSE 0
-                END), 0) AS rounds_won
-             FROM players p
-             INNER JOIN space_members sm ON sm.space_id = p.space_id AND sm.user_id = :member_user_id
-             INNER JOIN round_scores rs ON rs.player_id = p.id
-             INNER JOIN rounds r ON r.id = rs.round_id AND r.status = 'completed'
-             INNER JOIN games g ON g.id = r.game_id
-             INNER JOIN game_types gt ON gt.id = g.game_type_id
-             WHERE p.user_id = :player_user_id",
-            ['member_user_id' => $userId, 'player_user_id' => $userId]
-        );
-
-        $row = $stmt->fetch();
-
-        $totalRounds = (int) ($row['total_rounds'] ?? 0);
-        $roundsWon   = (int) ($row['rounds_won']   ?? 0);
-        $winRate     = $totalRounds > 0 ? round($roundsWon / $totalRounds * 100, 2) : 0.0;
-
         // Nombre d'espaces dont l'utilisateur est membre actuel avec un profil joueur
         $stmtSpaces = $this->query(
             "SELECT COUNT(DISTINCT p.space_id) AS total_spaces
@@ -261,9 +230,91 @@ class User extends Model
         );
         $totalSpaces = (int) ($stmtSpaces->fetchColumn() ?? 0);
 
+        // 1. Profils joueurs de l'utilisateur dans ses espaces actuels
+        $stmt = $this->query(
+            "SELECT p.id AS player_id
+             FROM players p
+             INNER JOIN space_members sm ON sm.space_id = p.space_id AND sm.user_id = :member_user_id
+             WHERE p.user_id = :player_user_id",
+            ['member_user_id' => $userId, 'player_user_id' => $userId]
+        );
+        $playerIds = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+        if (empty($playerIds)) {
+            return ['total_rounds' => 0, 'rounds_won' => 0, 'win_rate' => 0.0, 'total_spaces' => $totalSpaces];
+        }
+
+        $playerIdSet = array_flip($playerIds);
+
+        // 2. Manches terminées où ces joueurs ont un score
+        $ph   = implode(',', array_fill(0, count($playerIds), '?'));
+        $stmt = $this->db->prepare(
+            "SELECT DISTINCT r.id AS round_id, gt.win_condition
+             FROM round_scores rs
+             JOIN rounds r ON r.id = rs.round_id AND r.status = 'completed'
+             JOIN games g ON g.id = r.game_id
+             JOIN game_types gt ON gt.id = g.game_type_id
+             WHERE rs.player_id IN ($ph)"
+        );
+        $stmt->execute($playerIds);
+        $rounds = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (empty($rounds)) {
+            return ['total_rounds' => 0, 'rounds_won' => 0, 'win_rate' => 0.0, 'total_spaces' => $totalSpaces];
+        }
+
+        $roundIds = array_column($rounds, 'round_id');
+
+        // 3. Tous les scores de ces manches (tous joueurs confondus pour déterminer le meilleur)
+        $rph  = implode(',', array_fill(0, count($roundIds), '?'));
+        $stmt = $this->db->prepare(
+            "SELECT round_id, player_id, score
+             FROM round_scores
+             WHERE round_id IN ($rph)"
+        );
+        $stmt->execute($roundIds);
+        $allScores = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $scoresByRound = [];
+        foreach ($allScores as $s) {
+            $scoresByRound[(int) $s['round_id']][] = $s;
+        }
+
+        // 4. Comptabilisation — algorithme identique à ProfileController::computeGlobalWinRate
+        $totalPlayed = 0;
+        $totalWon    = 0;
+
+        foreach ($rounds as $round) {
+            $roundId      = (int) $round['round_id'];
+            $winCondition = $round['win_condition'];
+            $scores       = $scoresByRound[$roundId] ?? [];
+
+            if (empty($scores)) {
+                continue;
+            }
+
+            $vals = array_map(fn($s) => (float) $s['score'], $scores);
+            $best = ($winCondition === 'lowest_score' || $winCondition === 'ranking')
+                ? min($vals)
+                : max($vals);
+
+            foreach ($scores as $s) {
+                $pid = (int) $s['player_id'];
+                if (!isset($playerIdSet[$pid])) {
+                    continue;
+                }
+                $totalPlayed++;
+                if ((float) $s['score'] === $best) {
+                    $totalWon++;
+                }
+            }
+        }
+
+        $winRate = $totalPlayed > 0 ? round($totalWon / $totalPlayed * 100, 2) : 0.0;
+
         return [
-            'total_rounds' => $totalRounds,
-            'rounds_won'   => $roundsWon,
+            'total_rounds' => $totalPlayed,
+            'rounds_won'   => $totalWon,
             'win_rate'     => $winRate,
             'total_spaces' => $totalSpaces,
         ];
