@@ -236,13 +236,13 @@ class User extends Model
                     ELSE 0
                 END), 0) AS rounds_won
              FROM players p
-             INNER JOIN space_members sm ON sm.space_id = p.space_id AND sm.user_id = :user_id
+             INNER JOIN space_members sm ON sm.space_id = p.space_id AND sm.user_id = :member_user_id
              INNER JOIN round_scores rs ON rs.player_id = p.id
              INNER JOIN rounds r ON r.id = rs.round_id AND r.status = 'completed'
              INNER JOIN games g ON g.id = r.game_id
              INNER JOIN game_types gt ON gt.id = g.game_type_id
-             WHERE p.user_id = :user_id",
-            ['user_id' => $userId]
+             WHERE p.user_id = :player_user_id",
+            ['member_user_id' => $userId, 'player_user_id' => $userId]
         );
 
         $row = $stmt->fetch();
@@ -255,9 +255,9 @@ class User extends Model
         $stmtSpaces = $this->query(
             "SELECT COUNT(DISTINCT p.space_id) AS total_spaces
              FROM players p
-             INNER JOIN space_members sm ON sm.space_id = p.space_id AND sm.user_id = :user_id
-             WHERE p.user_id = :user_id",
-            ['user_id' => $userId]
+             INNER JOIN space_members sm ON sm.space_id = p.space_id AND sm.user_id = :member_user_id
+             WHERE p.user_id = :player_user_id",
+            ['member_user_id' => $userId, 'player_user_id' => $userId]
         );
         $totalSpaces = (int) ($stmtSpaces->fetchColumn() ?? 0);
 
