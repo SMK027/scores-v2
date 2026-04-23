@@ -1,13 +1,17 @@
 -- -----------------------------------------------------------
--- Migration 038 : Vue du taux de victoire global par joueur
+-- Migration 038 : Vue du taux de victoire global par compte utilisateur
 -- Calcule le ratio manches gagnées / manches totales jouées
--- pour chaque joueur actif, toutes parties terminées confondues.
+-- pour chaque compte utilisateur, en consolidant tous les joueurs
+-- rattachés à ce compte (players.user_id) toutes parties et espaces
+-- confondus.
+--
+-- Un même utilisateur peut être représenté par plusieurs joueurs dans
+-- des espaces différents : tous leurs résultats sont agrégés.
 --
 -- Colonnes exposées :
---   player_id           : identifiant du joueur
---   player_name         : nom du joueur
---   space_id            : espace auquel appartient le joueur
---   total_rounds_played : nombre de manches complétées jouées
+--   user_id             : identifiant du compte utilisateur
+--   username            : nom d'utilisateur
+--   total_rounds_played : nombre de manches complétées jouées (tous espaces)
 --   rounds_won          : nombre de manches remportées
 --   win_rate_percent    : taux de victoire en % (0-100, arrondi à 2 décimales)
 --
@@ -19,10 +23,11 @@
 --
 -- Seules les manches au statut 'completed' appartenant à des parties
 -- au statut 'completed' sont prises en compte.
--- Les joueurs supprimés (soft-delete) sont exclus.
+-- Les joueurs supprimés (soft-delete) et ceux sans compte lié sont exclus.
+-- Filtrer sur un compte précis : WHERE user_id = ?
 -- -----------------------------------------------------------
 
-CREATE OR REPLACE VIEW `v_player_win_rate` AS
+CREATE OR REPLACE VIEW `v_user_win_rate` AS
 WITH round_winning_scores AS (
     -- Détermine le score gagnant de chaque manche complétée
     -- selon la condition de victoire du type de jeu associé
@@ -57,9 +62,8 @@ player_round_results AS (
     JOIN round_winning_scores rws ON rws.round_id = rs.round_id
 )
 SELECT
-    p.id                                                         AS player_id,
-    p.name                                                       AS player_name,
-    p.space_id,
+    u.id                                                         AS user_id,
+    u.username,
     COUNT(prr.round_id)                                          AS total_rounds_played,
     COALESCE(SUM(prr.is_winner), 0)                             AS rounds_won,
     ROUND(
@@ -69,7 +73,8 @@ SELECT
         END,
         2
     )                                                            AS win_rate_percent
-FROM players               p
+FROM users                   u
+JOIN players                 p   ON p.user_id     = u.id
+                                 AND p.deleted_at  IS NULL
 LEFT JOIN player_round_results prr ON prr.player_id = p.id
-WHERE p.deleted_at IS NULL
-GROUP BY p.id, p.name, p.space_id;
+GROUP BY u.id, u.username;
