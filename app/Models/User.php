@@ -230,92 +230,23 @@ class User extends Model
         );
         $totalSpaces = (int) ($stmtSpaces->fetchColumn() ?? 0);
 
-        // 1. Profils joueurs de l'utilisateur dans ses espaces actuels
+        // Taux de victoire calculé via la vue v_user_win_rate
         $stmt = $this->query(
-            "SELECT p.id AS player_id
-             FROM players p
-             INNER JOIN space_members sm ON sm.space_id = p.space_id AND sm.user_id = :member_user_id
-             WHERE p.user_id = :player_user_id",
-            ['member_user_id' => $userId, 'player_user_id' => $userId]
+            "SELECT total_rounds_played, rounds_won, win_rate_percent
+             FROM v_user_win_rate
+             WHERE user_id = :user_id",
+            ['user_id' => $userId]
         );
-        $playerIds = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
-        if (empty($playerIds)) {
+        if (!$row || (int) $row['total_rounds_played'] === 0) {
             return ['total_rounds' => 0, 'rounds_won' => 0, 'win_rate' => 0.0, 'total_spaces' => $totalSpaces];
         }
-
-        $playerIdSet = array_flip($playerIds);
-
-        // 2. Manches terminées où ces joueurs ont un score
-        $ph   = implode(',', array_fill(0, count($playerIds), '?'));
-        $stmt = $this->db->prepare(
-            "SELECT DISTINCT r.id AS round_id, gt.win_condition
-             FROM round_scores rs
-             JOIN rounds r ON r.id = rs.round_id AND r.status = 'completed'
-             JOIN games g ON g.id = r.game_id
-             JOIN game_types gt ON gt.id = g.game_type_id
-             WHERE rs.player_id IN ($ph)"
-        );
-        $stmt->execute($playerIds);
-        $rounds = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-
-        if (empty($rounds)) {
-            return ['total_rounds' => 0, 'rounds_won' => 0, 'win_rate' => 0.0, 'total_spaces' => $totalSpaces];
-        }
-
-        $roundIds = array_column($rounds, 'round_id');
-
-        // 3. Tous les scores de ces manches (tous joueurs confondus pour déterminer le meilleur)
-        $rph  = implode(',', array_fill(0, count($roundIds), '?'));
-        $stmt = $this->db->prepare(
-            "SELECT round_id, player_id, score
-             FROM round_scores
-             WHERE round_id IN ($rph)"
-        );
-        $stmt->execute($roundIds);
-        $allScores = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-
-        $scoresByRound = [];
-        foreach ($allScores as $s) {
-            $scoresByRound[(int) $s['round_id']][] = $s;
-        }
-
-        // 4. Comptabilisation — algorithme identique à ProfileController::computeGlobalWinRate
-        $totalPlayed = 0;
-        $totalWon    = 0;
-
-        foreach ($rounds as $round) {
-            $roundId      = (int) $round['round_id'];
-            $winCondition = $round['win_condition'];
-            $scores       = $scoresByRound[$roundId] ?? [];
-
-            if (empty($scores)) {
-                continue;
-            }
-
-            $vals = array_map(fn($s) => (float) $s['score'], $scores);
-            $best = ($winCondition === 'lowest_score' || $winCondition === 'ranking')
-                ? min($vals)
-                : max($vals);
-
-            foreach ($scores as $s) {
-                $pid = (int) $s['player_id'];
-                if (!isset($playerIdSet[$pid])) {
-                    continue;
-                }
-                $totalPlayed++;
-                if ((float) $s['score'] === $best) {
-                    $totalWon++;
-                }
-            }
-        }
-
-        $winRate = $totalPlayed > 0 ? round($totalWon / $totalPlayed * 100, 2) : 0.0;
 
         return [
-            'total_rounds' => $totalPlayed,
-            'rounds_won'   => $totalWon,
-            'win_rate'     => $winRate,
+            'total_rounds' => (int)   $row['total_rounds_played'],
+            'rounds_won'   => (int)   $row['rounds_won'],
+            'win_rate'     => (float) $row['win_rate_percent'],
             'total_spaces' => $totalSpaces,
         ];
     }
