@@ -270,6 +270,9 @@ class GameController extends Controller
         $isCompetitionGame = !empty($game['competition_id']);
         $isGlobalStaff = Middleware::isGlobalStaff();
 
+        // Durée moyenne effective pour le type de jeu (utilisée pour le raccourci de création de manche)
+        $avgRoundDuration = $this->gameTypeModel->getAverageRoundDuration((int) $game['game_type_id']);
+
         $this->render('games/show', [
             'title'            => $game['game_type_name'],
             'currentSpace'     => $ctx['space'],
@@ -284,6 +287,7 @@ class GameController extends Controller
             'comments'         => $comments,
             'isCompetitionGame' => $isCompetitionGame,
             'isGlobalStaff'     => $isGlobalStaff,
+            'avgRoundDuration'  => $avgRoundDuration,
         ]);
     }
 

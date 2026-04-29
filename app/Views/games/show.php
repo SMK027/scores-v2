@@ -145,13 +145,22 @@ $canReopenGame = $isCompetitionGame ? $isGlobalStaff : in_array($spaceRole, ['ad
         <h3>Manches</h3>
         <?php if (in_array($game['status'], ['in_progress', 'paused']) && $canManageGame): ?>
             <?php $hasActiveRound = !empty(array_filter($rounds, fn($r) => $r['status'] !== 'completed')); ?>
+            <?php $canCreateAvgRound = ($canDeleteGame) && !$hasActiveRound && !empty($avgRoundDuration); ?>
             <?php if ($hasActiveRound): ?>
                 <button type="button" class="btn btn-sm btn-primary" disabled title="Terminez la manche en cours avant d'en créer une nouvelle.">+ Ajouter une manche</button>
             <?php else: ?>
-                <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/create" style="display:inline;">
-                    <?= csrf_field() ?>
-                    <button type="submit" class="btn btn-sm btn-primary">+ Ajouter une manche</button>
-                </form>
+                <div class="d-flex gap-1 flex-wrap">
+                    <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/create" style="display:inline;">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="btn btn-sm btn-primary">+ Ajouter une manche</button>
+                    </form>
+                    <?php if ($canCreateAvgRound): ?>
+                        <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/rounds/create-avg" style="display:inline;">
+                            <?= csrf_field() ?>
+                            <button type="submit" class="btn btn-sm btn-outline" data-confirm="Créer une manche terminée d'une durée de <?= format_duration((int) $avgRoundDuration) ?> ?" title="Crée une manche déjà terminée avec une durée égale à la moyenne du type de jeu (<?= format_duration((int) $avgRoundDuration) ?>).">+ Manche (durée moyenne&nbsp;: <?= format_duration((int) $avgRoundDuration) ?>)</button>
+                        </form>
+                    <?php endif; ?>
+                </div>
             <?php endif; ?>
         <?php endif; ?>
     </div>

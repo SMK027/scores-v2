@@ -53,6 +53,39 @@ class Round extends Model
     }
 
     /**
+     * Crée une nouvelle manche déjà terminée avec une durée fixée (en secondes).
+     * started_at = NOW() - duration, ended_at = NOW(), status = 'completed'.
+     */
+    public function createForGameWithDuration(int $gameId, int $durationSeconds, ?string $notes = null): int
+    {
+        if ($this->hasActiveRound($gameId)) {
+            throw new \DomainException('Terminez la manche en cours avant d\'en créer une nouvelle.');
+        }
+
+        $durationSeconds = max(0, $durationSeconds);
+
+        $stmt = $this->db->prepare("
+            SELECT COALESCE(MAX(round_number), 0) + 1 AS next_number
+            FROM {$this->table}
+            WHERE game_id = :game_id
+        ");
+        $stmt->execute(['game_id' => $gameId]);
+        $nextNumber = (int) $stmt->fetchColumn();
+
+        $stmt = $this->db->prepare("
+            INSERT INTO {$this->table} (game_id, round_number, status, started_at, ended_at, created_at)
+            VALUES (:game_id, :round_number, 'completed', DATE_SUB(NOW(), INTERVAL :duration SECOND), NOW(), NOW())
+        ");
+        $stmt->execute([
+            'game_id'      => $gameId,
+            'round_number' => $nextNumber,
+            'duration'     => $durationSeconds,
+        ]);
+
+        return (int) $this->db->lastInsertId();
+    }
+
+    /**
      * Vérifie si la partie a une manche non terminée (in_progress ou paused).
      */
     public function hasActiveRound(int $gameId): bool

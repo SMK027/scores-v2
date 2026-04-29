@@ -10,6 +10,7 @@ use App\Models\Round;
 use App\Models\RoundScore;
 use App\Models\RoundPause;
 use App\Models\Game;
+use App\Models\GameType;
 use App\Models\Space;
 use App\Models\ActivityLog;
 
@@ -111,6 +112,69 @@ class RoundController extends Controller
         ActivityLog::logSpace((int) $id, 'round.create', $this->getCurrentUserId(), 'game', (int) $gid);
 
         $this->setFlash('success', 'Manche ajoutée avec succès.');
+        $this->redirect("/spaces/{$id}/games/{$gid}");
+    }
+
+    /**
+     * Crée une manche déjà terminée dont la durée correspond à la moyenne
+     * du type de jeu de la partie. Réservé aux administrateurs et gestionnaires.
+     */
+    public function createWithAvgDuration(string $id, string $gid): void
+    {
+        $this->checkAccess($id, ['admin', 'manager']);
+
+        $game = $this->game->find((int) $gid);
+        if (!$game || $game['space_id'] != $id) {
+            $this->setFlash('danger', 'Partie introuvable.');
+            $this->redirect("/spaces/{$id}/games");
+            return;
+        }
+
+        if ($this->isCompetitionProtected($game)) {
+            $this->setFlash('danger', 'Les parties de compétition ne peuvent être modifiées que par l\'équipe de modération globale.');
+            $this->redirect("/spaces/{$id}/games/{$gid}");
+            return;
+        }
+
+        if (!in_array($game['status'], ['in_progress', 'paused'])) {
+            $this->setFlash('warning', 'Impossible d\'ajouter une manche à cette partie.');
+            $this->redirect("/spaces/{$id}/games/{$gid}");
+            return;
+        }
+
+        if ($this->round->hasActiveRound((int) $gid)) {
+            $this->setFlash('warning', 'Terminez la manche en cours avant d\'en créer une nouvelle.');
+            $this->redirect("/spaces/{$id}/games/{$gid}");
+            return;
+        }
+
+        $this->validateCSRF();
+
+        $gameType = new GameType();
+        $avg = $gameType->getAverageRoundDuration((int) $game['game_type_id']);
+        if ($avg === null || $avg <= 0) {
+            $this->setFlash('warning', 'Aucune durée moyenne disponible pour ce type de jeu.');
+            $this->redirect("/spaces/{$id}/games/{$gid}");
+            return;
+        }
+
+        $data = $this->getPostData(['notes']);
+        try {
+            $newId = $this->round->createForGameWithDuration((int) $gid, $avg, $data['notes'] ?: null);
+        } catch (\DomainException $e) {
+            $this->setFlash('warning', $e->getMessage());
+            $this->redirect("/spaces/{$id}/games/{$gid}");
+            return;
+        }
+
+        $this->game->recalculateTotals((int) $gid);
+
+        ActivityLog::logSpace((int) $id, 'round.create_avg_duration', $this->getCurrentUserId(), 'round', $newId, [
+            'game_id'          => (int) $gid,
+            'duration_seconds' => $avg,
+        ]);
+
+        $this->setFlash('success', sprintf('Manche créée avec la durée moyenne (%s).', format_duration($avg)));
         $this->redirect("/spaces/{$id}/games/{$gid}");
     }
 

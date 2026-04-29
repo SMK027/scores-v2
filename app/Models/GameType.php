@@ -84,6 +84,29 @@ class GameType extends Model
     }
 
     /**
+     * Retourne la durée moyenne effective des manches (en secondes) pour un type de jeu.
+     * Null si aucune manche terminée n'est disponible.
+     */
+    public function getAverageRoundDuration(int $gameTypeId): ?int
+    {
+        $stmt = $this->db->prepare(
+            "SELECT ROUND(AVG(
+                TIMESTAMPDIFF(SECOND, r.started_at, r.ended_at)
+                - COALESCE((SELECT SUM(rp.duration_seconds) FROM round_pauses rp WHERE rp.round_id = r.id), 0)
+            ))
+             FROM rounds r
+             INNER JOIN games g ON g.id = r.game_id
+             WHERE g.game_type_id = :gt_id
+               AND r.status = 'completed'
+               AND r.started_at IS NOT NULL
+               AND r.ended_at IS NOT NULL"
+        );
+        $stmt->execute(['gt_id' => $gameTypeId]);
+        $value = $stmt->fetchColumn();
+        return ($value === null || $value === false) ? null : (int) $value;
+    }
+
+    /**
      * Vérifie qu'un type de jeu est accessible depuis un espace donné.
      * Un type est accessible s'il appartient à l'espace ou s'il est global.
      */

@@ -311,6 +311,7 @@ $router->post('/spaces/{id}/games/{gid}/comments/{cid}/delete', GameController::
 // Manches
 // ============================================================
 $router->post('/spaces/{id}/games/{gid}/rounds/create', RoundController::class, 'create');
+$router->post('/spaces/{id}/games/{gid}/rounds/create-avg', RoundController::class, 'createWithAvgDuration');
 $router->post('/spaces/{id}/games/{gid}/rounds/{rid}/scores', RoundController::class, 'updateScores');
 $router->post('/spaces/{id}/games/{gid}/rounds/{rid}/status', RoundController::class, 'updateStatus');
 $router->post('/spaces/{id}/games/{gid}/rounds/{rid}/delete', RoundController::class, 'delete');
