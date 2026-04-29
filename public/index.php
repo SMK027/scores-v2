@@ -303,6 +303,7 @@ $router->get('/spaces/{id}/games/{gid}/edit', GameController::class, 'editForm')
 $router->post('/spaces/{id}/games/{gid}/edit', GameController::class, 'update');
 $router->post('/spaces/{id}/games/{gid}/delete', GameController::class, 'delete');
 $router->post('/spaces/{id}/games/{gid}/status', GameController::class, 'updateStatus');
+$router->post('/spaces/{id}/games/{gid}/reopen', GameController::class, 'reopen');
 $router->post('/spaces/{id}/games/{gid}/comments', GameController::class, 'addComment');
 $router->post('/spaces/{id}/games/{gid}/comments/{cid}/delete', GameController::class, 'deleteComment');
 

@@ -422,6 +422,47 @@ class GameController extends Controller
     }
 
     /**
+     * Rouvre une partie marquée comme terminée.
+     * Réservé aux administrateurs et gestionnaires de l'espace.
+     */
+    public function reopen(string $id, string $gid): void
+    {
+        $ctx = $this->checkAccess($id, ['admin', 'manager']);
+        $this->checkUserRestriction('games_manage', null, '/spaces/' . $id . '/games/' . $gid);
+        $this->checkSpaceRestriction((int) $id, 'games');
+        $this->validateCSRF();
+
+        $game = $this->gameModel->find((int) $gid);
+        if (!$game) {
+            $this->setFlash('danger', 'Partie introuvable.');
+            $this->redirect("/spaces/{$id}/games");
+            return;
+        }
+
+        if ($this->isCompetitionProtected($game)) {
+            $this->setFlash('danger', 'Les parties de compétition ne peuvent être modifiées que par l\'équipe de modération globale.');
+            $this->redirect("/spaces/{$id}/games/{$gid}");
+            return;
+        }
+
+        if ($game['status'] !== 'completed') {
+            $this->setFlash('warning', 'Cette partie n\'est pas terminée.');
+            $this->redirect("/spaces/{$id}/games/{$gid}");
+            return;
+        }
+
+        $this->gameModel->update((int) $gid, [
+            'status'   => 'in_progress',
+            'ended_at' => null,
+        ]);
+
+        ActivityLog::logSpace((int) $id, 'game.reopen', $this->getCurrentUserId(), 'game', (int) $gid);
+
+        $this->setFlash('success', 'Partie rouverte. Vous pouvez à nouveau ajouter des manches.');
+        $this->redirect("/spaces/{$id}/games/{$gid}");
+    }
+
+    /**
      * Ajoute un commentaire à une partie.
      */
     public function addComment(string $id, string $gid): void

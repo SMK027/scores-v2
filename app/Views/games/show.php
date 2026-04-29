@@ -4,6 +4,7 @@ $isCompetitionGame = $isCompetitionGame ?? false;
 $isGlobalStaff = $isGlobalStaff ?? false;
 $canManageGame = $isCompetitionGame ? $isGlobalStaff : in_array($spaceRole, ['admin', 'manager', 'member']);
 $canDeleteGame = $isCompetitionGame ? $isGlobalStaff : in_array($spaceRole, ['admin', 'manager']);
+$canReopenGame = $isCompetitionGame ? $isGlobalStaff : in_array($spaceRole, ['admin', 'manager']);
 ?>
 <div class="page-header">
     <div>
@@ -49,6 +50,12 @@ $canDeleteGame = $isCompetitionGame ? $isGlobalStaff : in_array($spaceRole, ['ad
         <?php endforeach; ?>
         <?php if ($game['status'] === 'completed'): ?>
             <span class="text-success">✓ Partie terminée</span>
+            <?php if ($canReopenGame): ?>
+                <form method="POST" action="/spaces/<?= $currentSpace['id'] ?>/games/<?= $game['id'] ?>/reopen" style="display:inline;">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-sm btn-warning" data-confirm="Rouvrir cette partie terminée ?">Rouvrir</button>
+                </form>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 </div>
