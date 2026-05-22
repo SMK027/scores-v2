@@ -821,18 +821,19 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    ...theme.shadow.sm,
   },
   navButtonText: {
     color: theme.colors.primary,
-    fontWeight: "700",
-    fontSize: 12,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.xs,
   },
   title: {
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: theme.font.size.xxl,
+    fontWeight: theme.font.weight.bold,
     color: theme.colors.text,
   },
   meta: {
@@ -849,12 +850,13 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     marginTop: 12,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.xl,
     backgroundColor: theme.colors.card,
     paddingVertical: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    ...theme.shadow.sm,
   },
   overviewItem: {
     flex: 1,
@@ -863,14 +865,14 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   overviewValue: {
     color: theme.colors.text,
-    fontWeight: "800",
-    fontSize: 20,
+    fontWeight: theme.font.weight.extrabold,
+    fontSize: theme.font.size.xl,
   },
   overviewLabel: {
     marginTop: 2,
     color: theme.colors.mutedText,
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.semibold,
   },
   overviewDivider: {
     width: 1,
@@ -884,14 +886,15 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   block: {
     marginTop: 14,
     backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.xl,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    padding: 12,
+    padding: 14,
+    ...theme.shadow.sm,
   },
   blockTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.bold,
     color: theme.colors.text,
     marginBottom: 8,
   },
@@ -899,7 +902,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     marginTop: 10,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
+    borderRadius: theme.radius.lg,
     padding: 10,
     backgroundColor: theme.colors.backgroundSoft,
   },
@@ -916,8 +919,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   roundToggleIcon: {
     color: theme.colors.mutedText,
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.bold,
   },
   roundActions: {
     marginBottom: 8,
@@ -925,7 +928,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   roundDurationText: {
     color: theme.colors.mutedText,
-    fontSize: 12,
+    fontSize: theme.font.size.xs,
   },
   roundDurationBlock: {
     marginBottom: 8,
@@ -943,16 +946,16 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   roundTitle: {
     color: theme.colors.text,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   statusBadge: {
-    borderRadius: 999,
+    borderRadius: theme.radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   statusText: {
-    fontWeight: "700",
-    fontSize: 12,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.xs,
   },
   row: {
     flexDirection: "row",
@@ -961,7 +964,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   rowLabel: {
     color: theme.colors.text,
-    fontWeight: "600",
+    fontWeight: theme.font.weight.semibold,
   },
   rowValue: {
     color: theme.colors.mutedText,
@@ -990,7 +993,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   primaryText: {
     color: "#ffffff",
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   secondaryButton: {
     marginTop: 8,
@@ -1003,7 +1006,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   secondaryText: {
     color: theme.colors.text,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   disabled: {
     opacity: 0.6,
@@ -1034,13 +1037,13 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   scoreSignButtonText: {
     color: theme.colors.text,
-    fontSize: 20,
+    fontSize: theme.font.size.xl,
     lineHeight: 22,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   scoreLabel: {
     color: theme.colors.text,
-    fontWeight: "600",
+    fontWeight: theme.font.weight.semibold,
   },
   scoreInput: {
     width: 90,
@@ -1067,17 +1070,17 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   winnerRowActive: {
     borderColor: theme.colors.success,
-    backgroundColor: theme.colors.primarySoft,
+    backgroundColor: theme.colors.successSoft,
   },
   winnerStatus: {
     color: theme.colors.mutedText,
-    fontWeight: "600",
+    fontWeight: theme.font.weight.semibold,
   },
   commentCard: {
     marginTop: 10,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
+    borderRadius: theme.radius.lg,
     padding: 10,
     backgroundColor: theme.colors.backgroundSoft,
   },
@@ -1098,7 +1101,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: theme.colors.primarySoft,
+    backgroundColor: theme.colors.brandSoft,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -1108,24 +1111,24 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     height: "100%",
   },
   commentAvatarText: {
-    color: theme.colors.primary,
-    fontSize: 11,
-    fontWeight: "700",
+    color: theme.colors.brand,
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.bold,
   },
   commentAuthor: {
     color: theme.colors.text,
-    fontWeight: "700",
-    fontSize: 13,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.sm,
     flexShrink: 1,
   },
   commentDate: {
     color: theme.colors.mutedText,
-    fontSize: 11,
+    fontSize: theme.font.size.xs,
   },
   commentContent: {
     color: theme.colors.text,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: theme.font.size.md,
+    lineHeight: theme.font.lineHeight.tight,
   },
   commentDeleteBtn: {
     marginTop: 6,
@@ -1133,26 +1136,26 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   commentDeleteText: {
     color: theme.colors.danger,
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.semibold,
   },
   commentInput: {
     marginTop: 12,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
+    borderRadius: theme.radius.lg,
     paddingHorizontal: 12,
     paddingVertical: 10,
     color: theme.colors.text,
     backgroundColor: theme.colors.card,
     minHeight: 72,
     textAlignVertical: "top",
-    fontSize: 14,
+    fontSize: theme.font.size.md,
   },
   commentRestricted: {
     marginTop: 12,
     color: theme.colors.mutedText,
     fontStyle: "italic",
-    fontSize: 13,
+    fontSize: theme.font.size.sm,
   },
 });

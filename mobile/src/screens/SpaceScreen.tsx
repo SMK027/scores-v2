@@ -222,6 +222,11 @@ const TICKET_STATUS_COLORS: Record<ContactTicket["status"], string> = {
 export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenGame, onOpenCompetition, onOpenCreatePlayer, onOpenCreateGameType }: Props) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const TICKET_STATUS_COLORS: Record<ContactTicket["status"], string> = useMemo(() => ({
+    open: theme.colors.success,
+    in_progress: theme.colors.warning,
+    closed: theme.colors.mutedText,
+  }), [theme]);
 
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -2620,7 +2625,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
                   {TICKET_CATEGORY_LABELS[selectedTicket.category]} · Par {selectedTicket.author_username}
                 </Text>
                 <Text style={styles.playerLinkInfo}>
-                  Statut : <Text style={{ color: TICKET_STATUS_COLORS[selectedTicket.status], fontWeight: "700" }}>
+                  Statut : <Text style={{ color: TICKET_STATUS_COLORS[selectedTicket.status], fontWeight: theme.font.weight.bold }}>
                     {TICKET_STATUS_LABELS[selectedTicket.status]}
                   </Text>
                 </Text>
@@ -3003,21 +3008,22 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.pill,
     paddingHorizontal: 8,
     paddingVertical: 6,
+    ...theme.shadow.sm,
   },
   navButtonText: {
     color: theme.colors.primary,
-    fontWeight: "700",
-    fontSize: 11,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.xs,
   },
   title: {
     flex: 1,
     minWidth: 0,
     textAlign: "center",
-    fontSize: 20,
-    fontWeight: "800",
+    fontSize: theme.font.size.xl,
+    fontWeight: theme.font.weight.extrabold,
     color: theme.colors.text,
     paddingHorizontal: 4,
   },
@@ -3035,12 +3041,12 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   contextTitle: {
     color: theme.colors.text,
-    fontWeight: "700",
-    fontSize: 14,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.sm,
   },
   contextHint: {
     color: theme.colors.mutedText,
-    fontSize: 12,
+    fontSize: theme.font.size.xs,
     marginTop: 2,
     maxWidth: 210,
   },
@@ -3052,8 +3058,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   refreshPillText: {
     color: theme.colors.primary,
-    fontWeight: "700",
-    fontSize: 12,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.xs,
   },
   profileButton: {
     width: 34,
@@ -3070,8 +3076,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   profileAvatarText: {
     color: theme.colors.primary,
-    fontWeight: "700",
-    fontSize: 11,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.xs,
   },
   error: {
     color: theme.colors.danger,
@@ -3082,7 +3088,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   menuHint: {
     color: theme.colors.mutedText,
-    fontSize: 13,
+    fontSize: theme.font.size.sm,
   },
   quickStatsGrid: {
     marginTop: 4,
@@ -3103,14 +3109,14 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   quickStatValue: {
     color: theme.colors.text,
-    fontWeight: "800",
-    fontSize: 22,
+    fontWeight: theme.font.weight.extrabold,
+    fontSize: theme.font.size.xxl,
   },
   quickStatLabel: {
     marginTop: 2,
     color: theme.colors.mutedText,
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.semibold,
   },
   bottomNav: {
     position: "absolute",
@@ -3171,7 +3177,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   fabIcon: {
     fontSize: 26,
-    color: "#fff",
+    color: "#ffffff",
     lineHeight: 30,
   },
   bottomNavContent: {
@@ -3213,8 +3219,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   bottomNavIcon: {
     color: theme.colors.mutedText,
-    fontSize: 16,
-    fontWeight: "800",
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.extrabold,
   },
   bottomNavIconActive: {
     color: theme.colors.primary,
@@ -3222,8 +3228,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   bottomNavLabel: {
     marginTop: 2,
     color: theme.colors.mutedText,
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.semibold,
   },
   bottomNavLabelCompact: {
     fontSize: 10,
@@ -3240,8 +3246,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   menuTitle: {
     color: theme.colors.text,
-    fontWeight: "700",
-    fontSize: 17,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.lg,
   },
   formCard: {
     backgroundColor: theme.colors.card,
@@ -3289,13 +3295,13 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     opacity: 0.8,
   },
   cardWidgetLogo: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 15,
+    color: "#ffffff",
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.md,
   },
   cardWidgetSpaceName: {
-    color: "#fff",
-    fontSize: 12,
+    color: "#ffffff",
+    fontSize: theme.font.size.xs,
   },
   cardWidgetBody: {
     flexDirection: "row",
@@ -3315,23 +3321,23 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     flexShrink: 0,
   },
   cardAvatarText: {
-    color: "#fff",
+    color: "#ffffff",
     fontSize: 26,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   cardInfo: {
     flex: 1,
   },
   cardPlayerName: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "700",
+    color: "#ffffff",
+    fontSize: theme.font.size.xl,
+    fontWeight: theme.font.weight.bold,
     letterSpacing: 0.3,
   },
   cardRoleText: {
     color: "rgba(255,255,255,0.75)",
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.bold,
     textTransform: "uppercase",
     letterSpacing: 1,
     marginTop: 3,
@@ -3357,8 +3363,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   gameTypeGlobalBadgeText: {
     color: theme.colors.primary,
-    fontWeight: "700",
-    fontSize: 11,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.xs,
   },
   gameTypeStatsRow: {
     flexDirection: "row",
@@ -3383,26 +3389,26 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     color: "rgba(255,255,255,0.55)",
     fontSize: 10,
     letterSpacing: 1,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
     textTransform: "uppercase",
     marginBottom: 3,
   },
   cardReference: {
-    color: "#fff",
+    color: "#ffffff",
     fontFamily: "monospace" as "monospace",
-    fontWeight: "600",
-    fontSize: 14,
+    fontWeight: theme.font.weight.semibold,
+    fontSize: theme.font.size.sm,
     letterSpacing: 0.5,
   },
   cardInactiveBadge: {
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: "#ef4444",
+    backgroundColor: theme.colors.danger,
   },
   cardInactiveBadgeText: {
-    color: "#fff",
-    fontWeight: "700",
+    color: "#ffffff",
+    fontWeight: theme.font.weight.bold,
     fontSize: 10,
     letterSpacing: 0.5,
   },
@@ -3410,11 +3416,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: "#22c55e",
+    backgroundColor: theme.colors.success,
   },
   cardValidBadgeText: {
-    color: "#fff",
-    fontWeight: "700",
+    color: "#ffffff",
+    fontWeight: theme.font.weight.bold,
     fontSize: 10,
     letterSpacing: 0.5,
   },
@@ -3432,7 +3438,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   cardInfoLabel: {
     color: theme.colors.mutedText,
-    fontWeight: "600",
+    fontWeight: theme.font.weight.semibold,
   },
   cardActionsRow: {
     marginTop: 12,
@@ -3452,9 +3458,9 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderColor: theme.colors.border,
   },
   cardActionButtonText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 13,
+    color: "#ffffff",
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.sm,
   },
   cardActionButtonTextSecondary: {
     color: theme.colors.primary,
@@ -3470,7 +3476,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   cardDeleteButtonText: {
     color: theme.colors.danger,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   buttonDisabled: {
     opacity: 0.55,
@@ -3500,8 +3506,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     backgroundColor: theme.colors.primarySoft,
   },
   filterTriggerText: {
-    fontSize: 13,
-    fontWeight: "700",
+    fontSize: theme.font.size.sm,
+    fontWeight: theme.font.weight.bold,
     color: theme.colors.mutedText,
   },
   filterTriggerTextActive: {
@@ -3523,13 +3529,13 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderColor: theme.colors.primary,
   },
   activeFilterBadgeText: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.bold,
     color: theme.colors.primary,
   },
   clearFiltersText: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.bold,
     color: theme.colors.danger,
   },
   // ── Filter panel (bottom sheet) ──────────────────────────────────────────
@@ -3558,14 +3564,14 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     marginBottom: 16,
   },
   filterPanelTitle: {
-    fontSize: 17,
-    fontWeight: "800",
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.extrabold,
     color: theme.colors.text,
     marginBottom: 16,
   },
   filterPanelSectionLabel: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.bold,
     color: theme.colors.mutedText,
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -3591,8 +3597,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   filterPanelChipText: {
     color: theme.colors.text,
-    fontWeight: "600",
-    fontSize: 13,
+    fontWeight: theme.font.weight.semibold,
+    fontSize: theme.font.size.sm,
   },
   filterPanelChipTextActive: {
     color: theme.colors.primary,
@@ -3613,7 +3619,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   filterPanelResetText: {
     color: theme.colors.mutedText,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   filterPanelApplyButton: {
     flex: 2,
@@ -3623,9 +3629,9 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   filterPanelApplyText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 15,
+    color: "#ffffff",
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.md,
   },
   gamesLoadingInline: {
     paddingVertical: 6,
@@ -3646,14 +3652,14 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   statsCardTitle: {
     color: theme.colors.text,
-    fontWeight: "700",
-    fontSize: 16,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.lg,
     marginBottom: 8,
   },
   statsHighlightName: {
     color: theme.colors.primary,
-    fontWeight: "700",
-    fontSize: 18,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.xl,
   },
   statsMeta: {
     color: theme.colors.mutedText,
@@ -3667,30 +3673,30 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   statsRank: {
     width: 28,
     color: theme.colors.text,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   statsRowMain: {
     flex: 1,
   },
   statsPlayerName: {
     color: theme.colors.text,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   sectionTitle: {
     color: theme.colors.text,
-    fontWeight: "700",
-    fontSize: 18,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.xl,
     marginBottom: 10,
   },
   selectedHint: {
     marginTop: 8,
     color: theme.colors.success,
-    fontWeight: "600",
+    fontWeight: theme.font.weight.semibold,
   },
   infoText: {
     marginTop: 8,
     color: theme.colors.mutedText,
-    fontSize: 13,
+    fontSize: theme.font.size.sm,
   },
   spacer: {
     height: 12,
@@ -3710,14 +3716,14 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   chipText: {
     color: theme.colors.primary,
-    fontWeight: "600",
+    fontWeight: theme.font.weight.semibold,
   },
   label: {
     color: theme.colors.mutedText,
-    fontSize: 13,
+    fontSize: theme.font.size.sm,
     marginTop: 10,
     marginBottom: 6,
-    fontWeight: "600",
+    fontWeight: theme.font.weight.semibold,
   },
   input: {
     backgroundColor: theme.colors.card,
@@ -3744,7 +3750,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   primaryText: {
     color: "#ffffff",
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   secondaryButton: {
     backgroundColor: theme.colors.primarySoft,
@@ -3756,7 +3762,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   secondaryButtonText: {
     color: theme.colors.primary,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   ghostButton: {
     marginTop: 8,
@@ -3765,7 +3771,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   ghostButtonText: {
     color: theme.colors.mutedText,
-    fontWeight: "600",
+    fontWeight: theme.font.weight.semibold,
   },
   empty: {
     color: theme.colors.mutedText,
@@ -3787,8 +3793,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   gameTitle: {
     color: theme.colors.text,
-    fontWeight: "700",
-    fontSize: 16,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.lg,
     flex: 1,
     marginRight: 10,
   },
@@ -3803,8 +3809,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     paddingVertical: 6,
   },
   statusText: {
-    fontWeight: "700",
-    fontSize: 13,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.sm,
   },
   gameMeta: {
     color: theme.colors.mutedText,
@@ -3819,13 +3825,13 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   playerEditorTitle: {
     color: theme.colors.text,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
     marginBottom: 10,
   },
   unlinkText: {
     marginTop: 8,
     color: theme.colors.mutedText,
-    fontWeight: "600",
+    fontWeight: theme.font.weight.semibold,
   },
   playersHeader: {
     flexDirection: "row",
@@ -3840,9 +3846,9 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderRadius: theme.radius.md,
   },
   addPlayerButtonText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 13,
+    color: "#ffffff",
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.sm,
   },
   playerListSection: {
     marginTop: 12,
@@ -3867,8 +3873,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   playerName: {
     color: theme.colors.text,
-    fontWeight: "700",
-    fontSize: 16,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.lg,
   },
   playerLinkInfo: {
     color: theme.colors.mutedText,
@@ -3880,11 +3886,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   linkAction: {
     color: theme.colors.primary,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   deleteAction: {
     color: theme.colors.danger,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   inlineEditor: {
     marginTop: 10,
@@ -3912,7 +3918,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   conditionOptionText: {
     color: theme.colors.text,
-    fontWeight: "600",
+    fontWeight: theme.font.weight.semibold,
   },
   conditionOptionTextActive: {
     color: theme.colors.primary,
@@ -3935,12 +3941,12 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   inviteLinkLabel: {
     color: theme.colors.mutedText,
-    fontWeight: "600",
+    fontWeight: theme.font.weight.semibold,
     marginBottom: 6,
   },
   inviteLinkText: {
     color: theme.colors.primary,
-    fontWeight: "600",
+    fontWeight: theme.font.weight.semibold,
   },
   searchBarRow: {
     flexDirection: "row",
@@ -3989,8 +3995,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     minHeight: 38,
   },
   filterRowLabel: {
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.bold,
     color: theme.colors.mutedText,
     textTransform: "uppercase",
     letterSpacing: 0.4,
@@ -4018,8 +4024,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   filterChipText: {
     color: theme.colors.text,
-    fontWeight: "600",
-    fontSize: 12,
+    fontWeight: theme.font.weight.semibold,
+    fontSize: theme.font.size.xs,
   },
   filterChipTextActive: {
     color: theme.colors.primary,
@@ -4042,11 +4048,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   searchSummaryText: {
     color: theme.colors.text,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   searchSummaryMuted: {
     color: theme.colors.mutedText,
-    fontSize: 12,
+    fontSize: theme.font.size.xs,
   },
   searchSection: {
     borderWidth: 1,
@@ -4063,7 +4069,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   searchSectionTitle: {
     color: theme.colors.text,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   searchSectionCount: {
     color: theme.colors.primary,
@@ -4071,8 +4077,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.bold,
   },
   searchRow: {
     borderTopWidth: 1,
@@ -4090,21 +4096,21 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   searchRowTitle: {
     color: theme.colors.text,
-    fontWeight: "600",
+    fontWeight: theme.font.weight.semibold,
   },
   searchRowMeta: {
     color: theme.colors.mutedText,
     marginTop: 2,
-    fontSize: 12,
+    fontSize: theme.font.size.xs,
   },
   searchRowAction: {
     color: theme.colors.primary,
-    fontWeight: "700",
-    fontSize: 12,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.xs,
   },
   searchEmptyText: {
     color: theme.colors.mutedText,
-    fontSize: 13,
+    fontSize: theme.font.size.sm,
     fontStyle: "italic",
     paddingVertical: 6,
   },
@@ -4121,15 +4127,15 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   rankingRank: {
     width: 42,
     color: theme.colors.primary,
-    fontWeight: "800",
-    fontSize: 16,
+    fontWeight: theme.font.weight.extrabold,
+    fontSize: theme.font.size.lg,
   },
   rankingMain: {
     flex: 1,
   },
   rankingName: {
     color: theme.colors.text,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   rankingMeta: {
     color: theme.colors.mutedText,
@@ -4154,7 +4160,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   shareLinkButtonText: {
     color: theme.colors.primary,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   confirmOverlay: {
     flex: 1,
@@ -4175,14 +4181,14 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   confirmTitle: {
     color: theme.colors.text,
-    fontSize: 16,
-    fontWeight: "800",
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.extrabold,
     marginBottom: 8,
   },
   confirmMessage: {
     color: theme.colors.mutedText,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: theme.font.size.sm,
+    lineHeight: theme.font.lineHeight.tight,
   },
   confirmActionsRow: {
     flexDirection: "row",
@@ -4200,7 +4206,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   confirmCancelText: {
     color: theme.colors.mutedText,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   confirmSubmitButton: {
     borderWidth: 1,
@@ -4215,8 +4221,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     backgroundColor: theme.colors.danger,
   },
   confirmSubmitText: {
-    color: "#fff",
-    fontWeight: "700",
+    color: "#ffffff",
+    fontWeight: theme.font.weight.bold,
   },
   ticketMessage: {
     borderRadius: 10,
@@ -4235,14 +4241,14 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderLeftColor: theme.colors.border,
   },
   ticketMessageAuthor: {
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.bold,
     color: theme.colors.mutedText,
     marginBottom: 4,
   },
   ticketMessageBody: {
-    fontSize: 14,
+    fontSize: theme.font.size.sm,
     color: theme.colors.text,
-    lineHeight: 20,
+    lineHeight: theme.font.lineHeight.tight,
   },
 });

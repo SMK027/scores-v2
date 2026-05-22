@@ -234,18 +234,19 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    ...theme.shadow.sm,
   },
   navButtonText: {
     color: theme.colors.primary,
-    fontWeight: "700",
-    fontSize: 12,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.xs,
   },
   title: {
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: theme.font.size.xxl,
+    fontWeight: theme.font.weight.bold,
     color: theme.colors.text,
   },
   meta: {
@@ -259,13 +260,13 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     justifyContent: "space-between",
   },
   statusBadge: {
-    borderRadius: 999,
+    borderRadius: theme.radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   statusText: {
-    fontWeight: "700",
-    fontSize: 12,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.xs,
   },
   error: {
     color: theme.colors.danger,
@@ -275,14 +276,15 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   block: {
     marginTop: 14,
     backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.xl,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    padding: 12,
+    padding: 14,
+    ...theme.shadow.sm,
   },
   blockTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.bold,
     color: theme.colors.text,
     marginBottom: 8,
   },
@@ -293,29 +295,29 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   statLabel: {
     color: theme.colors.text,
-    fontWeight: "600",
+    fontWeight: theme.font.weight.semibold,
   },
   statValue: {
     color: theme.colors.mutedText,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   participantCard: {
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
-    padding: 10,
+    borderRadius: theme.radius.lg,
+    padding: 12,
     backgroundColor: theme.colors.backgroundSoft,
     marginBottom: 8,
   },
   participantName: {
     color: theme.colors.text,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
     flex: 1,
     marginRight: 8,
   },
   participantRate: {
     color: theme.colors.primary,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   participantMeta: {
     color: theme.colors.mutedText,
@@ -333,11 +335,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   secondaryText: {
     color: theme.colors.primary,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
   },
   refereeBtn: {
     marginTop: 14,
-    backgroundColor: theme.colors.success + "18",
+    backgroundColor: theme.colors.successSoft,
     borderRadius: theme.radius.md,
     paddingVertical: 12,
     paddingHorizontal: 14,
@@ -347,7 +349,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   refereeBtnText: {
     color: theme.colors.success,
-    fontWeight: "700",
-    fontSize: 14,
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.md,
   },
 });

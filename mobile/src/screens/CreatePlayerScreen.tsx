@@ -337,13 +337,13 @@ const createStyles = (theme: AppTheme) =>
     },
     loadingText: {
       color: theme.colors.mutedText,
-      fontSize: 14,
+      fontSize: theme.font.size.sm,
     },
     dataErrorText: {
       color: theme.colors.danger,
       textAlign: "center",
       paddingHorizontal: 24,
-      fontWeight: "600",
+      fontWeight: theme.font.weight.semibold,
     },
     retryButton: {
       borderWidth: 1,
@@ -354,7 +354,7 @@ const createStyles = (theme: AppTheme) =>
     },
     retryButtonText: {
       color: theme.colors.primary,
-      fontWeight: "700",
+      fontWeight: theme.font.weight.bold,
     },
     header: {
       flexDirection: "row",
@@ -377,16 +377,16 @@ const createStyles = (theme: AppTheme) =>
     },
     navButtonText: {
       color: theme.colors.primary,
-      fontWeight: "700",
-      fontSize: 13,
+      fontWeight: theme.font.weight.bold,
+      fontSize: theme.font.size.sm,
     },
     navButtonPlaceholder: {
       width: 80,
     },
     headerTitle: {
       color: theme.colors.text,
-      fontWeight: "800",
-      fontSize: 17,
+      fontWeight: theme.font.weight.extrabold,
+      fontSize: theme.font.size.lg,
     },
     scroll: {
       flex: 1,
@@ -414,8 +414,8 @@ const createStyles = (theme: AppTheme) =>
       fontSize: 32,
     },
     heroTitle: {
-      fontSize: 22,
-      fontWeight: "800",
+      fontSize: theme.font.size.xxl,
+      fontWeight: theme.font.weight.extrabold,
       color: theme.colors.text,
       textAlign: "center",
     },
@@ -423,11 +423,11 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.mutedText,
       textAlign: "center",
       maxWidth: 280,
-      lineHeight: 20,
+      lineHeight: theme.font.lineHeight.tight,
     },
     heroSpaceName: {
       color: theme.colors.primary,
-      fontWeight: "700",
+      fontWeight: theme.font.weight.bold,
     },
     /* Formulaire */
     formCard: {
@@ -449,22 +449,22 @@ const createStyles = (theme: AppTheme) =>
     },
     fieldLabel: {
       color: theme.colors.text,
-      fontWeight: "700",
-      fontSize: 14,
+      fontWeight: theme.font.weight.bold,
+      fontSize: theme.font.size.sm,
     },
     fieldOptional: {
       color: theme.colors.mutedText,
-      fontWeight: "400",
-      fontSize: 13,
+      fontWeight: theme.font.weight.regular,
+      fontSize: theme.font.size.sm,
     },
     fieldHint: {
       color: theme.colors.mutedText,
-      fontSize: 12,
+      fontSize: theme.font.size.xs,
       lineHeight: 17,
     },
     fieldCounter: {
       color: theme.colors.mutedText,
-      fontSize: 12,
+      fontSize: theme.font.size.xs,
     },
     input: {
       backgroundColor: theme.colors.backgroundSoft,
@@ -474,7 +474,7 @@ const createStyles = (theme: AppTheme) =>
       paddingHorizontal: 14,
       paddingVertical: 12,
       color: theme.colors.text,
-      fontSize: 15,
+      fontSize: theme.font.size.md,
     },
     inputError: {
       borderColor: theme.colors.danger,
@@ -492,8 +492,8 @@ const createStyles = (theme: AppTheme) =>
     },
     fieldError: {
       color: theme.colors.danger,
-      fontSize: 12,
-      fontWeight: "600",
+      fontSize: theme.font.size.xs,
+      fontWeight: theme.font.weight.semibold,
     },
     unlinkButton: {
       alignSelf: "flex-start",
@@ -506,11 +506,11 @@ const createStyles = (theme: AppTheme) =>
     },
     unlinkButtonText: {
       color: theme.colors.danger,
-      fontSize: 12,
-      fontWeight: "700",
+      fontSize: theme.font.size.xs,
+      fontWeight: theme.font.weight.bold,
     },
     errorBanner: {
-      backgroundColor: theme.colors.danger + "18",
+      backgroundColor: theme.colors.dangerSoft,
       borderWidth: 1,
       borderColor: theme.colors.danger + "44",
       borderRadius: theme.radius.md,
@@ -518,8 +518,8 @@ const createStyles = (theme: AppTheme) =>
     },
     errorBannerText: {
       color: theme.colors.danger,
-      fontWeight: "600",
-      fontSize: 13,
+      fontWeight: theme.font.weight.semibold,
+      fontSize: theme.font.size.sm,
     },
     /* Tips */
     tipsCard: {
@@ -532,8 +532,8 @@ const createStyles = (theme: AppTheme) =>
     },
     tipsTitle: {
       color: theme.colors.primary,
-      fontWeight: "800",
-      fontSize: 14,
+      fontWeight: theme.font.weight.extrabold,
+      fontSize: theme.font.size.sm,
       marginBottom: 2,
     },
     tipRow: {
@@ -552,8 +552,8 @@ const createStyles = (theme: AppTheme) =>
     tipText: {
       color: theme.colors.primary,
       flex: 1,
-      lineHeight: 20,
-      fontSize: 13,
+      lineHeight: theme.font.lineHeight.tight,
+      fontSize: theme.font.size.sm,
     },
     /* Footer */
     footer: {
@@ -575,8 +575,8 @@ const createStyles = (theme: AppTheme) =>
     },
     cancelButtonText: {
       color: theme.colors.mutedText,
-      fontWeight: "700",
-      fontSize: 15,
+      fontWeight: theme.font.weight.bold,
+      fontSize: theme.font.size.md,
     },
     submitButton: {
       flex: 2,
@@ -590,7 +590,7 @@ const createStyles = (theme: AppTheme) =>
     },
     submitButtonText: {
       color: "#ffffff",
-      fontWeight: "700",
-      fontSize: 15,
+      fontWeight: theme.font.weight.bold,
+      fontSize: theme.font.size.md,
     },
   });
