@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { ApiError, login } from "../services/api";
 import { FORGOT_PASSWORD_URL, REGISTER_URL, TERMS_URL } from "../config/constants";
 import type { User } from "../types/api";
@@ -104,7 +105,11 @@ export function LoginScreen({ onBack, onLoginSuccess }: Props) {
             style={[styles.input, styles.passwordInput]}
           />
           <Pressable style={styles.toggleButton} onPress={() => setShowPassword((current) => !current)}>
-            <Text style={styles.toggleText}>{showPassword ? "🙈" : "👁"}</Text>
+            <Feather
+              name={showPassword ? "eye-off" : "eye"}
+              size={18}
+              color={theme.colors.mutedText}
+            />
           </Pressable>
         </View>
 
@@ -249,17 +254,14 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     flex: 1,
   },
   toggleButton: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.backgroundSoft,
     borderWidth: 1,
     borderColor: theme.colors.border,
     alignItems: "center",
     justifyContent: "center",
-  },
-  toggleText: {
-    fontSize: 18,
   },
   forgotLink: {
     alignSelf: "flex-end",
