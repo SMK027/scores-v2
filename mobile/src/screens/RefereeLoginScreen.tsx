@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ApiError,
@@ -220,9 +221,11 @@ export function RefereeLoginScreen({
                 hitSlop={8}
                 style={styles.eyeBtn}
               >
-                <Text style={styles.eyeBtnText}>
-                  {showPassword ? "Masquer" : "Afficher"}
-                </Text>
+                <Feather
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={18}
+                  color={theme.colors.mutedText}
+                />
               </Pressable>
             </View>
 
@@ -380,8 +383,7 @@ const createStyles = (theme: AppTheme) =>
     },
     passwordRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
     passwordInput: { flex: 1, marginBottom: 0 },
-    eyeBtn: { paddingHorizontal: 12, paddingVertical: 10 },
-    eyeBtnText: { color: theme.colors.primary, fontSize: 13 },
+    eyeBtn: { width: 44, height: 44, borderRadius: theme.radius.md, backgroundColor: theme.colors.backgroundSoft, borderWidth: 1, borderColor: theme.colors.border, alignItems: "center", justifyContent: "center" },
     primaryBtn: {
       backgroundColor: theme.colors.primary,
       borderRadius: theme.radius.md,
