@@ -61,22 +61,34 @@ export function LoginScreen({ onBack, onLoginSuccess }: Props) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <View>
+      {/* En-tête */}
+      <View style={styles.headerArea}>
+        <Pressable style={styles.backChip} onPress={onBack}>
+          <Text style={styles.backChipText}>← Retour</Text>
+        </Pressable>
         <View style={styles.logoCircle}>
           <Text style={styles.logoGlyph}>#</Text>
         </View>
-        <Text style={styles.title}>Scores</Text>
-        <Text style={styles.subtitle}>Connectez-vous pour accéder à vos espaces et vos parties.</Text>
+        <Text style={styles.title}>Connexion</Text>
+        <Text style={styles.subtitle}>Accédez à vos espaces et parties.</Text>
       </View>
 
+      {/* Formulaire */}
       <View style={styles.card}>
-        <Text style={styles.fieldLabel}>Email</Text>
+        {error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorBoxText}>{error}</Text>
+          </View>
+        ) : null}
+
+        <Text style={styles.fieldLabel}>Adresse e-mail</Text>
         <TextInput
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
-          placeholder="Email"
+          autoComplete="email"
+          placeholder="vous@exemple.com"
           placeholderTextColor={theme.colors.mutedText}
           style={styles.input}
         />
@@ -87,16 +99,18 @@ export function LoginScreen({ onBack, onLoginSuccess }: Props) {
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
-            placeholder="Mot de passe"
+            placeholder="••••••••"
             placeholderTextColor={theme.colors.mutedText}
             style={[styles.input, styles.passwordInput]}
           />
           <Pressable style={styles.toggleButton} onPress={() => setShowPassword((current) => !current)}>
-            <Text style={styles.toggleText}>{showPassword ? "Masquer" : "Afficher"}</Text>
+            <Text style={styles.toggleText}>{showPassword ? "🙈" : "👁"}</Text>
           </Pressable>
         </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <Pressable style={styles.forgotLink} onPress={openForgotPassword}>
+          <Text style={styles.forgotLinkText}>Mot de passe oublié ?</Text>
+        </Pressable>
 
         <Pressable
           style={[styles.primaryButton, loading ? styles.disabledButton : undefined]}
@@ -105,25 +119,15 @@ export function LoginScreen({ onBack, onLoginSuccess }: Props) {
         >
           {loading ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.primaryText}>Se connecter</Text>}
         </Pressable>
-
-        <Pressable style={styles.textLinkButton} onPress={openForgotPassword}>
-          <Text style={styles.textLink}>Mot de passe oublie ?</Text>
-        </Pressable>
-
-        <View style={styles.separatorRow}>
-          <View style={styles.separatorLine} />
-          <Text style={styles.separatorText}>ou</Text>
-          <View style={styles.separatorLine} />
-        </View>
-
-        <Pressable style={styles.secondaryButton} onPress={openRegister}>
-          <Text style={styles.secondaryButtonText}>S'inscrire</Text>
-        </Pressable>
       </View>
 
-      <Pressable style={styles.backButton} onPress={onBack}>
-        <Text style={styles.backText}>Retour</Text>
-      </Pressable>
+      {/* Inscription */}
+      <View style={styles.footerCard}>
+        <Text style={styles.footerLabel}>Pas encore de compte ?</Text>
+        <Pressable style={styles.secondaryButton} onPress={openRegister}>
+          <Text style={styles.secondaryButtonText}>Créer un compte</Text>
+        </Pressable>
+      </View>
 
       <Pressable style={styles.termsButton} onPress={openTerms}>
         <Text style={styles.termsText}>Conditions d'utilisation</Text>
@@ -139,59 +143,102 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   content: {
     padding: 20,
-    paddingBottom: 28,
+    paddingBottom: 32,
+    gap: 16,
+  },
+
+  /* En-tête */
+  headerArea: {
+    alignItems: "flex-start",
+    marginTop: 8,
+  },
+  backChip: {
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    marginBottom: 20,
+    ...theme.shadow.sm,
+  },
+  backChipText: {
+    color: theme.colors.text,
+    fontWeight: theme.font.weight.semibold,
+    fontSize: theme.font.size.sm,
   },
   logoCircle: {
-    marginTop: 10,
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: "#635bff",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: theme.colors.brand,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
+    shadowColor: theme.colors.brand,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
   },
   logoGlyph: {
     color: "#ffffff",
-    fontSize: 30,
-    fontWeight: "900",
+    fontSize: 28,
+    fontWeight: theme.font.weight.heavy,
   },
   title: {
-    fontSize: 36,
-    fontWeight: "800",
+    fontSize: theme.font.size.xxxl,
+    fontWeight: theme.font.weight.heavy,
     color: theme.colors.text,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    marginTop: 8,
+    marginTop: 6,
     color: theme.colors.mutedText,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: theme.font.size.md,
+    lineHeight: theme.font.lineHeight.normal,
   },
+
+  /* Formulaire */
   card: {
-    marginTop: 18,
     backgroundColor: theme.colors.card,
     borderRadius: theme.radius.xl,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    padding: 18,
+    padding: 20,
     ...theme.shadow.card,
   },
+  errorBox: {
+    backgroundColor: theme.colors.dangerSoft,
+    borderWidth: 1,
+    borderColor: theme.colors.danger + "40",
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 14,
+  },
+  errorBoxText: {
+    color: theme.colors.danger,
+    fontSize: theme.font.size.sm,
+    fontWeight: theme.font.weight.medium,
+    lineHeight: theme.font.lineHeight.normal,
+  },
   fieldLabel: {
-    color: theme.colors.mutedText,
-    fontSize: 13,
-    fontWeight: "700",
-    marginBottom: 6,
-    marginTop: 10,
+    color: theme.colors.text,
+    fontSize: theme.font.size.sm,
+    fontWeight: theme.font.weight.semibold,
+    marginBottom: 7,
+    marginTop: 12,
   },
   input: {
     backgroundColor: theme.colors.backgroundSoft,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
     color: theme.colors.text,
+    fontSize: theme.font.size.md,
   },
   passwordRow: {
     flexDirection: "row",
@@ -200,88 +247,87 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   passwordInput: {
     flex: 1,
-    marginBottom: 0,
   },
   toggleButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    width: 48,
+    height: 48,
     borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.primarySoft,
+    backgroundColor: theme.colors.backgroundSoft,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: "center",
+    justifyContent: "center",
   },
   toggleText: {
-    color: theme.colors.primary,
-    fontWeight: "700",
-    fontSize: 12,
+    fontSize: 18,
   },
-  error: {
-    color: theme.colors.danger,
-    marginBottom: 10,
+  forgotLink: {
+    alignSelf: "flex-end",
+    marginTop: 8,
+    paddingVertical: 4,
+  },
+  forgotLinkText: {
+    color: theme.colors.primary,
+    fontSize: theme.font.size.sm,
+    fontWeight: theme.font.weight.semibold,
   },
   primaryButton: {
     backgroundColor: theme.colors.primary,
     borderRadius: theme.radius.md,
-    paddingVertical: 14,
+    paddingVertical: 15,
     alignItems: "center",
-    marginTop: 12,
+    marginTop: 16,
+    ...theme.shadow.card,
   },
   disabledButton: {
     opacity: 0.6,
   },
   primaryText: {
     color: "#ffffff",
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.lg,
   },
-  textLinkButton: {
-    marginTop: 10,
+
+  /* Inscription */
+  footerCard: {
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 18,
     alignItems: "center",
+    gap: 12,
+    ...theme.shadow.sm,
   },
-  textLink: {
-    color: theme.colors.primary,
-    fontWeight: "600",
-  },
-  separatorRow: {
-    marginTop: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  separatorLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: theme.colors.border,
-  },
-  separatorText: {
+  footerLabel: {
     color: theme.colors.mutedText,
-    fontWeight: "600",
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.medium,
   },
   secondaryButton: {
-    marginTop: 12,
+    width: "100%",
     borderRadius: theme.radius.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.card,
+    backgroundColor: theme.colors.primarySoft,
     paddingVertical: 12,
     alignItems: "center",
   },
   secondaryButtonText: {
     color: theme.colors.primary,
-    fontWeight: "700",
+    fontWeight: theme.font.weight.bold,
+    fontSize: theme.font.size.md,
   },
-  backButton: {
-    alignItems: "center",
-    paddingVertical: 12,
-    marginTop: 10,
-  },
-  backText: {
-    color: theme.colors.mutedText,
-  },
+
+  /* Pied */
   termsButton: {
     alignItems: "center",
     paddingVertical: 6,
   },
   termsText: {
     color: theme.colors.mutedText,
+    fontSize: theme.font.size.sm,
+    fontWeight: theme.font.weight.medium,
     textDecorationLine: "underline",
-    fontSize: 12,
   },
 });

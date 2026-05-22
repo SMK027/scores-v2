@@ -46,9 +46,12 @@ export function SplashScreen() {
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.logoCircle, { opacity, transform: [{ scale }] }]}>
-        <Text style={styles.logoGlyph}>#</Text>
-      </Animated.View>
+      <View style={styles.logoWrap}>
+        <View style={styles.logoPulse} />
+        <Animated.View style={[styles.logoCircle, { opacity, transform: [{ scale }] }]}>
+          <Text style={styles.logoGlyph}>#</Text>
+        </Animated.View>
+      </View>
       <Text style={styles.title}>Scores</Text>
       <Text style={styles.subtitle}>Préparation de votre espace de jeu...</Text>
     </View>
@@ -61,34 +64,47 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: theme.colors.background,
+    gap: 16,
   },
-  logoCircle: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
-    backgroundColor: "#635bff",
+  logoWrap: {
+    position: "relative",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#312e81",
-    shadowOpacity: 0.2,
-    shadowRadius: 14,
+  },
+  logoPulse: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: theme.colors.brandSoft,
+    zIndex: -1,
+  },
+  logoCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: theme.colors.brand,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: theme.colors.brand,
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
     shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    elevation: 10,
   },
   logoGlyph: {
     color: "#ffffff",
-    fontSize: 42,
-    fontWeight: "900",
+    fontSize: 44,
+    fontWeight: theme.font.weight.heavy,
   },
   title: {
-    marginTop: 20,
-    fontSize: 30,
+    fontSize: theme.font.size.xxxl,
     color: theme.colors.text,
-    fontWeight: "800",
+    fontWeight: theme.font.weight.heavy,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    marginTop: 8,
     color: theme.colors.mutedText,
-    fontSize: 14,
+    fontSize: theme.font.size.md,
   },
 });

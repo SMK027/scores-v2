@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { useAppTheme } from "../context/ThemeContext";
 import type { AppTheme } from "../styles";
@@ -13,50 +13,82 @@ type Props = {
   onLogout: () => void;
 };
 
+const NAV_CARDS = [
+  {
+    key: "spaces",
+    icon: "🏠",
+    title: "Mes espaces",
+    description: "Accédez à vos espaces et lancez une partie",
+    accent: "primary" as const,
+  },
+  {
+    key: "profile",
+    icon: "👤",
+    title: "Mon profil",
+    description: "Consultez et modifiez vos informations",
+    accent: "brand" as const,
+  },
+] as const;
+
 export function DashboardScreen({ user, onOpenSpaces, onOpenProfile, onLogout }: Props) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
   const avatarUri = getAvatarUri(user.avatar);
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
 
-  const confirmLogout = () => {
-    setIsLogoutConfirmOpen(true);
+  const handleNav = (key: string) => {
+    if (key === "spaces") onOpenSpaces();
+    else if (key === "profile") onOpenProfile();
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Bonjour {user.username}</Text>
-        <Pressable style={styles.logoutButton} onPress={confirmLogout}>
-          <Text style={styles.logoutButtonText}>Déconnexion</Text>
-        </Pressable>
-      </View>
-
-      <Text style={styles.subtitle}>Choisis ce que tu veux faire.</Text>
-
-      <Text style={styles.sectionLabel}>Mon compte</Text>
-
-      <Pressable style={styles.avatarCard} onPress={onOpenProfile}>
-        <View style={styles.avatarCircle}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Bannière de bienvenue */}
+      <View style={styles.greetingCard}>
+        <View style={styles.greetingLeft}>
+          <Text style={styles.greetingLabel}>{greeting} 👋</Text>
+          <Text style={styles.greetingName}>{user.username}</Text>
+          <Text style={styles.greetingHint}>Que souhaitez-vous faire ?</Text>
+        </View>
+        <Pressable onPress={onOpenProfile} style={styles.avatarCircle}>
           {avatarUri ? (
             <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
           ) : (
             <Text style={styles.avatarText}>{getInitials(user)}</Text>
           )}
-        </View>
-        <View style={styles.avatarContent}>
-          <Text style={styles.cardTitle}>Mon profil</Text>
-          <Text style={styles.cardText}>Consulter mes informations via ma photo de profil</Text>
-        </View>
-      </Pressable>
+        </Pressable>
+      </View>
 
+      {/* Navigation */}
       <Text style={styles.sectionLabel}>Navigation</Text>
+      <View style={styles.navGrid}>
+        {NAV_CARDS.map((card) => (
+          <Pressable
+            key={card.key}
+            style={({ pressed }) => [styles.navCard, pressed && styles.pressed]}
+            onPress={() => handleNav(card.key)}
+          >
+            <View style={[styles.navIconWrap, styles[`navIcon_${card.accent}`]]}>
+              <Text style={styles.navIcon}>{card.icon}</Text>
+            </View>
+            <Text style={styles.navCardTitle}>{card.title}</Text>
+            <Text style={styles.navCardDesc}>{card.description}</Text>
+          </Pressable>
+        ))}
+      </View>
 
-      <Pressable style={styles.actionCard} onPress={onOpenSpaces}>
-        <Text style={styles.cardTitle}>Mes espaces</Text>
-        <Text style={styles.cardText}>Accéder à tous mes espaces et commencer une partie</Text>
-      </Pressable>
+      {/* Déconnexion */}
+      <View style={styles.dangerSection}>
+        <Pressable
+          style={({ pressed }) => [styles.logoutButton, pressed && styles.pressed]}
+          onPress={() => setIsLogoutConfirmOpen(true)}
+        >
+          <Text style={styles.logoutButtonText}>Se déconnecter</Text>
+        </Pressable>
+      </View>
 
       <ConfirmDialog
         visible={isLogoutConfirmOpen}
@@ -70,7 +102,7 @@ export function DashboardScreen({ user, onOpenSpaces, onOpenProfile, onLogout }:
           onLogout();
         }}
       />
-    </View>
+    </ScrollView>
   );
 }
 
@@ -78,88 +110,138 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-    padding: 16,
   },
-  header: {
+  content: {
+    padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxl,
+    gap: theme.spacing.lg,
+  },
+
+  /* Greeting card */
+  greetingCard: {
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: theme.spacing.xl,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    ...theme.shadow.card,
   },
-  title: {
+  greetingLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  greetingLabel: {
+    fontSize: theme.font.size.sm,
+    fontWeight: theme.font.weight.semibold,
+    color: theme.colors.mutedText,
+    marginBottom: 4,
+  },
+  greetingName: {
+    fontSize: theme.font.size.xxl,
+    fontWeight: theme.font.weight.heavy,
     color: theme.colors.text,
-    fontSize: 24,
-    fontWeight: "700",
+    letterSpacing: -0.3,
   },
-  subtitle: {
+  greetingHint: {
+    fontSize: theme.font.size.sm,
     color: theme.colors.mutedText,
-    marginBottom: 16,
-  },
-  sectionLabel: {
-    color: theme.colors.mutedText,
-    fontWeight: "600",
-    fontSize: 13,
-    marginBottom: 8,
-  },
-  logoutButton: {
-    borderWidth: 1,
-    borderColor: theme.colors.danger,
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  logoutButtonText: {
-    color: theme.colors.danger,
-    fontWeight: "700",
-    fontSize: 12,
-  },
-  avatarCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.colors.card,
-    borderColor: theme.colors.border,
-    borderWidth: 1,
-    borderRadius: theme.radius.lg,
-    padding: 16,
-    marginBottom: 12,
+    marginTop: 4,
   },
   avatarCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: theme.colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 14,
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+    overflow: "hidden",
   },
   avatarText: {
     color: theme.colors.primary,
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.bold,
   },
   avatarImage: {
     width: "100%",
     height: "100%",
-    borderRadius: 32,
   },
-  avatarContent: {
-    flex: 1,
-  },
-  actionCard: {
-    backgroundColor: theme.colors.card,
-    borderColor: theme.colors.border,
-    borderWidth: 1,
-    borderRadius: theme.radius.lg,
-    padding: 16,
-  },
-  cardTitle: {
-    color: theme.colors.text,
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  cardText: {
+
+  /* Section */
+  sectionLabel: {
     color: theme.colors.mutedText,
-    marginTop: 4,
+    fontWeight: theme.font.weight.semibold,
+    fontSize: theme.font.size.xs,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: -4,
+  },
+
+  /* Nav grid */
+  navGrid: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  navCard: {
+    flex: 1,
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: theme.spacing.lg,
+    ...theme.shadow.card,
+  },
+  navIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  navIcon_primary: {
+    backgroundColor: theme.colors.primarySoft,
+  },
+  navIcon_brand: {
+    backgroundColor: theme.colors.brandSoft,
+  },
+  navIcon: {
+    fontSize: 22,
+  },
+  navCardTitle: {
+    color: theme.colors.text,
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.bold,
+    marginBottom: 4,
+  },
+  navCardDesc: {
+    color: theme.colors.mutedText,
+    fontSize: theme.font.size.xs,
+    lineHeight: theme.font.lineHeight.tight,
+  },
+
+  /* Déconnexion */
+  dangerSection: {
+    marginTop: theme.spacing.sm,
+  },
+  logoutButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.danger + "60",
+    backgroundColor: theme.colors.dangerSoft,
+    borderRadius: theme.radius.md,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  logoutButtonText: {
+    color: theme.colors.danger,
+    fontWeight: theme.font.weight.semibold,
+    fontSize: theme.font.size.md,
+  },
+  pressed: {
+    opacity: 0.8,
   },
 });
