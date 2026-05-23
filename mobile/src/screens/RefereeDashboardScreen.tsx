@@ -381,6 +381,14 @@ function GameDetailView({
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [editingScores, setEditingScores] = useState<Record<number, Record<number, string>>>({});
+  const [collapsedRounds, setCollapsedRounds] = useState<Set<number>>(new Set());
+
+  const toggleRound = (roundId: number) =>
+    setCollapsedRounds((prev) => {
+      const next = new Set(prev);
+      if (next.has(roundId)) { next.delete(roundId); } else { next.add(roundId); }
+      return next;
+    });
 
   const loadGame = useCallback(async () => {
     setError(null);
@@ -519,16 +527,20 @@ function GameDetailView({
       ) : (
         (game?.rounds ?? []).map((round) => {
           const isEditing = round.id in editingScores;
+          const isCollapsed = collapsedRounds.has(round.id);
           return (
             <View key={round.id} style={styles.roundCard}>
-              <View style={styles.roundHeader}>
+              <Pressable style={styles.roundHeader} onPress={() => toggleRound(round.id)}>
                 <Text style={styles.roundTitle}>Manche {round.round_number}</Text>
-                <View style={[styles.roundBadge, round.status === "completed" ? styles.roundBadgeCompleted : round.status === "paused" ? styles.roundBadgePaused : styles.roundBadgeActive]}>
-                  <Text style={styles.roundBadgeText}>{roundStatusLabel(round.status)}</Text>
+                <View style={styles.roundHeaderRight}>
+                  <View style={[styles.roundBadge, round.status === "completed" ? styles.roundBadgeCompleted : round.status === "paused" ? styles.roundBadgePaused : styles.roundBadgeActive]}>
+                    <Text style={styles.roundBadgeText}>{roundStatusLabel(round.status)}</Text>
+                  </View>
+                  <Text style={styles.roundChevron}>{isCollapsed ? "▶" : "▼"}</Text>
                 </View>
-              </View>
+              </Pressable>
 
-              {!isCompleted ? (
+              {!isCollapsed && !isCompleted ? (
                 <View style={styles.roundActions}>
                   {round.status === "in_progress" ? (
                     <>
@@ -550,7 +562,7 @@ function GameDetailView({
                 </View>
               ) : null}
 
-              <View style={styles.scoresBlock}>
+              {!isCollapsed ? <View style={styles.scoresBlock}>
                 {winCondition !== "win_loss" ? (
                   <>
                     <Text style={styles.scoresLabel}>Scores</Text>
@@ -686,7 +698,7 @@ function GameDetailView({
                     )}
                   </>
                 )}
-              </View>
+              </View> : null}
             </View>
           );
         })
@@ -1110,6 +1122,8 @@ const createStyles = (theme: AppTheme) =>
     playerRank: { fontSize: theme.font.size.xs, color: theme.colors.mutedText, backgroundColor: theme.colors.backgroundSoft, borderRadius: theme.radius.pill, paddingHorizontal: 6, paddingVertical: 1 },
     roundCard: { backgroundColor: theme.colors.card, borderRadius: theme.radius.xl, padding: theme.spacing.md, marginBottom: theme.spacing.sm, borderWidth: 1, borderColor: theme.colors.border, ...theme.shadow.card },
     roundHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: theme.spacing.sm },
+    roundHeaderRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+    roundChevron: { fontSize: 11, color: theme.colors.mutedText },
     roundTitle: { fontSize: theme.font.size.md, fontWeight: theme.font.weight.semibold, color: theme.colors.text },
     roundBadge: { borderRadius: theme.radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
     roundBadgeActive: { backgroundColor: theme.colors.brandSoft },
