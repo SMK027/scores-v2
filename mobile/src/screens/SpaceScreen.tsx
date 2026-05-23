@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -267,6 +267,9 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { isOnline, refreshQueueLength } = useNetwork();
+  // Ref pour éviter de recréer les callbacks à chaque changement d'isOnline
+  const isOnlineRef = useRef(isOnline);
+  useEffect(() => { isOnlineRef.current = isOnline; }, [isOnline]);
   const TICKET_STATUS_COLORS: Record<ContactTicket["status"], string> = useMemo(() => ({
     open: theme.colors.success,
     in_progress: theme.colors.warning,
@@ -426,7 +429,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
     append: boolean = false
   ) => {
     // Hors connexion : charger depuis le cache (pas de filtre avancé, page 1 uniquement)
-    if (!isOnline) {
+    if (!isOnlineRef.current) {
       const cached = await getCachedGames(space.id);
       if (append) {
         setGames((prev) => [...prev, ...cached]);
@@ -481,17 +484,18 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
       setGamesLoading(false);
       setGamesLoadingMore(false);
     }
-  }, [isOnline, space.id, token]);
+  }, [space.id, token]);
 
   const loadData = useCallback(async () => {
     // Hors connexion : charger directement depuis le cache sans appel réseau
-    if (!isOnline) {
+    if (!isOnlineRef.current) {
       const [cachedPlayers, cachedGameTypes] = await Promise.all([
         getCachedPlayers(space.id),
         getCachedGameTypes(space.id),
       ]);
-      setPlayers(cachedPlayers);
-      setGameTypes(cachedGameTypes);
+      // Ne pas écraser les données déjà en mémoire si le cache est vide
+      if (cachedPlayers.length > 0) setPlayers(cachedPlayers);
+      if (cachedGameTypes.length > 0) setGameTypes(cachedGameTypes);
       if (cachedPlayers.length === 0 && cachedGameTypes.length === 0) {
         setError("Aucune donnée disponible hors connexion.");
       }
@@ -538,7 +542,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
         setError("Impossible de charger cet espace.");
       }
     }
-  }, [isOnline, loadGames, space.id, token]);
+  }, [loadGames, space.id, token]);
 
   useEffect(() => {
     const run = async () => {
@@ -725,7 +729,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
     const query = searchText.trim();
 
     // Hors connexion : recherche locale dans les données en mémoire
-    if (!isOnline) {
+    if (!isOnlineRef.current) {
       const q = query.toLowerCase();
       setSearchResults({
         players: players.filter((p) => p.name.toLowerCase().includes(q)),
@@ -755,7 +759,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
     } finally {
       setSearchLoading(false);
     }
-  }, [games, gameTypes, isOnline, players, searchText, space.id, token]);
+  }, [games, gameTypes, players, searchText, space.id, token]);
 
   const openSearchResult = useCallback(
     (type: "players" | "game_types" | "games" | "comments", targetId: number, gameId?: number) => {
