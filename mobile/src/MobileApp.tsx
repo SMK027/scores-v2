@@ -242,6 +242,7 @@ function MobileAppContent() {
             route.name !== "welcome" &&
             route.name !== "login" &&
             route.name !== "notifications" &&
+            route.name !== "spaces" &&
             route.name !== "referee-login" &&
             route.name !== "referee-dashboard"
           }
@@ -284,6 +285,10 @@ function MobileAppContent() {
             setRoute({ name: "profile" });
           }}
           onOpenCreateSpace={() => setRoute({ name: "create-space" })}
+          onOpenNotifications={() => {
+            setPreviousRoute(route);
+            setRoute({ name: "notifications" });
+          }}
         />
       ) : null}
 

@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { useAppTheme } from "../context/ThemeContext";
+import { useNotifications } from "../context/NotificationContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import type { AppTheme } from "../styles";
 import { ApiError, deleteSpace, leaveSpace, fetchSpaces, acceptInvitation, declineInvitation } from "../services/api";
@@ -25,11 +26,13 @@ type Props = {
   onLogout: () => void;
   onOpenProfile: () => void;
   onOpenCreateSpace: () => void;
+  onOpenNotifications: () => void;
 };
 
-export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfile, onOpenCreateSpace }: Props) {
+export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfile, onOpenCreateSpace, onOpenNotifications }: Props) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const { unreadCount } = useNotifications();
 
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -286,13 +289,25 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
           <Text style={styles.subtitle}>Gérez vos salons de jeu, {user.username}</Text>
         </View>
         <View style={styles.headerActions}>
-          <Pressable style={styles.profileButton} onPress={onOpenProfile}>
-            {avatarUri ? (
-              <Image source={{ uri: avatarUri }} style={styles.profileAvatar} />
-            ) : (
-              <Text style={styles.profileAvatarText}>{getInitials(user)}</Text>
-            )}
-          </Pressable>
+          <View style={styles.headerTopRow}>
+            <Pressable style={styles.profileButton} onPress={onOpenProfile}>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.profileAvatar} />
+              ) : (
+                <Text style={styles.profileAvatarText}>{getInitials(user)}</Text>
+              )}
+            </Pressable>
+            <Pressable style={styles.bellButton} onPress={onOpenNotifications}>
+              <Text style={styles.bellIcon}>🔔</Text>
+              {unreadCount > 0 ? (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>
+                    {unreadCount > 99 ? "99+" : String(unreadCount)}
+                  </Text>
+                </View>
+              ) : null}
+            </Pressable>
+          </View>
           <Pressable style={styles.logoutButton} onPress={confirmLogout}>
             <Text style={styles.logoutButtonText}>Déconnexion</Text>
           </Pressable>
@@ -483,6 +498,45 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   headerActions: {
     alignItems: "flex-end",
     gap: 8,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  bellButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    ...theme.shadow.sm,
+  },
+  bellIcon: {
+    fontSize: 18,
+  },
+  bellBadge: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: theme.colors.danger,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: theme.colors.card,
+  },
+  bellBadgeText: {
+    color: "#fff",
+    fontSize: 9,
+    fontWeight: theme.font.weight.extrabold,
+    lineHeight: 16,
   },
   profileButton: {
     width: 44,
