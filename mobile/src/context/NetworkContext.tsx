@@ -43,8 +43,9 @@ export function NetworkProvider({ children, token }: { children: React.ReactNode
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncError, setLastSyncError] = useState<string | null>(null);
 
-  // Référence stable du token pour les callbacks async
+  // Références stables pour éviter les dépendances instables dans useEffect
   const tokenRef = useRef<string | null>(token);
+  const isSyncingRef = useRef(false);
   useEffect(() => { tokenRef.current = token; }, [token]);
 
   const refreshQueueLength = useCallback(async () => {
@@ -52,8 +53,10 @@ export function NetworkProvider({ children, token }: { children: React.ReactNode
     setQueueLength(count);
   }, []);
 
+  // syncNow stable (pas de `isSyncing` en dep) : le guard utilise isSyncingRef
   const syncNow = useCallback(async (authToken: string) => {
-    if (isSyncing) return;
+    if (isSyncingRef.current) return;
+    isSyncingRef.current = true;
     setIsSyncing(true);
     setLastSyncError(null);
     try {
@@ -63,11 +66,16 @@ export function NetworkProvider({ children, token }: { children: React.ReactNode
       }
       await refreshQueueLength();
     } finally {
+      isSyncingRef.current = false;
       setIsSyncing(false);
     }
-  }, [isSyncing, refreshQueueLength]);
+  }, [refreshQueueLength]);
 
-  // Écouter les changements d'état réseau
+  // Ref stable vers syncNow pour l'utiliser dans useEffect sans l'avoir en dep
+  const syncNowRef = useRef(syncNow);
+  useEffect(() => { syncNowRef.current = syncNow; }, [syncNow]);
+
+  // Écouter les changements d'état réseau — s'exécute UNE seule fois (deps stables)
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
       const online = state.isConnected === true && state.isInternetReachable !== false;
@@ -75,7 +83,7 @@ export function NetworkProvider({ children, token }: { children: React.ReactNode
 
       // Dès que la connexion est rétablie, lancer la sync si le token est disponible
       if (online && tokenRef.current) {
-        void syncNow(tokenRef.current);
+        void syncNowRef.current(tokenRef.current);
       }
     });
 
@@ -87,7 +95,7 @@ export function NetworkProvider({ children, token }: { children: React.ReactNode
     void refreshQueueLength();
 
     return unsubscribe;
-  }, [syncNow, refreshQueueLength]);
+  }, [refreshQueueLength]); // refreshQueueLength est stable (useCallback sans deps)
 
   return (
     <NetworkContext.Provider value={{ isOnline, queueLength, isSyncing, lastSyncError, syncNow, refreshQueueLength }}>
