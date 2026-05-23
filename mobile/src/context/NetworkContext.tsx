@@ -94,8 +94,22 @@ export function NetworkProvider({ children, token }: { children: React.ReactNode
 
     void refreshQueueLength();
 
-    return unsubscribe;
-  }, [refreshQueueLength]); // refreshQueueLength est stable (useCallback sans deps)
+    // Retry périodique : si connecté mais file non vide, relancer la sync toutes les 30s
+    const retryInterval = setInterval(() => {
+      if (tokenRef.current && !isSyncingRef.current) {
+        void getQueueLength().then((count) => {
+          if (count > 0 && tokenRef.current) {
+            void syncNowRef.current(tokenRef.current);
+          }
+        });
+      }
+    }, 30_000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(retryInterval);
+    };
+  }, [refreshQueueLength]);
 
   return (
     <NetworkContext.Provider value={{ isOnline, queueLength, isSyncing, lastSyncError, syncNow, refreshQueueLength }}>
