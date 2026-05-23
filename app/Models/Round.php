@@ -120,6 +120,21 @@ class Round extends Model
     }
 
     /**
+     * Rétropolie started_at à partir de la durée réelle mesurée côté client (mode offline).
+     * À appeler après updateStatus('completed') pour que ended_at soit déjà positionné.
+     */
+    public function backfillStartedAt(int $id, int $durationSeconds): bool
+    {
+        $durationSeconds = max(1, $durationSeconds);
+        $stmt = $this->db->prepare("
+            UPDATE {$this->table}
+            SET started_at = DATE_SUB(ended_at, INTERVAL :duration SECOND)
+            WHERE id = :id
+        ");
+        return $stmt->execute(['id' => $id, 'duration' => $durationSeconds]);
+    }
+
+    /**
      * Supprime une manche et ses scores associés
      */
     public function deleteWithScores(int $id): bool

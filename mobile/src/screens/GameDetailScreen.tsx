@@ -325,6 +325,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
           round_number: (details?.rounds.length ?? 0) + 1,
           status: "in_progress",
           _offlineTempId: tempRoundId,
+          _offlineStartedAt: Date.now(),
         };
         const updatedDetails = details
           ? { ...details, rounds: [...details.rounds, newRound] }
@@ -413,6 +414,11 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
         const queueRoundId: number | string = currentRound?._offlineTempId ?? editingRoundId;
         const queueGameId: number | string = details?.game._offlineTempId ?? gameId;
 
+        // Durée réelle de la manche mesurée côté client
+        const durationSeconds = currentRound?._offlineStartedAt
+          ? Math.max(1, Math.floor((Date.now() - currentRound._offlineStartedAt) / 1000))
+          : undefined;
+
         await enqueue({
           type: "update_scores",
           spaceId: space.id,
@@ -421,6 +427,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
           scores: Object.fromEntries(
             Object.entries(normalizedScores).map(([k, v]) => [Number(k), v])
           ),
+          durationSeconds,
         });
         await refreshQueueLength();
 

@@ -473,13 +473,18 @@ export async function updateRoundScores(
   spaceId: number,
   gameId: number,
   roundId: number,
-  scores: Record<number, number>
+  scores: Record<number, number>,
+  durationSeconds?: number
 ): Promise<void> {
   await request<{ success: boolean }>(
     `/api/spaces/${spaceId}/games/${gameId}/rounds/${roundId}/scores`,
     {
       method: "PUT",
-      body: JSON.stringify({ scores }),
+      body: JSON.stringify(
+        durationSeconds !== undefined
+          ? { scores, duration_seconds: durationSeconds }
+          : { scores }
+      ),
     },
     token
   );

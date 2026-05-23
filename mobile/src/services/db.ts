@@ -26,7 +26,7 @@ export type AuthSession = {
 export type QueueAction =
   | { type: "create_game"; spaceId: number; gameTypeId: number; playerIds: number[]; notes?: string; tempId: string }
   | { type: "create_round"; spaceId: number; gameId: number | string; tempId: string }
-  | { type: "update_scores"; spaceId: number; gameId: number | string; roundId: number | string; scores: Record<number, number | null> };
+  | { type: "update_scores"; spaceId: number; gameId: number | string; roundId: number | string; scores: Record<number, number | null>; durationSeconds?: number };
 
 export type QueueEntry = {
   id: number;

@@ -435,6 +435,12 @@ class GameApiController extends ApiController
             if (!$isCompleted) {
                 $roundPauseModel->endAllOpenPauses((int) $rid);
                 $roundModel->updateStatus((int) $rid, 'completed');
+
+                // Mode offline : durée réelle mesurée côté client
+                $durationSeconds = isset($data['duration_seconds']) ? (int) $data['duration_seconds'] : 0;
+                if ($durationSeconds > 0) {
+                    $roundModel->backfillStartedAt((int) $rid, $durationSeconds);
+                }
             }
 
             $this->gameModel->recalculateTotals((int) $gid);

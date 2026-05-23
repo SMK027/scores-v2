@@ -118,7 +118,7 @@ async function processEntry(
         if (score !== null) normalizedScores[Number(pid)] = score;
       }
 
-      await updateRoundScores(token, action.spaceId, realGameId, realRoundId, normalizedScores);
+      await updateRoundScores(token, action.spaceId, realGameId, realRoundId, normalizedScores, action.durationSeconds);
       break;
     }
 

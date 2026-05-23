@@ -116,6 +116,8 @@ export type Round = {
   notes?: string | null;
   /** ID temporaire côté client pour les manches créées hors connexion (non envoyé au serveur) */
   _offlineTempId?: string;
+  /** Timestamp ms du début de la manche — utilisé hors connexion pour calculer la durée réelle */
+  _offlineStartedAt?: number;
 };
 
 export type ProfileStats = {
