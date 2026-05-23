@@ -1493,7 +1493,6 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
           {space.name}
         </Text>
         <View style={[styles.headerSide, styles.headerSideRight]}>
-          <NotifBell onPress={onOpenNotifications} />
           <Pressable style={styles.profileButton} onPress={onOpenProfile}>
             {avatarUri ? (
               <Image source={{ uri: avatarUri }} style={styles.profileAvatar} />
@@ -1501,6 +1500,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
               <Text style={styles.profileAvatarText}>{getInitials(user)}</Text>
             )}
           </Pressable>
+          <NotifBell onPress={onOpenNotifications} />
         </View>
       </View>
 
