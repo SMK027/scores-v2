@@ -606,22 +606,84 @@ function GameDetailView({
                 ) : (
                   <>
                     <Text style={styles.scoresLabel}>Résultats</Text>
-                    {round.scores.map((s) => {
-                      const p = game?.players.find((gp) => gp.player_id === s.player_id);
-                      return (
-                        <View key={s.player_id} style={styles.scoreDisplayRow}>
-                          <Text style={styles.scoreDisplayName}>{p?.name ?? `Joueur ${s.player_id}`}</Text>
-                          <Text style={[styles.scoreDisplayValue, s.won === true ? { color: theme.colors.success } : s.won === false ? { color: theme.colors.danger } : {}]}>
-                            {s.won === true ? "Victoire" : s.won === false ? "Défaite" : "-"}
-                          </Text>
+                    {isEditing ? (
+                      <>
+                        {(game?.players ?? []).map((gp) => {
+                          const val = editingScores[round.id]?.[gp.player_id] ?? "";
+                          const isWinner = val === "1";
+                          return (
+                            <View key={gp.player_id} style={styles.scoreInputRow}>
+                              <Text style={styles.scoreInputPlayerName}>{gp.name}</Text>
+                              <View style={{ flexDirection: "row", gap: 6 }}>
+                                <Pressable
+                                  onPress={() =>
+                                    setEditingScores((prev) => ({
+                                      ...prev,
+                                      [round.id]: { ...(prev[round.id] ?? {}), [gp.player_id]: "1" },
+                                    }))
+                                  }
+                                  style={[
+                                    styles.winLossBtn,
+                                    isWinner ? styles.winLossBtnWin : undefined,
+                                  ]}
+                                >
+                                  <Text style={[styles.winLossBtnText, isWinner ? styles.winLossBtnTextWin : undefined]}>
+                                    Victoire
+                                  </Text>
+                                </Pressable>
+                                <Pressable
+                                  onPress={() =>
+                                    setEditingScores((prev) => ({
+                                      ...prev,
+                                      [round.id]: { ...(prev[round.id] ?? {}), [gp.player_id]: "0" },
+                                    }))
+                                  }
+                                  style={[
+                                    styles.winLossBtn,
+                                    !isWinner && val !== "" ? styles.winLossBtnLoss : undefined,
+                                  ]}
+                                >
+                                  <Text style={[styles.winLossBtnText, !isWinner && val !== "" ? styles.winLossBtnTextLoss : undefined]}>
+                                    Défaite
+                                  </Text>
+                                </Pressable>
+                              </View>
+                            </View>
+                          );
+                        })}
+                        <View style={styles.scoreSaveRow}>
+                          <Pressable onPress={() => handleSaveScores(round)} style={[styles.smallPrimaryBtn, actionLoading && styles.btnDisabled]} disabled={actionLoading}>
+                            {actionLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.smallPrimaryBtnText}>Enregistrer</Text>}
+                          </Pressable>
+                          <Pressable onPress={() => setEditingScores((prev) => { const next = { ...prev }; delete next[round.id]; return next; })} style={styles.cancelBtn}>
+                            <Text style={styles.cancelBtnText}>Annuler</Text>
+                          </Pressable>
                         </View>
-                      );
-                    })}
-                    {!isCompleted ? (
-                      <Pressable onPress={() => startEditingRound(round)} style={styles.editScoresBtn}>
-                        <Text style={styles.editScoresBtnText}>✏ Saisir les résultats</Text>
-                      </Pressable>
-                    ) : null}
+                      </>
+                    ) : (
+                      <>
+                        {round.scores.length === 0 ? (
+                          <Text style={styles.noScoresText}>Aucun résultat saisi.</Text>
+                        ) : (
+                          round.scores.map((s) => {
+                            const p = game?.players.find((gp) => gp.player_id === s.player_id);
+                            return (
+                              <View key={s.player_id} style={styles.scoreDisplayRow}>
+                                <Text style={styles.scoreDisplayName}>{p?.name ?? `Joueur ${s.player_id}`}</Text>
+                                <Text style={[styles.scoreDisplayValue, s.won === true ? { color: theme.colors.success } : s.won === false ? { color: theme.colors.danger } : {}]}>
+                                  {s.won === true ? "Victoire" : s.won === false ? "Défaite" : "-"}
+                                </Text>
+                              </View>
+                            );
+                          })
+                        )}
+                        {!isCompleted ? (
+                          <Pressable onPress={() => startEditingRound(round)} style={styles.editScoresBtn}>
+                            <Text style={styles.editScoresBtnText}>✏ Saisir les résultats</Text>
+                          </Pressable>
+                        ) : null}
+                      </>
+                    )}
                   </>
                 )}
               </View>
@@ -1084,6 +1146,12 @@ const createStyles = (theme: AppTheme) =>
     successBtnText: { color: "#ffffff", fontWeight: theme.font.weight.semibold, fontSize: theme.font.size.md },
     cancelBtn: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md, paddingHorizontal: theme.spacing.md, paddingVertical: 8, alignItems: "center" },
     cancelBtnText: { fontSize: theme.font.size.sm, color: theme.colors.mutedText },
+    winLossBtn: { paddingHorizontal: theme.spacing.sm, paddingVertical: 6, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.backgroundSoft },
+    winLossBtnWin: { backgroundColor: theme.colors.successSoft, borderColor: theme.colors.success },
+    winLossBtnLoss: { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger },
+    winLossBtnText: { fontSize: theme.font.size.xs, color: theme.colors.mutedText, fontWeight: theme.font.weight.medium },
+    winLossBtnTextWin: { color: theme.colors.success },
+    winLossBtnTextLoss: { color: theme.colors.danger },
     btnDisabled: { opacity: 0.6 },
     selectableCard: { backgroundColor: theme.colors.card, borderRadius: theme.radius.xl, padding: theme.spacing.md, marginBottom: theme.spacing.xs, borderWidth: 1.5, borderColor: "transparent", ...theme.shadow.card },
     selectableCardSelected: { borderColor: theme.colors.primary },
