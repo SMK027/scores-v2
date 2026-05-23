@@ -137,6 +137,9 @@ export function ProfileScreen({
   if (loading) {
     return (
       <View style={styles.centered}>
+        <Pressable style={[styles.navButton, { position: "absolute", top: 16, left: 16 }]} onPress={onBack}>
+          <Text style={styles.navButtonText}>← Retour</Text>
+        </Pressable>
         <ActivityIndicator />
       </View>
     );
@@ -264,8 +267,8 @@ export function ProfileScreen({
         </View>
         <Text style={styles.themeHint}>Thème actuellement appliqué : {resolvedTheme === "dark" ? "Sombre" : "Clair"}</Text>
 
-        <Pressable style={styles.quickActionDanger} onPress={onBack}>
-          <Text style={styles.quickActionDangerText}>Retour à l’application</Text>
+        <Pressable style={styles.quickActionButton} onPress={onBack}>
+          <Text style={styles.quickActionText}>← Retour à l’application</Text>
         </Pressable>
       </View>
     </ScrollView>
@@ -481,6 +484,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     color: theme.colors.text,
     fontWeight: theme.font.weight.heavy,
     fontSize: theme.font.size.xl,
+    textAlign: "center",
   },
   statValueAccent: {
     color: theme.colors.primary,
