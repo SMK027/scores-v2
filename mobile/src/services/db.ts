@@ -9,7 +9,7 @@
  */
 
 import * as SQLite from "expo-sqlite";
-import type { GameType, Player, Space, User } from "../types/api";
+import type { Game, GameDetailsResponse, GameType, Player, Space, User } from "../types/api";
 
 // ─── Types session offline ────────────────────────────────────────────────────
 
@@ -67,6 +67,20 @@ async function initSchema(db: SQLite.SQLiteDatabase): Promise<void> {
 
     CREATE TABLE IF NOT EXISTS cached_players (
       id         INTEGER PRIMARY KEY,
+      space_id   INTEGER NOT NULL,
+      data_json  TEXT    NOT NULL,
+      cached_at  INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS cached_games (
+      id         INTEGER PRIMARY KEY,
+      space_id   INTEGER NOT NULL,
+      data_json  TEXT    NOT NULL,
+      cached_at  INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS cached_game_details (
+      game_id    INTEGER PRIMARY KEY,
       space_id   INTEGER NOT NULL,
       data_json  TEXT    NOT NULL,
       cached_at  INTEGER NOT NULL
@@ -181,6 +195,66 @@ export async function getCachedPlayers(spaceId: number): Promise<Player[]> {
     spaceId,
   );
   return rows.map((r) => JSON.parse(r.data_json) as Player);
+}
+
+// ─── Cache : parties ─────────────────────────────────────────────────────────
+
+export async function cacheGames(games: Game[], spaceId: number): Promise<void> {
+  const db = await getDb();
+  const now = Date.now();
+  await db.withTransactionAsync(async () => {
+    await db.runAsync("DELETE FROM cached_games WHERE space_id = ?", spaceId);
+    for (const game of games) {
+      await db.runAsync(
+        "INSERT OR REPLACE INTO cached_games (id, space_id, data_json, cached_at) VALUES (?, ?, ?, ?)",
+        game.id,
+        spaceId,
+        JSON.stringify(game),
+        now,
+      );
+    }
+  });
+}
+
+export async function getCachedGames(spaceId: number): Promise<Game[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ data_json: string }>(
+    "SELECT data_json FROM cached_games WHERE space_id = ? ORDER BY id DESC",
+    spaceId,
+  );
+  return rows.map((r) => JSON.parse(r.data_json) as Game);
+}
+
+// ─── Cache : détails de partie ────────────────────────────────────────────────
+
+export async function cacheGameDetails(details: GameDetailsResponse, spaceId: number): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    `INSERT OR REPLACE INTO cached_game_details (game_id, space_id, data_json, cached_at)
+     VALUES (?, ?, ?, ?)`,
+    details.game.id,
+    spaceId,
+    JSON.stringify(details),
+    Date.now(),
+  );
+}
+
+export async function getCachedGameDetails(
+  spaceId: number,
+  gameId: number,
+): Promise<GameDetailsResponse | null> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ data_json: string }>(
+    "SELECT data_json FROM cached_game_details WHERE game_id = ? AND space_id = ?",
+    gameId,
+    spaceId,
+  );
+  if (!row) return null;
+  try {
+    return JSON.parse(row.data_json) as GameDetailsResponse;
+  } catch {
+    return null;
+  }
 }
 
 // ─── File d'attente hors connexion ────────────────────────────────────────────

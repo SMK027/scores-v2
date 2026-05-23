@@ -45,7 +45,7 @@ import {
   fetchTicketDetail,
   replyToTicket,
 } from "../services/api";
-import { cacheGameTypes, cachePlayers, enqueue, getCachedGameTypes, getCachedPlayers } from "../services/db";
+import { cacheGameDetails, cacheGameTypes, cacheGames, cachePlayers, enqueue, getCachedGameDetails, getCachedGameTypes, getCachedGames, getCachedPlayers } from "../services/db";
 import { useNetwork } from "../context/NetworkContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { useNotifications } from "../context/NotificationContext";
@@ -425,6 +425,20 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
     page: number = 1,
     append: boolean = false
   ) => {
+    // Hors connexion : charger depuis le cache (pas de filtre avancé, page 1 uniquement)
+    if (!isOnline) {
+      const cached = await getCachedGames(space.id);
+      if (append) {
+        setGames((prev) => [...prev, ...cached]);
+      } else {
+        setGames(cached);
+      }
+      setGamesPage(1);
+      setGamesLastPage(1);
+      setGamesTotal(cached.length);
+      return;
+    }
+
     try {
       if (append) {
         setGamesLoadingMore(true);
@@ -444,8 +458,21 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
       } else {
         setGames(response.data);
       }
+      // Mettre en cache les parties de la page 1 sans filtre pour un usage offline
+      if (page === 1 && !status && !gameTypeId && !period) {
+        void cacheGames(response.data, space.id);
+      } else if (page === 1 && status === "all" && !gameTypeId && period === "all") {
+        void cacheGames(response.data, space.id);
+      }
     } catch (err) {
-      if (err instanceof ApiError) {
+      // Fallback : charger les parties depuis le cache local
+      const cached = await getCachedGames(space.id);
+      if (cached.length > 0) {
+        setGames(cached);
+        setGamesPage(1);
+        setGamesLastPage(1);
+        setGamesTotal(cached.length);
+      } else if (err instanceof ApiError) {
         setError(err.message);
       } else {
         setError("Impossible de charger les parties.");
@@ -454,9 +481,24 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
       setGamesLoading(false);
       setGamesLoadingMore(false);
     }
-  }, [space.id, token]);
+  }, [isOnline, space.id, token]);
 
   const loadData = useCallback(async () => {
+    // Hors connexion : charger directement depuis le cache sans appel réseau
+    if (!isOnline) {
+      const [cachedPlayers, cachedGameTypes] = await Promise.all([
+        getCachedPlayers(space.id),
+        getCachedGameTypes(space.id),
+      ]);
+      setPlayers(cachedPlayers);
+      setGameTypes(cachedGameTypes);
+      if (cachedPlayers.length === 0 && cachedGameTypes.length === 0) {
+        setError("Aucune donnée disponible hors connexion.");
+      }
+      await loadGames();
+      return;
+    }
+
     try {
       setError(null);
       const [playersData, gameTypesData] = await Promise.all([
@@ -496,7 +538,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
         setError("Impossible de charger cet espace.");
       }
     }
-  }, [loadGames, space.id, token]);
+  }, [isOnline, loadGames, space.id, token]);
 
   useEffect(() => {
     const run = async () => {
@@ -682,6 +724,22 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
   const submitSearch = useCallback(async () => {
     const query = searchText.trim();
 
+    // Hors connexion : recherche locale dans les données en mémoire
+    if (!isOnline) {
+      const q = query.toLowerCase();
+      setSearchResults({
+        players: players.filter((p) => p.name.toLowerCase().includes(q)),
+        game_types: gameTypes.filter((gt) => gt.name.toLowerCase().includes(q)),
+        games: games.filter(
+          (g) =>
+            g.game_type_name?.toLowerCase().includes(q) ||
+            g.notes?.toLowerCase().includes(q)
+        ),
+        comments: [],
+      });
+      return;
+    }
+
     try {
       setSearchLoading(true);
       setSearchError(null);
@@ -697,7 +755,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
     } finally {
       setSearchLoading(false);
     }
-  }, [searchText, space.id, token]);
+  }, [games, gameTypes, isOnline, players, searchText, space.id, token]);
 
   const openSearchResult = useCallback(
     (type: "players" | "game_types" | "games" | "comments", targetId: number, gameId?: number) => {

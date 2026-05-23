@@ -23,7 +23,7 @@ import {
   updateRoundStatus,
   updateRoundScores,
 } from "../services/api";
-import { enqueue } from "../services/db";
+import { cacheGameDetails, enqueue, getCachedGameDetails } from "../services/db";
 import { useNetwork } from "../context/NetworkContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { getAvatarUri } from "../utils/avatar";
@@ -140,8 +140,15 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
       setError(null);
       const data = await fetchGameDetails(token, space.id, gameId);
       setDetails(data);
+      // Mettre en cache pour le mode hors connexion
+      void cacheGameDetails(data, space.id);
     } catch (err) {
-      if (err instanceof ApiError) {
+      // Fallback : charger depuis le cache local
+      const cached = await getCachedGameDetails(space.id, gameId);
+      if (cached) {
+        setDetails(cached);
+        setError("Données chargées depuis le cache (mode hors connexion).");
+      } else if (err instanceof ApiError) {
         setError(err.message);
       } else {
         setError("Impossible de charger la partie.");
