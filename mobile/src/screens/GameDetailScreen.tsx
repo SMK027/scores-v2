@@ -466,6 +466,16 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
     );
   }
 
+  const userSpaceRole = space.user_role ?? "";
+  const canCorrectScores =
+    (userSpaceRole === "admin" || userSpaceRole === "manager") &&
+    !details.game.competition_id;
+
+  const editingRound = editingRoundId
+    ? (details.rounds.find((r) => r.id === editingRoundId) ?? null)
+    : null;
+  const isCorrection = editingRound?.status === "completed";
+
   return (
     <ScrollView
       style={styles.container}
@@ -583,6 +593,28 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
                 </View>
               ) : null}
 
+              {isExpanded && round.status === "completed" && canCorrectScores ? (
+                <View style={styles.roundActions}>
+                  <Pressable
+                    style={[
+                      styles.secondaryButton,
+                      styles.roundActionButton,
+                      editingRoundId === round.id ? styles.roundActionButtonActive : undefined,
+                    ]}
+                    onPress={() => beginRoundScoring(round.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.secondaryText,
+                        editingRoundId === round.id ? styles.roundActionButtonTextActive : undefined,
+                      ]}
+                    >
+                      {editingRoundId === round.id ? "Correction en cours" : "Corriger les scores"}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
               {isExpanded ? details.players.map((player) => {
                 const scoreValue = extractScoreValue(roundScores[String(player.player_id)]);
                 return (
@@ -610,7 +642,9 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
         {editingRoundId ? (
           <View style={styles.scoreEditor}>
             <Text style={styles.blockTitle}>
-              {`Manche #${details.rounds.find((round) => round.id === editingRoundId)?.round_number ?? "?"}`}
+              {isCorrection
+                ? `Correction : Manche #${editingRound?.round_number ?? "?"}`
+                : `Manche #${editingRound?.round_number ?? "?"}`}
             </Text>
             <Text style={styles.meta}>
               {winCondition === "ranking"
@@ -670,7 +704,9 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
               disabled={saving}
               onPress={saveScores}
             >
-              <Text style={styles.primaryText}>Enregistrer les scores</Text>
+              <Text style={styles.primaryText}>
+                {isCorrection ? "Enregistrer la correction" : "Enregistrer les scores"}
+              </Text>
             </Pressable>
 
             <Pressable

@@ -84,6 +84,7 @@ export type Game = {
   ended_at?: string | null;
   notes?: string | null;
   player_count?: number;
+  competition_id?: number | null;
 };
 
 export type GamesResponse = {
