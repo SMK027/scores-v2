@@ -7,7 +7,7 @@ const existingEas = existingExtra.eas || {};
 module.exports = {
   expo: {
     ...expoConfig,
-    plugins: [...new Set([...(expoConfig.plugins || []), "expo-notifications"])],
+    plugins: [...new Set([...(expoConfig.plugins || []), "expo-notifications", "expo-sqlite"])],
     extra: {
       ...existingExtra,
       eas: {

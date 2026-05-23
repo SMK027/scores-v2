@@ -23,6 +23,8 @@ import {
   updateRoundStatus,
   updateRoundScores,
 } from "../services/api";
+import { enqueue } from "../services/db";
+import { useNetwork } from "../context/NetworkContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { getAvatarUri } from "../utils/avatar";
 import type { AppTheme } from "../styles";
@@ -111,6 +113,7 @@ function getCommentInitials(username?: string): string {
 export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const { isOnline, refreshQueueLength } = useNetwork();
 
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
@@ -289,6 +292,15 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
     try {
       setSaving(true);
       setError(null);
+
+      if (!isOnline) {
+        const tempRoundId = `offline_round_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        await enqueue({ type: "create_round", spaceId: space.id, gameId, tempId: tempRoundId });
+        await refreshQueueLength();
+        setError("Manche mise en file d'attente. Elle sera créée dès la reconnexion.");
+        return;
+      }
+
       const roundId = await createRound(token, space.id, gameId);
       await loadDetails();
       beginRoundScoring(roundId);
@@ -358,6 +370,25 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
     try {
       setSaving(true);
       setError(null);
+
+      if (!isOnline) {
+        await enqueue({
+          type: "update_scores",
+          spaceId: space.id,
+          gameId,
+          roundId: editingRoundId,
+          scores: Object.fromEntries(
+            Object.entries(normalizedScores).map(([k, v]) => [Number(k), v])
+          ),
+        });
+        await refreshQueueLength();
+        setEditingRoundId(null);
+        setScores({});
+        setWinners({});
+        setError("Scores mis en file d'attente. Ils seront enregistrés dès la reconnexion.");
+        return;
+      }
+
       await updateRoundScores(token, space.id, gameId, editingRoundId, normalizedScores);
       setEditingRoundId(null);
       setScores({});

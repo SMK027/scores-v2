@@ -25,6 +25,7 @@ import { SpacesScreen } from "./screens/SpacesScreen";
 import { WelcomeScreen } from "./screens/WelcomeScreen";
 import { ThemeProvider, useAppTheme } from "./context/ThemeContext";
 import { NotificationProvider, useNotifications } from "./context/NotificationContext";
+import { NetworkProvider, useNetwork } from "./context/NetworkContext";
 import type { RefereeSession, Space, User } from "./types/api";
 
 type Route =
@@ -237,8 +238,10 @@ function MobileAppContent() {
 
   return (
     <NotificationProvider token={token}>
+      <NetworkProvider token={token}>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar hidden style={resolvedMode === "dark" ? "light" : "dark"} />
+        <OfflineBanner />
         <NotificationBell
           visible={
             !!token &&
@@ -423,7 +426,26 @@ function MobileAppContent() {
         />
       ) : null}
     </SafeAreaView>
+    </NetworkProvider>
     </NotificationProvider>
+  );
+}
+
+/** Bannière hors connexion avec compteur d'actions en attente */
+function OfflineBanner() {
+  const { theme } = useAppTheme();
+  const { isOnline, queueLength } = useNetwork();
+
+  if (isOnline && queueLength === 0) return null;
+
+  return (
+    <View style={{ backgroundColor: isOnline ? theme.colors.success : theme.colors.warning, paddingVertical: 4, paddingHorizontal: 12, alignItems: "center" }}>
+      <Text style={{ color: "#000", fontSize: 12, fontWeight: "600" }}>
+        {isOnline
+          ? `Reconnecté — synchronisation en cours…`
+          : `Hors connexion${queueLength > 0 ? ` · ${queueLength} action${queueLength > 1 ? "s" : ""} en attente` : ""}`}
+      </Text>
+    </View>
   );
 }
 

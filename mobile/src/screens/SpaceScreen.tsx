@@ -45,6 +45,8 @@ import {
   fetchTicketDetail,
   replyToTicket,
 } from "../services/api";
+import { cacheGameTypes, cachePlayers, enqueue, getCachedGameTypes, getCachedPlayers } from "../services/db";
+import { useNetwork } from "../context/NetworkContext";
 import { useAppTheme } from "../context/ThemeContext";
 import type { AppTheme } from "../styles";
 import type { Competition, ContactMessage, ContactTicket, Game, GameType, LeaderboardEntry, MemberCard, Player, SearchResults, Space, SpaceMember, User } from "../types/api";
@@ -222,6 +224,7 @@ const TICKET_STATUS_COLORS: Record<ContactTicket["status"], string> = {
 export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenGame, onOpenCompetition, onOpenCreatePlayer, onOpenCreateGameType }: Props) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const { isOnline, refreshQueueLength } = useNetwork();
   const TICKET_STATUS_COLORS: Record<ContactTicket["status"], string> = useMemo(() => ({
     open: theme.colors.success,
     in_progress: theme.colors.warning,
@@ -422,17 +425,30 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       setPlayers(playersData);
       setGameTypes(gameTypesData);
 
+      // Mettre en cache pour le mode hors connexion
+      void cachePlayers(playersData, space.id);
+      void cacheGameTypes(gameTypesData, space.id);
+
       try {
         const membersData = await fetchSpaceMembers(token, space.id);
         setMembers(membersData);
       } catch {
-        // Ne bloque pas la création de partie si l'API membres est indisponible.
         setMembers([]);
       }
 
       await loadGames();
     } catch (err) {
-      if (err instanceof ApiError) {
+      // En cas d'échec réseau, charger depuis le cache
+      const [cachedPlayers, cachedGameTypes] = await Promise.all([
+        getCachedPlayers(space.id),
+        getCachedGameTypes(space.id),
+      ]);
+
+      if (cachedPlayers.length > 0 || cachedGameTypes.length > 0) {
+        setPlayers(cachedPlayers);
+        setGameTypes(cachedGameTypes);
+        setError("Données chargées depuis le cache (mode hors connexion).");
+      } else if (err instanceof ApiError) {
         setError(err.message);
       } else {
         setError("Impossible de charger cet espace.");
@@ -730,6 +746,28 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
     try {
       setSaving(true);
       setError(null);
+
+      if (!isOnline) {
+        // Mode hors connexion : mettre en file d'attente
+        const tempId = `offline_game_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        await enqueue({
+          type: "create_game",
+          spaceId: space.id,
+          gameTypeId: selectedGameTypeId,
+          playerIds: selectedPlayerIds,
+          notes,
+          tempId,
+        });
+        await refreshQueueLength();
+        setSelectedGameTypeId(null);
+        setGameTypeQuery("");
+        setSelectedPlayerIds([]);
+        setPlayerQuery("");
+        setNotes("");
+        setError("Partie mise en file d'attente. Elle sera créée dès la reconnexion.");
+        return;
+      }
+
       const createdGame = await createGame(token, space.id, {
         gameTypeId: selectedGameTypeId,
         playerIds: selectedPlayerIds,

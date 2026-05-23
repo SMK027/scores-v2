@@ -15,6 +15,7 @@ import { useNotifications } from "../context/NotificationContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import type { AppTheme } from "../styles";
 import { ApiError, deleteSpace, leaveSpace, fetchSpaces, acceptInvitation, declineInvitation } from "../services/api";
+import { cacheSpaces, getCachedSpaces } from "../services/db";
 import type { Space, User, Invitation } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
 import { getRoleLabel } from "../utils/roles";
@@ -90,8 +91,13 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenDashb
       const response = await fetchSpaces(token);
       setSpaces(response.spaces);
       setInvitations(response.pending_invitations || []);
+      void cacheSpaces(response.spaces);
     } catch (err) {
-      if (err instanceof ApiError) {
+      const cached = await getCachedSpaces();
+      if (cached.length > 0) {
+        setSpaces(cached);
+        setError("Espaces chargés depuis le cache (mode hors connexion).");
+      } else if (err instanceof ApiError) {
         setError(err.message);
       } else {
         setError("Impossible de charger vos espaces.");
