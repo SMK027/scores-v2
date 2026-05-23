@@ -239,6 +239,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const [gamesPeriodFilter, setGamesPeriodFilter] = useState<"all" | "week" | "month" | "year">("all");
   const [gamesPage, setGamesPage] = useState(1);
   const [gamesLastPage, setGamesLastPage] = useState(1);
+  const [gamesTotal, setGamesTotal] = useState(0);
   // — draft filter panel (jeux)
   const [gamesFilterPanelOpen, setGamesFilterPanelOpen] = useState(false);
   const [draftGamesStatus, setDraftGamesStatus] = useState<"all" | Game["status"]>("all");
@@ -392,6 +393,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
       const response = await fetchSpaceGames(token, space.id, apiParams);
       setGamesPage(page);
       setGamesLastPage(response.lastPage);
+      setGamesTotal(response.total);
       if (append) {
         setGames((prev) => [...prev, ...response.data]);
       } else {
@@ -1370,7 +1372,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
   const currentViewMeta = currentView !== "menu" ? getViewMeta(currentView) : null;
 
   const menuStats = [
-    { label: "Parties", value: games.length },
+    { label: "Parties", value: gamesTotal },
     { label: "Joueurs", value: players.length },
     { label: "Types", value: gameTypes.length },
     { label: "Membres", value: members.length },
