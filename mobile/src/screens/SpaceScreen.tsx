@@ -48,6 +48,7 @@ import {
 import { cacheGameTypes, cachePlayers, enqueue, getCachedGameTypes, getCachedPlayers } from "../services/db";
 import { useNetwork } from "../context/NetworkContext";
 import { useAppTheme } from "../context/ThemeContext";
+import { useNotifications } from "../context/NotificationContext";
 import type { AppTheme } from "../styles";
 import type { Competition, ContactMessage, ContactTicket, Game, GameType, LeaderboardEntry, MemberCard, Player, SearchResults, Space, SpaceMember, User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
@@ -59,6 +60,7 @@ type Props = {
   space: Space;
   onBack: () => void;
   onOpenProfile: () => void;
+  onOpenNotifications: () => void;
   onOpenGame: (gameId: number) => void;
   onOpenCompetition: (competitionId: number) => void;
   onOpenCreatePlayer: () => void;
@@ -221,7 +223,47 @@ const TICKET_STATUS_COLORS: Record<ContactTicket["status"], string> = {
   closed: "#9ca3af",
 };
 
-export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenGame, onOpenCompetition, onOpenCreatePlayer, onOpenCreateGameType }: Props) {
+function NotifBell({ onPress }: { onPress: () => void }) {
+  const { theme } = useAppTheme();
+  const { unreadCount } = useNotifications();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: theme.colors.card,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Text style={{ fontSize: 16 }}>🔔</Text>
+      {unreadCount > 0 ? (
+        <View style={{
+          position: "absolute",
+          top: 1,
+          right: 1,
+          minWidth: 14,
+          height: 14,
+          borderRadius: 7,
+          backgroundColor: theme.colors.danger,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 2,
+        }}>
+          <Text style={{ color: "#fff", fontSize: 8, fontWeight: "800", lineHeight: 14 }}>
+            {unreadCount > 99 ? "99+" : String(unreadCount)}
+          </Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
+
+export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenNotifications, onOpenGame, onOpenCompetition, onOpenCreatePlayer, onOpenCreateGameType }: Props) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { isOnline, refreshQueueLength } = useNetwork();
@@ -1451,6 +1493,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
           {space.name}
         </Text>
         <View style={[styles.headerSide, styles.headerSideRight]}>
+          <NotifBell onPress={onOpenNotifications} />
           <Pressable style={styles.profileButton} onPress={onOpenProfile}>
             {avatarUri ? (
               <Image source={{ uri: avatarUri }} style={styles.profileAvatar} />
@@ -3041,9 +3084,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     maxWidth: "42%",
   },
   headerSideRight: {
-    width: 44,
-    maxWidth: 44,
-    alignItems: "flex-end",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    justifyContent: "flex-end",
+    flexShrink: 0,
   },
   navButton: {
     borderWidth: 1,

@@ -250,6 +250,7 @@ function MobileAppContent() {
             route.name !== "notifications" &&
             route.name !== "spaces" &&
             route.name !== "dashboard" &&
+            route.name !== "space" &&
             route.name !== "referee-login" &&
             route.name !== "referee-dashboard"
           }
@@ -349,6 +350,10 @@ function MobileAppContent() {
           onOpenProfile={() => {
             setPreviousRoute({ name: "space", space: route.space });
             setRoute({ name: "profile" });
+          }}
+          onOpenNotifications={() => {
+            setPreviousRoute({ name: "space", space: route.space });
+            setRoute({ name: "notifications" });
           }}
           onOpenGame={(gameId) => setRoute({ name: "game", space: route.space, gameId })}
           onOpenCompetition={(competitionId) =>
