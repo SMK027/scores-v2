@@ -291,7 +291,10 @@ function MobileAppContent() {
             setPreviousRoute({ name: "dashboard" });
             setRoute({ name: "notifications" });
           }}
-          onOpenReferee={() => setRoute({ name: "referee-login" })}
+          onOpenReferee={() => {
+            setPreviousRoute({ name: "dashboard" });
+            setRoute({ name: "referee-login" });
+          }}
           onLogout={logout}
         />
       ) : null}
@@ -402,7 +405,7 @@ function MobileAppContent() {
           onBack={() =>
             route.space
               ? setRoute({ name: "space", space: route.space })
-              : setRoute({ name: "welcome" })
+              : setRoute(previousRoute)
           }
         />
       ) : null}
@@ -414,7 +417,7 @@ function MobileAppContent() {
           onClose={() =>
             route.space
               ? setRoute({ name: "space", space: route.space })
-              : setRoute({ name: "welcome" })
+              : setRoute(previousRoute)
           }
         />
       ) : null}
