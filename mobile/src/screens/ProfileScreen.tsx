@@ -219,6 +219,7 @@ export function ProfileScreen({
               value={bioDraft}
               onChangeText={setBioDraft}
               placeholder="Parlez un peu de vous"
+              placeholderTextColor={theme.colors.mutedText}
               style={styles.bioInput}
               multiline
               textAlignVertical="top"
