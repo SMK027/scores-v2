@@ -453,16 +453,32 @@ function MobileAppContent() {
 /** Bannière hors connexion avec compteur d'actions en attente */
 function OfflineBanner() {
   const { theme } = useAppTheme();
-  const { isOnline, queueLength } = useNetwork();
+  const { isOnline, queueLength, isSyncing } = useNetwork();
 
-  if (isOnline && queueLength === 0) return null;
+  // En ligne, sync terminée, file vide → rien à afficher
+  if (isOnline && !isSyncing && queueLength === 0) return null;
+
+  let message: string;
+  let bgColor: string;
+
+  if (!isOnline) {
+    bgColor = theme.colors.warning;
+    message = queueLength > 0
+      ? `Hors connexion · ${queueLength} action${queueLength > 1 ? "s" : ""} en attente`
+      : "Hors connexion";
+  } else if (isSyncing) {
+    bgColor = theme.colors.success;
+    message = `Reconnecté — synchronisation en cours…`;
+  } else {
+    // En ligne, sync terminée, mais file non vide → les actions ont échoué
+    bgColor = theme.colors.warning;
+    message = `${queueLength} action${queueLength > 1 ? "s" : ""} en attente · nouvelle tentative dans 30s`;
+  }
 
   return (
-    <View style={{ backgroundColor: isOnline ? theme.colors.success : theme.colors.warning, paddingVertical: 4, paddingHorizontal: 12, alignItems: "center" }}>
+    <View style={{ backgroundColor: bgColor, paddingVertical: 4, paddingHorizontal: 12, alignItems: "center" }}>
       <Text style={{ color: "#000", fontSize: 12, fontWeight: "600" }}>
-        {isOnline
-          ? `Reconnecté — synchronisation en cours…`
-          : `Hors connexion${queueLength > 0 ? ` · ${queueLength} action${queueLength > 1 ? "s" : ""} en attente` : ""}`}
+        {message}
       </Text>
     </View>
   );
