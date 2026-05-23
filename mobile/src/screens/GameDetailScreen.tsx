@@ -615,7 +615,69 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
                 </View>
               ) : null}
 
-              {isExpanded ? details.players.map((player) => {
+              {isExpanded && editingRoundId === round.id ? (
+                <View style={styles.scoreEditorInline}>
+                  <Text style={styles.scoresLabel}>
+                    {isCorrection ? `Correction · Manche #${editingRound?.round_number ?? "?"}` : winCondition === "ranking" ? "Classement" : winCondition === "win_loss" ? "Résultats" : "Scores"}
+                  </Text>
+
+                  {winCondition === "win_loss"
+                    ? details.players.map((player) => {
+                        const isWinner = !!winners[player.player_id];
+                        const hasChoice = player.player_id in winners;
+                        return (
+                          <View key={player.id} style={styles.scoreInputRow}>
+                            <Text style={styles.scoreInputPlayerName}>{player.player_name}</Text>
+                            <View style={{ flexDirection: "row", gap: 6 }}>
+                              <Pressable
+                                onPress={() => setWinners((c) => ({ ...c, [player.player_id]: true }))}
+                                style={[styles.winLossBtn, isWinner ? styles.winLossBtnWin : undefined]}
+                              >
+                                <Text style={[styles.winLossBtnText, isWinner ? styles.winLossBtnTextWin : undefined]}>Victoire</Text>
+                              </Pressable>
+                              <Pressable
+                                onPress={() => setWinners((c) => ({ ...c, [player.player_id]: false }))}
+                                style={[styles.winLossBtn, hasChoice && !isWinner ? styles.winLossBtnLoss : undefined]}
+                              >
+                                <Text style={[styles.winLossBtnText, hasChoice && !isWinner ? styles.winLossBtnTextLoss : undefined]}>Défaite</Text>
+                              </Pressable>
+                            </View>
+                          </View>
+                        );
+                      })
+                    : details.players.map((player) => (
+                        <View key={player.id} style={styles.scoreInputRow}>
+                          <Text style={styles.scoreInputPlayerName}>{player.player_name}</Text>
+                          <View style={styles.scoreInputGroup}>
+                            {winCondition !== "ranking" ? (
+                              <Pressable style={styles.scoreSignButton} onPress={() => toggleNegativeScore(player.player_id)}>
+                                <Text style={styles.scoreSignButtonText}>±</Text>
+                              </Pressable>
+                            ) : null}
+                            <TextInput
+                              value={scores[player.player_id] ?? ""}
+                              onChangeText={(v) => setScores((c) => ({ ...c, [player.player_id]: v }))}
+                              keyboardType="numeric"
+                              style={styles.scoreInput}
+                              placeholder={winCondition === "ranking" ? "Place" : "0"}
+                              placeholderTextColor={theme.colors.mutedText}
+                            />
+                          </View>
+                        </View>
+                      ))}
+
+                  <View style={styles.scoreSaveRow}>
+                    <Pressable style={[styles.primaryButton, saving ? styles.disabled : undefined]} disabled={saving} onPress={saveScores}>
+                      <Text style={styles.primaryText}>{isCorrection ? "Enregistrer la correction" : "Enregistrer"}</Text>
+                    </Pressable>
+                    <Pressable style={[styles.secondaryButton, saving ? styles.disabled : undefined]} disabled={saving} onPress={() => { setEditingRoundId(null); setScores({}); setWinners({}); }}>
+                      <Text style={styles.secondaryText}>Annuler</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : null}
+
+              {isExpanded && editingRoundId !== round.id ? details.players.map((player) => {
                 const scoreValue = extractScoreValue(roundScores[String(player.player_id)]);
                 return (
                   <View style={styles.row} key={`${round.id}-${player.id}`}>
@@ -638,90 +700,6 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
         >
           <Text style={styles.primaryText}>Ajouter une manche</Text>
         </Pressable>
-
-        {editingRoundId ? (
-          <View style={styles.scoreEditor}>
-            <Text style={styles.blockTitle}>
-              {isCorrection
-                ? `Correction : Manche #${editingRound?.round_number ?? "?"}`
-                : `Manche #${editingRound?.round_number ?? "?"}`}
-            </Text>
-            <Text style={styles.meta}>
-              {winCondition === "ranking"
-                ? "Saisir le classement de la manche"
-                : winCondition === "win_loss"
-                ? "Sélectionner le ou les gagnants"
-                : "Saisir les scores"}
-            </Text>
-
-            {winCondition === "win_loss"
-              ? details.players.map((player) => {
-                  const isWinner = !!winners[player.player_id];
-                  return (
-                    <Pressable
-                      key={player.id}
-                      style={[styles.winnerRow, isWinner ? styles.winnerRowActive : undefined]}
-                      onPress={() =>
-                        setWinners((current) => ({
-                          ...current,
-                          [player.player_id]: !current[player.player_id],
-                        }))
-                      }
-                    >
-                      <Text style={styles.scoreLabel}>{player.player_name}</Text>
-                      <Text style={styles.winnerStatus}>{isWinner ? "Gagnant" : "Défaite"}</Text>
-                    </Pressable>
-                  );
-                })
-              : details.players.map((player) => (
-                  <View key={player.id} style={styles.scoreRow}>
-                    <Text style={styles.scoreLabel}>{player.player_name}</Text>
-                    <View style={styles.scoreInputGroup}>
-                      {winCondition !== "ranking" ? (
-                        <Pressable
-                          style={styles.scoreSignButton}
-                          onPress={() => toggleNegativeScore(player.player_id)}
-                        >
-                          <Text style={styles.scoreSignButtonText}>-</Text>
-                        </Pressable>
-                      ) : null}
-                      <TextInput
-                        value={scores[player.player_id] ?? ""}
-                        onChangeText={(value) =>
-                          setScores((current) => ({ ...current, [player.player_id]: value }))
-                        }
-                        keyboardType="numeric"
-                        style={styles.scoreInput}
-                        placeholder={winCondition === "ranking" ? "Place" : "0"}
-                        placeholderTextColor={theme.colors.mutedText}
-                      />
-                    </View>
-                  </View>
-                ))}
-
-            <Pressable
-              style={[styles.primaryButton, saving ? styles.disabled : undefined]}
-              disabled={saving}
-              onPress={saveScores}
-            >
-              <Text style={styles.primaryText}>
-                {isCorrection ? "Enregistrer la correction" : "Enregistrer les scores"}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.secondaryButton, saving ? styles.disabled : undefined]}
-              disabled={saving}
-              onPress={() => {
-                setEditingRoundId(null);
-                setScores({});
-                setWinners({});
-              }}
-            >
-              <Text style={styles.secondaryText}>Annuler la saisie</Text>
-            </Pressable>
-          </View>
-        ) : null}
 
         <View style={styles.actionDivider} />
 
@@ -1047,20 +1025,54 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   disabled: {
     opacity: 0.6,
   },
-  scoreEditor: {
-    marginTop: 12,
+  scoreEditorInline: {
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
   },
-  scoreRow: {
+  scoresLabel: {
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.semibold,
+    color: theme.colors.mutedText,
+    marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  scoreInputRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 6,
+    gap: 8,
+  },
+  scoreInputPlayerName: {
+    flex: 1,
+    fontSize: theme.font.size.sm,
+    color: theme.colors.text,
   },
   scoreInputGroup: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
+  scoreSaveRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: theme.spacing.sm,
+  },
+  winLossBtn: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 6,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.backgroundSoft,
+  },
+  winLossBtnWin: { backgroundColor: theme.colors.successSoft, borderColor: theme.colors.success },
+  winLossBtnLoss: { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger },
+  winLossBtnText: { fontSize: theme.font.size.xs, color: theme.colors.mutedText, fontWeight: theme.font.weight.medium },
+  winLossBtnTextWin: { color: theme.colors.success },
+  winLossBtnTextLoss: { color: theme.colors.danger },
   scoreSignButton: {
     width: 32,
     height: 32,
@@ -1077,40 +1089,17 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     lineHeight: 22,
     fontWeight: theme.font.weight.bold,
   },
-  scoreLabel: {
-    color: theme.colors.text,
-    fontWeight: theme.font.weight.semibold,
-  },
   scoreInput: {
-    width: 90,
-    backgroundColor: theme.colors.card,
-    borderColor: theme.colors.border,
+    width: 80,
+    backgroundColor: theme.colors.backgroundSoft,
     borderWidth: 1,
-    borderRadius: theme.radius.sm,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    textAlign: "right",
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 6,
     color: theme.colors.text,
-  },
-  winnerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    marginBottom: 8,
-    backgroundColor: theme.colors.card,
-  },
-  winnerRowActive: {
-    borderColor: theme.colors.success,
-    backgroundColor: theme.colors.successSoft,
-  },
-  winnerStatus: {
-    color: theme.colors.mutedText,
-    fontWeight: theme.font.weight.semibold,
+    fontSize: theme.font.size.md,
+    textAlign: "right",
   },
   commentCard: {
     marginTop: 10,
