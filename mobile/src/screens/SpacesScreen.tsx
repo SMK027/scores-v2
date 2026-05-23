@@ -24,12 +24,13 @@ type Props = {
   user: User;
   onSelectSpace: (space: Space) => void;
   onLogout: () => void;
+  onOpenDashboard: () => void;
   onOpenProfile: () => void;
   onOpenCreateSpace: () => void;
   onOpenNotifications: () => void;
 };
 
-export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfile, onOpenCreateSpace, onOpenNotifications }: Props) {
+export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenDashboard, onOpenProfile, onOpenCreateSpace, onOpenNotifications }: Props) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { unreadCount } = useNotifications();
@@ -284,6 +285,9 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenProfi
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerMain}>
+          <Pressable style={styles.backButton} onPress={onOpenDashboard}>
+            <Text style={styles.backButtonText}>← Tableau de bord</Text>
+          </Pressable>
           <Text style={styles.kicker}>Espace personnel</Text>
           <Text style={styles.title}>Mes espaces</Text>
           <Text style={styles.subtitle}>Gérez vos salons de jeu, {user.username}</Text>
@@ -462,6 +466,15 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   headerMain: {
     flex: 1,
     marginRight: 10,
+  },
+  backButton: {
+    alignSelf: "flex-start",
+    marginBottom: 8,
+  },
+  backButtonText: {
+    color: theme.colors.primary,
+    fontSize: theme.font.size.sm,
+    fontWeight: theme.font.weight.semibold,
   },
   kicker: {
     color: theme.colors.primary,

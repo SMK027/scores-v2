@@ -305,6 +305,7 @@ function MobileAppContent() {
           user={user}
           onSelectSpace={(space) => setRoute({ name: "space", space })}
           onLogout={logout}
+          onOpenDashboard={goToDashboard}
           onOpenProfile={() => {
             setPreviousRoute({ name: "spaces" });
             setRoute({ name: "profile" });
