@@ -288,7 +288,6 @@ export function SpacesScreen({ token, user, onSelectSpace, onLogout, onOpenDashb
           <Pressable style={styles.backButton} onPress={onOpenDashboard}>
             <Text style={styles.backButtonText}>← Tableau de bord</Text>
           </Pressable>
-          <Text style={styles.kicker}>Espace personnel</Text>
           <Text style={styles.title}>Mes espaces</Text>
           <Text style={styles.subtitle}>Gérez vos salons de jeu, {user.username}</Text>
         </View>
