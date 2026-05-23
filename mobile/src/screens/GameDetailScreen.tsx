@@ -28,7 +28,7 @@ import { useNetwork } from "../context/NetworkContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { getAvatarUri } from "../utils/avatar";
 import type { AppTheme } from "../styles";
-import type { Comment, GameDetailsResponse, Space, User } from "../types/api";
+import type { Comment, GameDetailsResponse, Round, Space, User } from "../types/api";
 
 type Props = {
   token: string;
@@ -138,6 +138,16 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
   const loadDetails = useCallback(async () => {
     try {
       setError(null);
+      // Partie offline (ID négatif) : charger uniquement depuis le cache, pas d'appel API
+      if (gameId < 0) {
+        const cached = await getCachedGameDetails(space.id, gameId);
+        if (cached) {
+          setDetails(cached);
+        } else {
+          setError("Partie en attente de synchronisation introuvable dans le cache.");
+        }
+        return;
+      }
       const data = await fetchGameDetails(token, space.id, gameId);
       setDetails(data);
       // Mettre en cache pour le mode hors connexion
@@ -302,9 +312,28 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
 
       if (!isOnline) {
         const tempRoundId = `offline_round_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        await enqueue({ type: "create_round", spaceId: space.id, gameId, tempId: tempRoundId });
+        // Référence de la partie dans la file : tempId string si offline, sinon vrai ID numérique
+        const queueGameId: number | string = details?.game._offlineTempId ?? gameId;
+        await enqueue({ type: "create_round", spaceId: space.id, gameId: queueGameId, tempId: tempRoundId });
         await refreshQueueLength();
-        setError("Manche mise en file d'attente. Elle sera créée dès la reconnexion.");
+
+        // ID local négatif pour la manche (distingue des vraies manches)
+        const localRoundId = -(Date.now() % 2000000000);
+        const newRound: Round = {
+          id: localRoundId,
+          game_id: gameId,
+          round_number: (details?.rounds.length ?? 0) + 1,
+          status: "in_progress",
+          _offlineTempId: tempRoundId,
+        };
+        const updatedDetails = details
+          ? { ...details, rounds: [...details.rounds, newRound] }
+          : null;
+        if (updatedDetails) {
+          setDetails(updatedDetails);
+          void cacheGameDetails(updatedDetails, space.id);
+        }
+        beginRoundScoring(localRoundId);
         return;
       }
 
@@ -379,20 +408,42 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
       setError(null);
 
       if (!isOnline) {
+        // Résoudre les IDs de file : utiliser les tempIds string si la partie/manche est offline
+        const currentRound = details?.rounds.find((r) => r.id === editingRoundId) ?? null;
+        const queueRoundId: number | string = currentRound?._offlineTempId ?? editingRoundId;
+        const queueGameId: number | string = details?.game._offlineTempId ?? gameId;
+
         await enqueue({
           type: "update_scores",
           spaceId: space.id,
-          gameId,
-          roundId: editingRoundId,
+          gameId: queueGameId,
+          roundId: queueRoundId,
           scores: Object.fromEntries(
             Object.entries(normalizedScores).map(([k, v]) => [Number(k), v])
           ),
         });
         await refreshQueueLength();
+
+        // Mise à jour optimiste des scores dans le cache local
+        const updatedDetails = details
+          ? {
+              ...details,
+              round_scores: {
+                ...details.round_scores,
+                [String(editingRoundId)]: Object.fromEntries(
+                  Object.entries(normalizedScores).map(([k, v]) => [String(k), v])
+                ),
+              },
+            }
+          : null;
+        if (updatedDetails) {
+          setDetails(updatedDetails);
+          void cacheGameDetails(updatedDetails, space.id);
+        }
+
         setEditingRoundId(null);
         setScores({});
         setWinners({});
-        setError("Scores mis en file d'attente. Ils seront enregistrés dès la reconnexion.");
         return;
       }
 
@@ -429,6 +480,10 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
   };
 
   const finishGame = async () => {
+    if (gameId < 0) {
+      setError("Impossible de terminer une partie en attente de synchronisation.");
+      return;
+    }
     try {
       setFinishing(true);
       setError(null);
@@ -446,7 +501,7 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
   };
 
   const toggleGamePause = async () => {
-    if (!details) {
+    if (!details || gameId < 0) {
       return;
     }
 
@@ -474,7 +529,8 @@ export function GameDetailScreen({ token, user, space, gameId, onBack }: Props) 
   };
 
   const toggleRoundPause = async (roundId: number, roundStatus: "in_progress" | "paused" | "completed") => {
-    if (roundStatus === "completed") {
+    // Manches offline (ID négatif) ou partie offline : pas d'appel API
+    if (roundId < 0 || gameId < 0 || roundStatus === "completed") {
       return;
     }
 

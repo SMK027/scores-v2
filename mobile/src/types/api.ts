@@ -85,6 +85,8 @@ export type Game = {
   notes?: string | null;
   player_count?: number;
   competition_id?: number | null;
+  /** ID temporaire côté client pour les parties créées hors connexion (non envoyé au serveur) */
+  _offlineTempId?: string;
 };
 
 export type GamesResponse = {
@@ -112,6 +114,8 @@ export type Round = {
   round_number: number;
   status: "in_progress" | "paused" | "completed";
   notes?: string | null;
+  /** ID temporaire côté client pour les manches créées hors connexion (non envoyé au serveur) */
+  _offlineTempId?: string;
 };
 
 export type ProfileStats = {

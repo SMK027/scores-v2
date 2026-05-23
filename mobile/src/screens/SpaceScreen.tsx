@@ -50,7 +50,7 @@ import { useNetwork } from "../context/NetworkContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { useNotifications } from "../context/NotificationContext";
 import type { AppTheme } from "../styles";
-import type { Competition, ContactMessage, ContactTicket, Game, GameType, LeaderboardEntry, MemberCard, Player, SearchResults, Space, SpaceMember, User } from "../types/api";
+import type { Competition, ContactMessage, ContactTicket, Game, GameDetailsResponse, GamePlayer, GameType, LeaderboardEntry, MemberCard, Player, SearchResults, Space, SpaceMember, User } from "../types/api";
 import { getAvatarUri, getInitials } from "../utils/avatar";
 import { getRoleLabel } from "../utils/roles";
 
@@ -61,7 +61,7 @@ type Props = {
   onBack: () => void;
   onOpenProfile: () => void;
   onOpenNotifications: () => void;
-  onOpenGame: (gameId: number) => void;
+  onOpenGame: (gameId: number) => void; // les IDs offline sont toujours des entiers négatifs
   onOpenCompetition: (competitionId: number) => void;
   onOpenCreatePlayer: () => void;
   onOpenCreateGameType: () => void;
@@ -854,6 +854,9 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
       if (!isOnline) {
         // Mode hors connexion : mettre en file d'attente
         const tempId = `offline_game_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        // ID local négatif pour distinguer les parties offline des parties réelles
+        const localId = -(Date.now() % 2000000000);
+
         await enqueue({
           type: "create_game",
           spaceId: space.id,
@@ -863,12 +866,56 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenN
           tempId,
         });
         await refreshQueueLength();
+
+        // Construire une partie fictive pour permettre la saisie immédiate
+        const resolvedGameType = gameTypes.find((gt) => gt.id === selectedGameTypeId);
+        const now = new Date().toISOString();
+
+        const fakeGame: Game = {
+          id: localId,
+          space_id: space.id,
+          game_type_id: selectedGameTypeId,
+          game_type_name: resolvedGameType?.name ?? "Type inconnu",
+          status: "in_progress",
+          created_at: now,
+          notes: notes || null,
+          _offlineTempId: tempId,
+        };
+
+        const fakePlayers: GamePlayer[] = selectedPlayers.map((p, i) => ({
+          id: -(i + 1),
+          game_id: localId,
+          player_id: p.id,
+          player_name: p.name,
+          total_score: 0,
+          is_winner: 0,
+          rank: null,
+        }));
+
+        const fakeDetails: GameDetailsResponse = {
+          success: true,
+          game: { ...fakeGame, win_condition: resolvedGameType?.win_condition ?? "highest_score" },
+          players: fakePlayers,
+          rounds: [],
+          round_scores: {},
+          comments: [],
+          can_comment: false,
+        };
+
+        // Mettre en cache pour que GameDetailScreen puisse charger les données
+        await cacheGameDetails(fakeDetails, space.id);
+        const updatedGames: Game[] = [fakeGame, ...games];
+        setGames(updatedGames);
+        void cacheGames(updatedGames, space.id);
+
         setSelectedGameTypeId(null);
         setGameTypeQuery("");
         setSelectedPlayerIds([]);
         setPlayerQuery("");
         setNotes("");
-        setError("Partie mise en file d'attente. Elle sera créée dès la reconnexion.");
+
+        // Naviguer directement vers l'écran de la partie offline
+        onOpenGame(localId);
         return;
       }
 
