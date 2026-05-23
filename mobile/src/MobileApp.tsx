@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { refreshAuthToken, registerDevicePushToken, unregisterDevicePushToken } from "./services/api";
 import { registerForPushNotificationsAsync } from "./services/pushNotifications";
 import { clearSession, loadSession, saveSession } from "./services/session";
+import { loadAuthSession } from "./services/db";
 import { GameDetailScreen } from "./screens/GameDetailScreen";
 import { CompetitionDetailScreen } from "./screens/CompetitionDetailScreen";
 import { CreateGameTypeScreen } from "./screens/CreateGameTypeScreen";
@@ -116,11 +117,24 @@ function MobileAppContent() {
           return;
         }
 
-        const refreshed = await refreshAuthToken(persisted.token);
-        setToken(refreshed.token);
-        setUser(refreshed.user);
-        setRoute({ name: "dashboard" });
-        await saveSession(refreshed.token, refreshed.user);
+        try {
+          const refreshed = await refreshAuthToken(persisted.token);
+          setToken(refreshed.token);
+          setUser(refreshed.user);
+          setRoute({ name: "dashboard" });
+          await saveSession(refreshed.token, refreshed.user);
+        } catch {
+          // Échec réseau : tenter le fallback sur la session SQLite locale
+          const cached = await loadAuthSession();
+          if (cached && cached.expiresAt > Date.now()) {
+            setToken(cached.token);
+            setUser(cached.user);
+            setRoute({ name: "dashboard" });
+          } else {
+            // Token expiré ou absent : déconnecter proprement
+            await clearSession();
+          }
+        }
       } catch {
         await clearSession();
       } finally {

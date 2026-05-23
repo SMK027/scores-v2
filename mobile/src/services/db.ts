@@ -9,7 +9,17 @@
  */
 
 import * as SQLite from "expo-sqlite";
-import type { GameType, Player, Space } from "../types/api";
+import type { GameType, Player, Space, User } from "../types/api";
+
+// ─── Types session offline ────────────────────────────────────────────────────
+
+export type AuthSession = {
+  token: string;
+  refreshToken: string | null;
+  expiresAt: number; // timestamp ms
+  user: User;
+  savedAt: number;   // timestamp ms
+};
 
 // ─── Types internes ───────────────────────────────────────────────────────────
 
@@ -67,6 +77,15 @@ async function initSchema(db: SQLite.SQLiteDatabase): Promise<void> {
       action_json TEXT    NOT NULL,
       created_at  INTEGER NOT NULL,
       attempts    INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS auth_session (
+      id            INTEGER PRIMARY KEY CHECK (id = 1),
+      token         TEXT    NOT NULL,
+      refresh_token TEXT,
+      expires_at    INTEGER NOT NULL,
+      user_json     TEXT    NOT NULL,
+      saved_at      INTEGER NOT NULL
     );
   `);
 }
@@ -203,4 +222,62 @@ export async function getQueueLength(): Promise<number> {
   const db = await getDb();
   const row = await db.getFirstAsync<{ count: number }>("SELECT COUNT(*) as count FROM offline_queue");
   return row?.count ?? 0;
+}
+
+// ─── Session d'authentification offline ──────────────────────────────────────
+
+// Durée de validité du token considérée par défaut : 7 jours
+export const DEFAULT_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+export async function saveAuthSession(
+  token: string,
+  user: User,
+  opts: { refreshToken?: string; expiresAt?: number } = {},
+): Promise<void> {
+  const db = await getDb();
+  const now = Date.now();
+  const expiresAt = opts.expiresAt ?? now + DEFAULT_TOKEN_TTL_MS;
+  await db.runAsync(
+    `INSERT INTO auth_session (id, token, refresh_token, expires_at, user_json, saved_at)
+     VALUES (1, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       token         = excluded.token,
+       refresh_token = excluded.refresh_token,
+       expires_at    = excluded.expires_at,
+       user_json     = excluded.user_json,
+       saved_at      = excluded.saved_at`,
+    token,
+    opts.refreshToken ?? null,
+    expiresAt,
+    JSON.stringify(user),
+    now,
+  );
+}
+
+export async function loadAuthSession(): Promise<AuthSession | null> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{
+    token: string;
+    refresh_token: string | null;
+    expires_at: number;
+    user_json: string;
+    saved_at: number;
+  }>("SELECT token, refresh_token, expires_at, user_json, saved_at FROM auth_session WHERE id = 1");
+  if (!row) return null;
+  try {
+    return {
+      token: row.token,
+      refreshToken: row.refresh_token,
+      expiresAt: row.expires_at,
+      user: JSON.parse(row.user_json) as User,
+      savedAt: row.saved_at,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function clearAuthSession(): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("DELETE FROM auth_session WHERE id = 1");
 }

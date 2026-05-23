@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { User } from "../types/api";
+import { clearAuthSession, saveAuthSession } from "./db";
 
 type PersistedSession = {
   token: string;
@@ -11,6 +12,8 @@ const SESSION_KEY = "scores.mobile.session.v1";
 export async function saveSession(token: string, user: User): Promise<void> {
   const payload: PersistedSession = { token, user };
   await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+  // Persistance SQLite pour l'authentification offline
+  await saveAuthSession(token, user).catch(() => undefined);
 }
 
 export async function loadSession(): Promise<PersistedSession | null> {
@@ -32,4 +35,6 @@ export async function loadSession(): Promise<PersistedSession | null> {
 
 export async function clearSession(): Promise<void> {
   await AsyncStorage.removeItem(SESSION_KEY);
+  // Nettoyage de la session SQLite
+  await clearAuthSession().catch(() => undefined);
 }
