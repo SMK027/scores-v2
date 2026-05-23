@@ -13,6 +13,7 @@ import { CompetitionDetailScreen } from "./screens/CompetitionDetailScreen";
 import { CreateGameTypeScreen } from "./screens/CreateGameTypeScreen";
 import { CreateSpaceScreen } from "./screens/CreateSpaceScreen";
 import { CreatePlayerScreen } from "./screens/CreatePlayerScreen";
+import { DashboardScreen } from "./screens/DashboardScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { NotificationsScreen } from "./screens/NotificationsScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
@@ -29,6 +30,7 @@ import type { RefereeSession, Space, User } from "./types/api";
 type Route =
   | { name: "welcome" }
   | { name: "login" }
+  | { name: "dashboard" }
   | { name: "spaces" }
   | { name: "notifications" }
   | { name: "create-space" }
@@ -63,12 +65,13 @@ function MobileAppContent() {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [route, setRoute] = useState<Route>({ name: "welcome" });
-  const [previousRoute, setPreviousRoute] = useState<Route>({ name: "spaces" });
+  const [previousRoute, setPreviousRoute] = useState<Route>({ name: "dashboard" });
   const [bootstrapping, setBootstrapping] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
   const [registeredPushToken, setRegisteredPushToken] = useState<string | null>(null);
 
   const goToSpaces = () => setRoute({ name: "spaces" });
+  const goToDashboard = () => setRoute({ name: "dashboard" });
 
   const logout = () => {
     const currentToken = token;
@@ -115,7 +118,7 @@ function MobileAppContent() {
         const refreshed = await refreshAuthToken(persisted.token);
         setToken(refreshed.token);
         setUser(refreshed.user);
-        setRoute({ name: "spaces" });
+        setRoute({ name: "dashboard" });
         await saveSession(refreshed.token, refreshed.user);
       } catch {
         await clearSession();
@@ -173,7 +176,7 @@ function MobileAppContent() {
     const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const notificationType = response.notification.request.content.data?.type;
       if (notificationType === "space_invitation") {
-        setRoute({ name: "spaces" });
+        setRoute({ name: "dashboard" });
       }
     });
 
@@ -243,6 +246,7 @@ function MobileAppContent() {
             route.name !== "login" &&
             route.name !== "notifications" &&
             route.name !== "spaces" &&
+            route.name !== "dashboard" &&
             route.name !== "referee-login" &&
             route.name !== "referee-dashboard"
           }
@@ -268,9 +272,27 @@ function MobileAppContent() {
           onLoginSuccess={({ token: authToken, user: authUser }) => {
             setToken(authToken);
             setUser(authUser);
-            setRoute({ name: "spaces" });
+            setRoute({ name: "dashboard" });
             void saveSession(authToken, authUser);
           }}
+        />
+      ) : null}
+
+      {route.name === "dashboard" && token && user ? (
+        <DashboardScreen
+          token={token}
+          user={user}
+          onOpenSpaces={goToSpaces}
+          onOpenProfile={() => {
+            setPreviousRoute({ name: "dashboard" });
+            setRoute({ name: "profile" });
+          }}
+          onOpenNotifications={() => {
+            setPreviousRoute({ name: "dashboard" });
+            setRoute({ name: "notifications" });
+          }}
+          onOpenReferee={() => setRoute({ name: "referee-login" })}
+          onLogout={logout}
         />
       ) : null}
 
