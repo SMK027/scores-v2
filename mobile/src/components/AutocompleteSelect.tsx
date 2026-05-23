@@ -65,6 +65,7 @@ export function AutocompleteSelect({
         onBlur={() => setTimeout(() => setIsOpen(false), 120)}
         placeholder={placeholder}
         autoCorrect={false}
+        placeholderTextColor={theme.colors.mutedText}
         style={styles.input}
       />
 

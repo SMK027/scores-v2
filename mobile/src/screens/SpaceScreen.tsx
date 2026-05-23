@@ -1504,6 +1504,7 @@ export function SpaceScreen({ token, user, space, onBack, onOpenProfile, onOpenG
             value={notes}
             onChangeText={setNotes}
             placeholder="Notes optionnelles"
+            placeholderTextColor={theme.colors.mutedText}
             style={[styles.input, styles.notes]}
             multiline
           />
